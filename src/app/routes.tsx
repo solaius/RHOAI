@@ -9,6 +9,7 @@ import { useFeatureFlags } from '@app/utils/FeatureFlagsContext';
 // New components
 import { Home } from '@app/Home/Home';
 import { Projects } from '@app/Projects/Projects';
+import { Connections } from '@app/Connections/Connections';
 
 // AIAssets - imported from migrated src-3.0
 import { Models } from '@app/AIAssets/Models/Models';
@@ -31,6 +32,7 @@ import { ModelPlayground } from '@app/GenAIStudio/ModelPlayground/ModelPlaygroun
 import { MyAgents } from '@app/GenAIStudio/MyAgents/MyAgents';
 import { PromptEngineering } from '@app/GenAIStudio/PromptEngineering/PromptEngineering';
 import { KnowledgeSources } from '@app/GenAIStudio/KnowledgeSources/KnowledgeSources';
+import { AutoRAG } from '@app/GenAIStudio/AutoRAG/AutoRAG';
 
 // Observability - imported from migrated src-3.0
 import { Tracing } from '@app/Observability/Tracing/Tracing';
@@ -125,6 +127,14 @@ const routes: AppRouteConfig[] = [
     icon: createFontAwesomeIcon('fa-light fa-folder'),
   },
   {
+    element: <Connections />,
+    exact: true,
+    label: 'Connections',
+    path: '/connections',
+    title: 'RHOAI 3.1 Console | Connections',
+    icon: createFontAwesomeIcon('fa-light fa-handshake'),
+  },
+  {
     label: 'AI hub',
     icon: createFontAwesomeIcon('fa-light fa-brain'),
     routes: [
@@ -200,6 +210,13 @@ const routes: AppRouteConfig[] = [
         path: '/gen-ai-studio/knowledge-sources',
         title: 'RHOAI 3.1 Console | Gen AI Studio - Knowledge Sources',
         featureFlag: 'enableKnowledgeSourcesPage',
+      },
+      {
+        element: <AutoRAG />,
+        exact: true,
+        label: 'AutoRAG',
+        path: '/gen-ai-studio/autorag',
+        title: 'RHOAI 3.1 Console | Gen AI Studio - AutoRAG',
       },
       {
         element: <APIKeys />,
