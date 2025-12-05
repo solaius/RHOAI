@@ -10,6 +10,8 @@ storybook-static
 .env.local
 .history
 .vscode
+package-lock.json
+nvmrc
 
 # MCP configuration with sensitive data
 # (keep .cursormcp.example in git as a template)
