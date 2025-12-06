@@ -10,15 +10,18 @@ import {
   StackItem,
   Bullseye,
 } from '@patternfly/react-core';
-import {
-  ConnectionsTable,
-  Connection,
-  ConnectionsEmptyState,
-  ManageConnectionModal,
-  DeleteConnectionModal,
-} from '@app/Projects/screens/detail/connections';
+import { ConnectionsTable, Connection } from './ConnectionsTable';
+import { ConnectionsEmptyState } from './ConnectionsEmptyState';
+import { ManageConnectionModal } from './ManageConnectionModal';
+import { DeleteConnectionModal } from './DeleteConnectionModal';
 
-const Connections: React.FunctionComponent = () => {
+interface ProjectConnectionsProps {
+  projectId?: string;
+}
+
+export const ProjectConnections: React.FunctionComponent<ProjectConnectionsProps> = ({
+  projectId,
+}) => {
   const [connections, setConnections] = React.useState<Connection[]>([]);
   const [isLoading, setIsLoading] = React.useState(false);
   const [isManageModalOpen, setIsManageModalOpen] = React.useState(false);
@@ -28,7 +31,7 @@ const Connections: React.FunctionComponent = () => {
   // Mock data - replace with actual API call
   React.useEffect(() => {
     setIsLoading(true);
-    // Simulate API call - showing connections from all projects
+    // Simulate API call
     setTimeout(() => {
       setConnections([
         {
@@ -47,18 +50,10 @@ const Connections: React.FunctionComponent = () => {
           createdDate: 'Dec 1, 2025',
           compatible: ['Workbench'],
         },
-        {
-          id: '3',
-          name: 'ML Model Storage',
-          description: 'S3 bucket for trained models',
-          type: 's3',
-          createdDate: 'Nov 28, 2025',
-          compatible: ['Pipeline', 'Model Registry'],
-        },
       ]);
       setIsLoading(false);
     }, 500);
-  }, []);
+  }, [projectId]);
 
   const handleAddConnection = () => {
     setSelectedConnection(null);
@@ -121,7 +116,7 @@ const Connections: React.FunctionComponent = () => {
 
   return (
     <>
-      <PageSection isFilled id="connections-page">
+      <PageSection isFilled id="project-connections-page">
         <Stack hasGutter>
           <StackItem>
             <Toolbar id="connections-toolbar">
@@ -178,6 +173,4 @@ const Connections: React.FunctionComponent = () => {
     </>
   );
 };
-
-export { Connections };
 

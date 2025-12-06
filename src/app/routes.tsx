@@ -9,6 +9,7 @@ import { useFeatureFlags } from '@app/utils/FeatureFlagsContext';
 // New components
 import { Home } from '@app/Home/Home';
 import { Projects } from '@app/Projects/Projects';
+import { ProjectDetail } from '@app/Projects/screens/detail/ProjectDetail';
 import { Connections } from '@app/Connections/Connections';
 
 // AIAssets - imported from migrated src-3.0
@@ -125,6 +126,12 @@ const routes: AppRouteConfig[] = [
     path: '/projects',
     title: 'RHOAI 3.1 Console | Projects',
     icon: createFontAwesomeIcon('fa-light fa-folder'),
+  },
+  {
+    element: <ProjectDetail />,
+    exact: true,
+    path: '/projects/:projectId',
+    title: 'RHOAI 3.1 Console | Project Detail',
   },
   {
     element: <Connections />,
