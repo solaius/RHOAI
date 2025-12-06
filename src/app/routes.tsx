@@ -86,6 +86,7 @@ import { EditTier } from '@app/Settings/Tiers/EditTier';
 
 // Icons
 import { createFontAwesomeIcon } from '@app/utils/IconHelper';
+import { createConnectionsIcon } from '@app/Connections/ConnectionsIcon';
 
 export interface IAppRoute {
   label?: string; // Excluding the label will exclude the route from the nav sidebar in AppLayout
@@ -139,7 +140,7 @@ const routes: AppRouteConfig[] = [
     label: 'Connections',
     path: '/connections',
     title: 'RHOAI 3.1 Console | Connections',
-    icon: createFontAwesomeIcon('fa-light fa-handshake'),
+    icon: createConnectionsIcon(),
   },
   {
     label: 'AI hub',
