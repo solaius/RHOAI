@@ -100,3 +100,4 @@ const CapabilityGroupVariation1Tabs: React.FunctionComponent<
 export default CapabilityGroupVariation1Tabs;
 
 
+
