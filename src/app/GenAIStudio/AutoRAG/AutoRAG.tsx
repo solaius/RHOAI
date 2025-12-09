@@ -894,17 +894,19 @@ const AutoRAG: React.FunctionComponent = () => {
                           {/* Selected Settings Display */}
                           <Grid hasGutter style={{ marginTop: '1rem', marginBottom: '1.5rem' }}>
                             <GridItem span={6}>
-                              <div
-                                style={{ cursor: 'pointer' }}
-                                onClick={() => setIsEvaluationSettingsModalOpen(true)}
-                                id="optimization-metric-column"
-                              >
+                              <div id="optimization-metric-column">
                                 <div style={{ fontSize: 'var(--pf-v5-global--FontSize--sm)', color: 'var(--pf-v5-global--Color--200)', marginBottom: '0.5rem' }}>
                                   Optimization metric
                                 </div>
-                                <div style={{ fontSize: '1.5rem', color: 'var(--pf-v5-global--Color--100)', fontWeight: 'var(--pf-v5-global--FontWeight--normal)' }}>
+                                <Button
+                                  variant="link"
+                                  isInline
+                                  onClick={() => setIsEvaluationSettingsModalOpen(true)}
+                                  style={{ fontSize: '1.5rem', padding: 0, fontWeight: 'var(--pf-v5-global--FontWeight--normal)' }}
+                                  id="optimization-metric-link"
+                                >
                                   {criteria.size > 0 ? Array.from(criteria).join(', ') : 'None selected'}
-                                </div>
+                                </Button>
                               </div>
                             </GridItem>
                             <GridItem span={6}>
@@ -922,14 +924,17 @@ const AutoRAG: React.FunctionComponent = () => {
                                     Upload one or more document in the column to the left to get started.
                                   </div>
                                 ) : (
-                                  <div
-                                    style={{ cursor: 'pointer', fontSize: '1.5rem', color: 'var(--pf-v5-global--Color--100)', fontWeight: 'var(--pf-v5-global--FontWeight--normal)' }}
+                                  <Button
+                                    variant="link"
+                                    isInline
                                     onClick={() => setIsEvaluationSettingsModalOpen(true)}
+                                    style={{ fontSize: '1.5rem', padding: 0, fontWeight: 'var(--pf-v5-global--FontWeight--normal)' }}
+                                    id="models-to-consider-link"
                                   >
                                     {selectedFoundationModels.size > 0 || selectedEmbeddingModels.size > 0
                                       ? `${selectedFoundationModels.size} foundation${selectedFoundationModels.size !== 1 ? 's' : ''}, ${selectedEmbeddingModels.size} embedding${selectedEmbeddingModels.size !== 1 ? 's' : ''}`
                                       : 'None selected'}
-                                  </div>
+                                  </Button>
                                 )}
                               </div>
                             </GridItem>
