@@ -29,6 +29,10 @@ import {
   ModalFooter,
   ModalHeader,
   ModalVariant,
+  MultipleFileUpload,
+  MultipleFileUploadMain,
+  MultipleFileUploadStatus,
+  MultipleFileUploadStatusItem,
   PageSection,
   Select,
   SelectList,
@@ -98,6 +102,7 @@ const AutoRAG: React.FunctionComponent = () => {
   const [tags, setTags] = React.useState<string[]>([]);
   const [errors, setErrors] = React.useState<Record<string, string>>({});
   const [documents, setDocuments] = React.useState<Document[]>([]);
+  const [hasAddedDocuments, setHasAddedDocuments] = React.useState(false);
   const [isConfiguring, setIsConfiguring] = React.useState(false);
   const [vectorDatabase, setVectorDatabase] = React.useState('');
   const [evaluationSource, setEvaluationSource] = React.useState('');
@@ -113,6 +118,8 @@ const AutoRAG: React.FunctionComponent = () => {
   const [patternResults, setPatternResults] = React.useState<PatternResult[]>([]);
   const [activeModelTabKey, setActiveModelTabKey] = React.useState<string | number>(0);
   const [isEvaluationSettingsModalOpen, setIsEvaluationSettingsModalOpen] = React.useState(false);
+  const [isAddDocumentsModalOpen, setIsAddDocumentsModalOpen] = React.useState(false);
+  const [uploadedFiles, setUploadedFiles] = React.useState<File[]>([]);
 
   // Mock data for models
   const foundationModels: Model[] = [
@@ -136,11 +143,15 @@ const AutoRAG: React.FunctionComponent = () => {
 
   const handleCancel = () => {
     setIsCreating(false);
+    setExperimentCreated(false);
+    setIsConfiguring(false);
     setName('');
     setDescription('');
     setTagInput('');
     setTags([]);
     setErrors({});
+    setDocuments([]);
+    setHasAddedDocuments(false);
   };
 
   const handleAddTag = () => {
@@ -209,24 +220,34 @@ const AutoRAG: React.FunctionComponent = () => {
   };
 
   const handleChooseDocuments = () => {
-    // TODO: Implement document selection
-    console.log('Choose documents clicked');
-    // Mock: Add sample documents for demonstration
-    const mockDocuments: Document[] = [
-      {
-        id: '1',
-        name: 'sample-document-1.pdf',
-        type: 'PDF',
-        uploaded: new Date(),
-      },
-      {
-        id: '2',
-        name: 'evaluation-data.json',
-        type: 'JSON',
-        uploaded: new Date(),
-      },
-    ];
-    setDocuments(mockDocuments);
+    setIsAddDocumentsModalOpen(true);
+  };
+
+  const handleFileDrop = (_event: unknown, droppedFiles: File[]) => {
+    setUploadedFiles([...uploadedFiles, ...droppedFiles]);
+  };
+
+  const handleFileRemove = (file: File) => {
+    setUploadedFiles(uploadedFiles.filter(f => f !== file));
+  };
+
+  const handleAddDocumentsConfirm = () => {
+    // Convert uploaded files to Document format
+    const newDocuments: Document[] = uploadedFiles.map(file => ({
+      id: Date.now().toString() + file.name,
+      name: file.name,
+      type: file.type || file.name.split('.').pop()?.toUpperCase() || 'Unknown',
+      uploaded: new Date(),
+    }));
+    setDocuments([...documents, ...newDocuments]);
+    setHasAddedDocuments(true);
+    setUploadedFiles([]);
+    setIsAddDocumentsModalOpen(false);
+  };
+
+  const handleAddDocumentsModalClose = () => {
+    setUploadedFiles([]);
+    setIsAddDocumentsModalOpen(false);
   };
 
   const handleUploadDocument = () => {
@@ -387,6 +408,8 @@ const AutoRAG: React.FunctionComponent = () => {
       setIsConfiguring(false);
       setIsCreating(true);
       setExperimentCreated(false);
+      setDocuments([]);
+      setHasAddedDocuments(false);
     } else if (experimentCompleted) {
       // Go back from results to configuration
       setExperimentCompleted(false);
@@ -506,9 +529,9 @@ const AutoRAG: React.FunctionComponent = () => {
               <Flex alignItems={{ default: 'alignItemsCenter' }} spaceItems={{ default: 'spaceItemsLg' }} wrap="wrap">
                 {/* Step 1 */}
                 <FlexItem>
-                  <div style={{ padding: '1rem', backgroundColor: 'var(--pf-v5-global--primary-color--100)', color: 'white', borderRadius: '4px', textAlign: 'center', minWidth: '100px' }}>
+                  <Label color="blue" style={{ padding: '0.75rem 1rem', fontSize: 'var(--pf-v5-global--FontSize--md)', minWidth: '100px', textAlign: 'center' }} id="pipeline-step-1">
                     Step 1
-                  </div>
+                  </Label>
                 </FlexItem>
                 <FlexItem>
                   <div style={{ fontSize: '1.5rem' }}>→</div>
@@ -516,9 +539,9 @@ const AutoRAG: React.FunctionComponent = () => {
                 
                 {/* Step 2 */}
                 <FlexItem>
-                  <div style={{ padding: '1rem', backgroundColor: 'var(--pf-v5-global--primary-color--100)', color: 'white', borderRadius: '4px', textAlign: 'center', minWidth: '100px' }}>
+                  <Label color="blue" style={{ padding: '0.75rem 1rem', fontSize: 'var(--pf-v5-global--FontSize--md)', minWidth: '100px', textAlign: 'center' }} id="pipeline-step-2">
                     Step 2
-                  </div>
+                  </Label>
                 </FlexItem>
                 <FlexItem>
                   <div style={{ fontSize: '1.5rem' }}>→</div>
@@ -526,9 +549,9 @@ const AutoRAG: React.FunctionComponent = () => {
                 
                 {/* Step 3 */}
                 <FlexItem>
-                  <div style={{ padding: '1rem', backgroundColor: 'var(--pf-v5-global--primary-color--100)', color: 'white', borderRadius: '4px', textAlign: 'center', minWidth: '100px' }}>
+                  <Label color="blue" style={{ padding: '0.75rem 1rem', fontSize: 'var(--pf-v5-global--FontSize--md)', minWidth: '100px', textAlign: 'center' }} id="pipeline-step-3">
                     Step 3
-                  </div>
+                  </Label>
                 </FlexItem>
                 <FlexItem>
                   <div style={{ fontSize: '1.5rem' }}>→</div>
@@ -537,17 +560,17 @@ const AutoRAG: React.FunctionComponent = () => {
                 {/* Foundation Models Branch */}
                 <FlexItem>
                   <Flex direction={{ default: 'column' }} spaceItems={{ default: 'spaceItemsSm' }} alignItems={{ default: 'alignItemsCenter' }}>
-                    <div style={{ padding: '0.75rem', backgroundColor: 'var(--pf-v5-global--palette--blue-50)', borderRadius: '4px', textAlign: 'center', minWidth: '120px', fontSize: 'var(--pf-v5-global--FontSize--sm)' }}>
+                    <Label color="blue" style={{ padding: '0.75rem 1rem', fontSize: 'var(--pf-v5-global--FontSize--md)', minWidth: '120px', textAlign: 'center' }} id="pipeline-foundation-model-1">
                       Foundation Model 1
-                    </div>
+                    </Label>
                     <div style={{ fontSize: '1.5rem' }}>↓</div>
                     <Flex spaceItems={{ default: 'spaceItemsSm' }}>
-                      <div style={{ padding: '0.5rem', backgroundColor: 'var(--pf-v5-global--palette--green-50)', borderRadius: '4px', fontSize: 'var(--pf-v5-global--FontSize--sm)' }}>
+                      <Label color="green" style={{ padding: '0.5rem 0.75rem', fontSize: 'var(--pf-v5-global--FontSize--sm)' }} id="pipeline-pattern-1">
                         Pattern 1
-                      </div>
-                      <div style={{ padding: '0.5rem', backgroundColor: 'var(--pf-v5-global--palette--green-50)', borderRadius: '4px', fontSize: 'var(--pf-v5-global--FontSize--sm)' }}>
+                      </Label>
+                      <Label color="green" style={{ padding: '0.5rem 0.75rem', fontSize: 'var(--pf-v5-global--FontSize--sm)' }} id="pipeline-pattern-2">
                         Pattern 2
-                      </div>
+                      </Label>
                     </Flex>
                   </Flex>
                 </FlexItem>
@@ -558,17 +581,17 @@ const AutoRAG: React.FunctionComponent = () => {
                 
                 <FlexItem>
                   <Flex direction={{ default: 'column' }} spaceItems={{ default: 'spaceItemsSm' }} alignItems={{ default: 'alignItemsCenter' }}>
-                    <div style={{ padding: '0.75rem', backgroundColor: 'var(--pf-v5-global--palette--blue-50)', borderRadius: '4px', textAlign: 'center', minWidth: '120px', fontSize: 'var(--pf-v5-global--FontSize--sm)' }}>
+                    <Label color="blue" style={{ padding: '0.75rem 1rem', fontSize: 'var(--pf-v5-global--FontSize--md)', minWidth: '120px', textAlign: 'center' }} id="pipeline-foundation-model-2">
                       Foundation Model 2
-                    </div>
+                    </Label>
                     <div style={{ fontSize: '1.5rem' }}>↓</div>
                     <Flex spaceItems={{ default: 'spaceItemsSm' }}>
-                      <div style={{ padding: '0.5rem', backgroundColor: 'var(--pf-v5-global--palette--green-50)', borderRadius: '4px', fontSize: 'var(--pf-v5-global--FontSize--sm)' }}>
+                      <Label color="green" style={{ padding: '0.5rem 0.75rem', fontSize: 'var(--pf-v5-global--FontSize--sm)' }} id="pipeline-pattern-3">
                         Pattern 3
-                      </div>
-                      <div style={{ padding: '0.5rem', backgroundColor: 'var(--pf-v5-global--palette--green-50)', borderRadius: '4px', fontSize: 'var(--pf-v5-global--FontSize--sm)' }}>
+                      </Label>
+                      <Label color="green" style={{ padding: '0.5rem 0.75rem', fontSize: 'var(--pf-v5-global--FontSize--sm)' }} id="pipeline-pattern-4">
                         Pattern 4
-                      </div>
+                      </Label>
                     </Flex>
                   </Flex>
                 </FlexItem>
@@ -579,17 +602,17 @@ const AutoRAG: React.FunctionComponent = () => {
                 
                 <FlexItem>
                   <Flex direction={{ default: 'column' }} spaceItems={{ default: 'spaceItemsSm' }} alignItems={{ default: 'alignItemsCenter' }}>
-                    <div style={{ padding: '0.75rem', backgroundColor: 'var(--pf-v5-global--palette--blue-50)', borderRadius: '4px', textAlign: 'center', minWidth: '120px', fontSize: 'var(--pf-v5-global--FontSize--sm)' }}>
+                    <Label color="blue" style={{ padding: '0.75rem 1rem', fontSize: 'var(--pf-v5-global--FontSize--md)', minWidth: '120px', textAlign: 'center' }} id="pipeline-foundation-model-3">
                       Foundation Model 3
-                    </div>
+                    </Label>
                     <div style={{ fontSize: '1.5rem' }}>↓</div>
                     <Flex spaceItems={{ default: 'spaceItemsSm' }}>
-                      <div style={{ padding: '0.5rem', backgroundColor: 'var(--pf-v5-global--palette--green-50)', borderRadius: '4px', fontSize: 'var(--pf-v5-global--FontSize--sm)' }}>
+                      <Label color="green" style={{ padding: '0.5rem 0.75rem', fontSize: 'var(--pf-v5-global--FontSize--sm)' }} id="pipeline-pattern-5">
                         Pattern 5
-                      </div>
-                      <div style={{ padding: '0.5rem', backgroundColor: 'var(--pf-v5-global--palette--green-50)', borderRadius: '4px', fontSize: 'var(--pf-v5-global--FontSize--sm)' }}>
+                      </Label>
+                      <Label color="green" style={{ padding: '0.5rem 0.75rem', fontSize: 'var(--pf-v5-global--FontSize--sm)' }} id="pipeline-pattern-6">
                         Pattern 6
-                      </div>
+                      </Label>
                     </Flex>
                   </Flex>
                 </FlexItem>
@@ -747,7 +770,13 @@ const AutoRAG: React.FunctionComponent = () => {
 
                   {/* Column 2: Configure Details */}
                   <GridItem span={8}>
-                    <Card id="autorag-configure-card" style={{ display: 'flex', flexDirection: 'column', maxHeight: 'calc(100vh - 300px)' }}>
+                    <Card id="autorag-configure-card" style={{ 
+                      display: 'flex', 
+                      flexDirection: 'column', 
+                      maxHeight: 'calc(100vh - 300px)', 
+                      opacity: hasAddedDocuments ? 1 : 0.6,
+                      pointerEvents: hasAddedDocuments ? 'auto' : 'none'
+                    }}>
                       <CardHeader>
                         <CardTitle>
                           <Title headingLevel="h2" size="md" id="autorag-configure-title" style={{ color: 'var(--pf-v5-global--primary-color--100)' }}>
@@ -755,7 +784,22 @@ const AutoRAG: React.FunctionComponent = () => {
                           </Title>
                         </CardTitle>
                       </CardHeader>
-                      <CardBody style={{ overflowY: 'auto', flex: 1 }}>
+                      <CardBody style={{ overflowY: 'auto', flex: 1, position: 'relative' }}>
+                        {!hasAddedDocuments ? (
+                          <div style={{ 
+                            display: 'flex', 
+                            alignItems: 'center', 
+                            justifyContent: 'center', 
+                            minHeight: '300px',
+                            pointerEvents: 'auto'
+                          }}>
+                            <EmptyState headingLevel="h3" titleText="Upload some documents first to get started" id="configure-details-empty-state">
+                              <EmptyStateBody>
+                                Add documents in the Sources column to begin configuring your experiment.
+                              </EmptyStateBody>
+                            </EmptyState>
+                          </div>
+                        ) : (
                         <Form id="autorag-configure-form">
                           {/* Vector Database Location */}
                           <FormGroup
@@ -858,7 +902,7 @@ const AutoRAG: React.FunctionComponent = () => {
                                 <div style={{ fontSize: 'var(--pf-v5-global--FontSize--sm)', color: 'var(--pf-v5-global--Color--200)', marginBottom: '0.5rem' }}>
                                   Optimization metric
                                 </div>
-                                <div style={{ fontSize: 'var(--pf-v5-global--FontSize--lg)', color: 'var(--pf-v5-global--Color--100)', fontWeight: 'var(--pf-v5-global--FontWeight--normal)' }}>
+                                <div style={{ fontSize: '1.5rem', color: 'var(--pf-v5-global--Color--100)', fontWeight: 'var(--pf-v5-global--FontWeight--normal)' }}>
                                   {criteria.size > 0 ? Array.from(criteria).join(', ') : 'None selected'}
                                 </div>
                               </div>
@@ -868,13 +912,18 @@ const AutoRAG: React.FunctionComponent = () => {
                                 <div style={{ fontSize: 'var(--pf-v5-global--FontSize--sm)', color: 'var(--pf-v5-global--Color--200)', marginBottom: '0.5rem' }}>
                                   Models to consider
                                 </div>
-                                {documents.length === 0 ? (
-                                  <div style={{ fontSize: 'var(--pf-v5-global--FontSize--sm)', color: 'var(--pf-v5-global--Color--200)', fontStyle: 'italic' }}>
+                                {!hasAddedDocuments ? (
+                                  <div style={{ 
+                                    fontSize: 'var(--pf-v5-global--FontSize--sm)', 
+                                    color: 'var(--pf-v5-global--Color--200)', 
+                                    fontStyle: 'italic',
+                                    paddingTop: '0.25rem'
+                                  }}>
                                     Upload one or more document in the column to the left to get started.
                                   </div>
                                 ) : (
                                   <div
-                                    style={{ cursor: 'pointer', fontSize: 'var(--pf-v5-global--FontSize--lg)', color: 'var(--pf-v5-global--Color--100)', fontWeight: 'var(--pf-v5-global--FontWeight--normal)' }}
+                                    style={{ cursor: 'pointer', fontSize: '1.5rem', color: 'var(--pf-v5-global--Color--100)', fontWeight: 'var(--pf-v5-global--FontWeight--normal)' }}
                                     onClick={() => setIsEvaluationSettingsModalOpen(true)}
                                   >
                                     {selectedFoundationModels.size > 0 || selectedEmbeddingModels.size > 0
@@ -886,6 +935,7 @@ const AutoRAG: React.FunctionComponent = () => {
                             </GridItem>
                           </Grid>
                         </Form>
+                        )}
                       </CardBody>
                     </Card>
                   </GridItem>
@@ -1029,7 +1079,7 @@ const AutoRAG: React.FunctionComponent = () => {
             </Form>
           </>
         )}
-      </PageSection>
+  </PageSection>
 
       {/* Evaluation Source Settings Modal */}
       <Modal
@@ -1189,6 +1239,75 @@ const AutoRAG: React.FunctionComponent = () => {
         <ModalFooter>
           <Button variant="primary" onClick={() => setIsEvaluationSettingsModalOpen(false)} id="evaluation-settings-close-button">
             Close
+          </Button>
+        </ModalFooter>
+      </Modal>
+
+      {/* Add Documents Modal */}
+      <Modal
+        variant={ModalVariant.large}
+        isOpen={isAddDocumentsModalOpen}
+        onClose={handleAddDocumentsModalClose}
+        id="add-documents-modal"
+      >
+        <ModalHeader>
+          <Flex justifyContent={{ default: 'justifyContentSpaceBetween' }} alignItems={{ default: 'alignItemsCenter' }}>
+            <FlexItem>
+              <Title headingLevel="h2" size="xl" id="add-documents-modal-title">
+                Add documents
+              </Title>
+            </FlexItem>
+            <FlexItem>
+              <Button variant="secondary" onClick={handleAddConnection} id="add-connection-modal-button">
+                Add connection
+              </Button>
+            </FlexItem>
+          </Flex>
+        </ModalHeader>
+        <ModalBody>
+          <MultipleFileUpload
+            onFileDrop={handleFileDrop}
+            dropzoneProps={{
+              accept: {
+                'application/pdf': ['.pdf'],
+                'text/plain': ['.txt'],
+                'application/json': ['.json'],
+                'application/vnd.openxmlformats-officedocument.wordprocessingml.document': ['.docx'],
+                'application/msword': ['.doc'],
+              }
+            }}
+            id="add-documents-file-upload"
+          >
+            <MultipleFileUploadMain
+              titleIcon={<FolderOpenIcon />}
+              titleText="Drag and drop files here"
+              titleTextSeparator="or"
+              infoText="Accepted file types: PDF, TXT, JSON, DOCX, DOC"
+            />
+            {uploadedFiles.length > 0 && (
+              <MultipleFileUploadStatus>
+                {uploadedFiles.map((file, index) => (
+                  <MultipleFileUploadStatusItem
+                    key={index}
+                    file={file}
+                    onClearClick={() => handleFileRemove(file)}
+                  />
+                ))}
+              </MultipleFileUploadStatus>
+            )}
+          </MultipleFileUpload>
+        </ModalBody>
+        <ModalFooter>
+          <Button 
+            variant="primary" 
+            onClick={handleAddDocumentsConfirm} 
+            id="add-documents-confirm-button"
+            isDisabled={uploadedFiles.length === 0}
+          >
+            Add documents
+          </Button>
+          <Button variant="secondary" onClick={handleAddDocumentsModalClose} id="add-documents-cancel-button">
+            Cancel
           </Button>
         </ModalFooter>
       </Modal>
