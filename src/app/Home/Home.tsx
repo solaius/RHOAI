@@ -1,17 +1,18 @@
 import * as React from 'react';
-import {
-  PageSection,
-  Content,
-  ContentVariants,
-} from '@patternfly/react-core';
+import HomeCapabilitiesSimple from './variations/HomeCapabilitiesSimple';
+import ProjectsSection from './projects/ProjectsSection';
+import { useResourcesSection } from './resources/useResourcesSection';
 
-const Home: React.FunctionComponent = () => (
-  <PageSection>
-    <Content component={ContentVariants.h1}>Home</Content>
-    <Content component={ContentVariants.p}>
-      Welcome to the RHOAI 3.4 Dashboard home page.
-    </Content>
-  </PageSection>
-);
+const Home: React.FunctionComponent = () => {
+  const resourcesSection = useResourcesSection();
+
+  return (
+    <div data-testid="home-page">
+      <HomeCapabilitiesSimple />
+      <ProjectsSection />
+      {resourcesSection}
+    </div>
+  );
+};
 
 export { Home };

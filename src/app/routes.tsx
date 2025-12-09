@@ -8,6 +8,7 @@ import { useFeatureFlags } from '@app/utils/FeatureFlagsContext';
 
 // New components
 import { Home } from '@app/Home/Home';
+import HomePageVariations from '@app/Home/HomePageVariations';
 import { Projects } from '@app/Projects/Projects';
 import { ProjectDetail } from '@app/Projects/screens/detail/ProjectDetail';
 import { Connections } from '@app/Connections/Connections';
@@ -396,6 +397,14 @@ const routes: AppRouteConfig[] = [
     path: '/learning-resources',
     title: 'RHOAI 3.1 Console | Learning Resources',
     icon: createFontAwesomeIcon('fa-light fa-book'),
+  },
+  {
+    element: <HomePageVariations />,
+    exact: true,
+    label: 'Home page variations',
+    path: '/home-variations',
+    title: 'RHOAI 3.1 Console | Home Page Variations',
+    icon: createFontAwesomeIcon('fa-light fa-table-cells-large'),
   },
   {
     label: 'Applications',

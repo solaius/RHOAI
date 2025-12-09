@@ -16,3 +16,7 @@ nvmrc
 # MCP configuration with sensitive data
 # (keep .cursormcp.example in git as a template)
 .cursormcp.local
+# Documentation summaries
+*_SUMMARY.md
+CAPABILITIES_CARD_LAYOUTS.md
+HOME_VARIATIONS_SUMMARY.md
