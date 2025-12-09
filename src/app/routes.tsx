@@ -30,6 +30,7 @@ import AvailableAIAssets from '@app/AIAssets/AvailableAIAssets/AvailableAIAssets
 
 // GenAIStudio - imported from migrated src-3.0
 import { AgentBuilder } from '@app/GenAIStudio/AgentBuilder/AgentBuilder';
+import { Playground } from '@app/GenAIStudio/Playground/Playground';
 import { ModelPlayground } from '@app/GenAIStudio/ModelPlayground/ModelPlayground';
 import { MyAgents } from '@app/GenAIStudio/MyAgents/MyAgents';
 import { PromptEngineering } from '@app/GenAIStudio/PromptEngineering/PromptEngineering';
@@ -182,7 +183,7 @@ const routes: AppRouteConfig[] = [
         title: 'RHOAI 3.1 Console | Gen AI Studio - AI Asset Endpoints',
       },
       {
-        element: <AgentBuilder />,
+        element: <Playground />,
         exact: true,
         label: 'Playground',
         path: '/gen-ai-studio/playground',
