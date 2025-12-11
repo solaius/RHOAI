@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import {
+  Badge,
   Button,
   Card,
   CardBody,
@@ -18,13 +19,16 @@ import {
   Flex,
   FlexItem,
   FormGroup,
-  Grid,
-  GridItem,
   InputGroup,
   InputGroupItem,
   Label,
   MenuToggle,
   MenuToggleElement,
+  Modal,
+  ModalBody,
+  ModalFooter,
+  ModalHeader,
+  ModalVariant,
   PageSection,
   Popover,
   Select,
@@ -59,6 +63,7 @@ import {
   LightbulbIcon,
   LockIcon,
   OutlinedFolderIcon,
+  OutlinedQuestionCircleIcon,
   PlusCircleIcon,
   PlusIcon,
   RedoIcon,
@@ -98,7 +103,7 @@ const Playground: React.FunctionComponent = () => {
   const [isLoadPromptModalOpen, setIsLoadPromptModalOpen] = useState(false);
   
   // Build panel toggle state (using ToggleGroup instead of Tabs)
-  const [selectedBuildTab, setSelectedBuildTab] = useState('prompt-lab');
+  const [selectedBuildTab, setSelectedBuildTab] = useState('model');
   
   // Navigation drawer states
   const [isSavedConfigsOpen, setIsSavedConfigsOpen] = useState(false);
@@ -115,9 +120,10 @@ const Playground: React.FunctionComponent = () => {
   const [isKebabMenuOpen, setIsKebabMenuOpen] = useState(false);
   
   // Model parameters state
-  const [temperature, setTemperature] = useState(0.7);
-  const [repetitionPenalty, setRepetitionPenalty] = useState(1.0);
-  const [maxTokens, setMaxTokens] = useState(512);
+  const [temperature, setTemperature] = useState(0.6);
+  const [topP, setTopP] = useState(0.9);
+  const [maxTokens, setMaxTokens] = useState(2700);
+  const [repetition, setRepetition] = useState(1.0);
   const [isParametersPopoverOpen, setIsParametersPopoverOpen] = useState(false);
   
   // Vector stores and MCP servers state
@@ -137,204 +143,84 @@ const Playground: React.FunctionComponent = () => {
   
   // Guardrails state - User input
   const [jailbreaksEnabled, setJailbreaksEnabled] = useState(true);
-  const [contentModerationUserEnabled, setContentModerationUserEnabled] = useState(true);
+  const [contentModerationUserEnabled, setContentModerationUserEnabled] = useState(false);
   const [piiUserEnabled, setPiiUserEnabled] = useState(false);
   
   // Guardrails state - Model output
   const [contentModerationOutputEnabled, setContentModerationOutputEnabled] = useState(true);
   const [piiOutputEnabled, setPiiOutputEnabled] = useState(true);
   
+  // Content moderation sub-options (for Model output)
+  const [toxicityEnabled, setToxicityEnabled] = useState(true);
+  const [sexualContentEnabled, setSexualContentEnabled] = useState(true);
+  const [violenceEnabled, setViolenceEnabled] = useState(true);
+  const [harassmentEnabled, setHarassmentEnabled] = useState(true);
+  
   // Chat state
   const [chatHistory, setChatHistory] = useState<any[]>([]);
   const [inputValue, setInputValue] = useState('');
+  
+  // Save configuration modal state
+  const [isSaveConfigModalOpen, setIsSaveConfigModalOpen] = useState(false);
+  const [configName, setConfigName] = useState('');
+  const [configDescription, setConfigDescription] = useState('');
 
-  // Navigation Rail Component
-  const NavigationRail = () => (
-    <div style={{
-      width: '48px',
-      height: '100%',
-      backgroundColor: 'var(--pf-v6-global--BackgroundColor--200)',
-      borderRight: '1px solid var(--pf-v6-global--BorderColor--100)',
-      display: 'flex',
-      flexDirection: 'column',
-      alignItems: 'center',
-      padding: '1rem 0',
-      gap: '0.5rem'
-    }}>
-      <Tooltip content="Saved configurations" position="right">
-        <Button
-          variant="plain"
-          icon={<FolderIcon />}
-          onClick={() => {
-            setIsSavedConfigsOpen(true);
-            setIsSamplePromptsOpen(false);
-            setIsChatHistoryOpen(false);
-          }}
-          aria-label="Saved configurations"
-          id="saved-configs-button"
-        />
-      </Tooltip>
-      <Tooltip content="Sample prompts" position="right">
-        <Button
-          variant="plain"
-          icon={<LightbulbIcon />}
-          onClick={() => {
-            setIsSavedConfigsOpen(false);
-            setIsSamplePromptsOpen(true);
-            setIsChatHistoryOpen(false);
-          }}
-          aria-label="Sample prompts"
-          id="sample-prompts-button"
-        />
-      </Tooltip>
-      <Tooltip content="Chat history" position="right">
-        <Button
-          variant="plain"
-          icon={<HistoryIcon />}
-          onClick={() => {
-            setIsSavedConfigsOpen(false);
-            setIsSamplePromptsOpen(false);
-            setIsChatHistoryOpen(true);
-          }}
-          aria-label="Chat history"
-          id="chat-history-button"
-        />
-      </Tooltip>
-    </div>
-  );
+  // Calculate guardrails count
+  const guardrailsCount = React.useMemo(() => {
+    let count = 0;
+    
+    // User input guardrails
+    if (jailbreaksEnabled) count++;
+    if (contentModerationUserEnabled) count++;
+    if (piiUserEnabled) count++;
+    
+    // Model output guardrails
+    if (contentModerationOutputEnabled) {
+      count++; // Count the main content moderation toggle
+      // Count enabled sub-options
+      if (toxicityEnabled) count++;
+      if (sexualContentEnabled) count++;
+      if (violenceEnabled) count++;
+      if (harassmentEnabled) count++;
+    }
+    if (piiOutputEnabled) count++;
+    
+    return count;
+  }, [
+    jailbreaksEnabled, 
+    contentModerationUserEnabled, 
+    piiUserEnabled, 
+    contentModerationOutputEnabled, 
+    toxicityEnabled,
+    sexualContentEnabled,
+    violenceEnabled,
+    harassmentEnabled,
+    piiOutputEnabled
+  ]);
 
   // Build Panel using DrawerPanelContent
   const BuildPanelContent = (
-    <DrawerPanelContent isResizable minSize="400px" defaultSize="400px" id="build-panel-drawer">
+    <DrawerPanelContent isResizable minSize="400px" defaultSize="50%" id="build-panel-drawer">
       <DrawerContentBody style={{ padding: 0, height: '100%', display: 'flex', flexDirection: 'column' }}>
         <div style={{  
           borderBottom: '1px solid var(--pf-v6-global--BorderColor--100)',
-          padding: '1rem'
+          padding: '1rem 1rem 0 1rem'
         }}>
-          <Flex alignItems={{ default: 'alignItemsCenter' }} justifyContent={{ default: 'justifyContentSpaceBetween' }}>
-            <FlexItem>
-              <Title headingLevel="h2" size="lg">
-                Build
-              </Title>
-            </FlexItem>
-            <FlexItem>
-              <Flex alignItems={{ default: 'alignItemsCenter' }} gap={{ default: 'gapSm' }}>
-                <FlexItem>
-                  <div 
-                    style={{ width: '20px', height: '20px', display: 'flex', alignItems: 'center' }}
-                    dangerouslySetInnerHTML={{ __html: AIIcon }}
-                  />
-                </FlexItem>
-                <FlexItem>
-                  <Select
-                    id="model-select"
-                    isOpen={isModelSelectOpen}
-                    selected={selectedModel}
-                    onSelect={(_event, value) => {
-                      setSelectedModel(value as string);
-                      setIsModelSelectOpen(false);
-                    }}
-                    onOpenChange={(isOpen) => setIsModelSelectOpen(isOpen)}
-                    toggle={(toggleRef) => (
-                      <MenuToggle
-                        ref={toggleRef}
-                        onClick={() => setIsModelSelectOpen(!isModelSelectOpen)}
-                        isExpanded={isModelSelectOpen}
-                        variant="plainText"
-                        id="model-select-toggle"
-                      >
-                        Model: {selectedModel === 'llama-3.1-8b-instruct' ? 'Llama 3.1 8B-Instruct' :
-                               selectedModel === 'mistral-7b-instruct' ? 'Mistral 7B-Instruct' :
-                               selectedModel === 'granite-8b-code' ? 'Granite 8B Code' :
-                               selectedModel === 'falcon-7b' ? 'Falcon 7B' :
-                               selectedModel === 'bloom-7b1' ? 'BLOOM 7B1' : 'Select model'}
-                      </MenuToggle>
-                    )}
-                  >
-                    <SelectList>
-                      <SelectOption value="llama-3.1-8b-instruct">Llama 3.1 8B-Instruct</SelectOption>
-                      <SelectOption value="mistral-7b-instruct">Mistral 7B-Instruct</SelectOption>
-                      <SelectOption value="granite-8b-code">Granite 8B Code</SelectOption>
-                      <SelectOption value="falcon-7b">Falcon 7B</SelectOption>
-                      <SelectOption value="bloom-7b1">BLOOM 7B1</SelectOption>
-                    </SelectList>
-                  </Select>
-                </FlexItem>
-                <FlexItem>
-                  <Popover
-                    isVisible={isParametersPopoverOpen}
-                    shouldClose={() => setIsParametersPopoverOpen(false)}
-                    bodyContent={
-                      <div style={{ minWidth: '300px', padding: '1rem' }}>
-                        <FormGroup label="Temperature" fieldId="temperature">
-                          <Slider
-                            id="temperature"
-                            value={temperature}
-                            onChange={(_event, value) => setTemperature(value)}
-                            min={0}
-                            max={2}
-                            step={0.1}
-                          />
-                          <TextInput
-                            id="temperature-input"
-                            value={temperature}
-                            onChange={(_event, value) => setTemperature(parseFloat(value) || 0)}
-                            type="number"
-                            step={0.1}
-                            style={{ marginTop: '0.5rem' }}
-                          />
-                        </FormGroup>
-                        <FormGroup label="Repetition Penalty" fieldId="repetition-penalty" style={{ marginTop: '1rem' }}>
-                          <Slider
-                            id="repetition-penalty"
-                            value={repetitionPenalty}
-                            onChange={(_event, value) => setRepetitionPenalty(value)}
-                            min={0}
-                            max={2}
-                            step={0.1}
-                          />
-                          <TextInput
-                            id="repetition-penalty-input"
-                            value={repetitionPenalty}
-                            onChange={(_event, value) => setRepetitionPenalty(parseFloat(value) || 0)}
-                            type="number"
-                            step={0.1}
-                            style={{ marginTop: '0.5rem' }}
-                          />
-                        </FormGroup>
-                        <FormGroup label="Max Tokens" fieldId="max-tokens" style={{ marginTop: '1rem' }}>
-                          <TextInput
-                            id="max-tokens-input"
-                            value={maxTokens}
-                            onChange={(_event, value) => setMaxTokens(parseInt(value) || 0)}
-                            type="number"
-                          />
-                        </FormGroup>
-                      </div>
-                    }
-                  >
-                    <Button 
-                      variant="plain" 
-                      onClick={() => setIsParametersPopoverOpen(!isParametersPopoverOpen)}
-                      aria-label="Model parameters"
-                      id="model-parameters-button"
-                    >
-                      <div 
-                        style={{ width: '20px', height: '20px', display: 'flex', alignItems: 'center' }}
-                        dangerouslySetInnerHTML={{ __html: SlidersIcon }}
-                      />
-                    </Button>
-                  </Popover>
-                </FlexItem>
-              </Flex>
-            </FlexItem>
-          </Flex>
+          <Title headingLevel="h2" size="lg">
+            Build
+          </Title>
         </div>
 
         <div style={{ padding: '1rem', borderBottom: '1px solid var(--pf-v6-global--BorderColor--100)' }}>
           <ToggleGroup aria-label="Build panel options">
             <ToggleGroupItem
-              text="Prompt lab"
+              text="Model"
+              buttonId="model"
+              isSelected={selectedBuildTab === 'model'}
+              onChange={() => setSelectedBuildTab('model')}
+            />
+            <ToggleGroupItem
+              text="Prompt"
               buttonId="prompt-lab"
               isSelected={selectedBuildTab === 'prompt-lab'}
               onChange={() => setSelectedBuildTab('prompt-lab')}
@@ -352,7 +238,16 @@ const Playground: React.FunctionComponent = () => {
               onChange={() => setSelectedBuildTab('mcp')}
             />
             <ToggleGroupItem
-              text="Guardrails"
+              text={
+                <span style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                  Guardrails
+                  {guardrailsCount > 0 && (
+                    <Badge isRead>
+                      {guardrailsCount}
+                    </Badge>
+                  )}
+                </span>
+              }
               buttonId="guardrails"
               isSelected={selectedBuildTab === 'guardrails'}
               onChange={() => setSelectedBuildTab('guardrails')}
@@ -361,9 +256,168 @@ const Playground: React.FunctionComponent = () => {
         </div>
         
         <div style={{ flex: 1, overflow: 'auto', padding: '1rem' }}>
+          {selectedBuildTab === 'model' && (
+            <>
+              <Title headingLevel="h3" size="md" style={{ marginBottom: '1rem' }}>
+                Model
+              </Title>
+              
+              <FormGroup label="Select model" fieldId="model-select-form" isRequired>
+                <Select
+                  id="model-select"
+                  isOpen={isModelSelectOpen}
+                  selected={selectedModel}
+                  onSelect={(_event, value) => {
+                    setSelectedModel(value as string);
+                    setIsModelSelectOpen(false);
+                  }}
+                  onOpenChange={(isOpen) => setIsModelSelectOpen(isOpen)}
+                  toggle={(toggleRef) => (
+                    <MenuToggle
+                      ref={toggleRef}
+                      onClick={() => setIsModelSelectOpen(!isModelSelectOpen)}
+                      isExpanded={isModelSelectOpen}
+                      id="model-select-toggle"
+                      style={{ width: '100%' }}
+                    >
+                      {selectedModel === 'llama-3.1-8b-instruct' ? 'Llama 3.1 8B-Instruct' :
+                       selectedModel === 'mistral-7b-instruct' ? 'Mistral 7B-Instruct' :
+                       selectedModel === 'granite-8b-code' ? 'Granite 8B Code' :
+                       selectedModel === 'falcon-7b' ? 'Falcon 7B' :
+                       selectedModel === 'bloom-7b1' ? 'BLOOM 7B1' : 'Select model'}
+                    </MenuToggle>
+                  )}
+                >
+                  <SelectList>
+                    <SelectOption value="llama-3.1-8b-instruct">Llama 3.1 8B-Instruct</SelectOption>
+                    <SelectOption value="mistral-7b-instruct">Mistral 7B-Instruct</SelectOption>
+                    <SelectOption value="granite-8b-code">Granite 8B Code</SelectOption>
+                    <SelectOption value="falcon-7b">Falcon 7B</SelectOption>
+                    <SelectOption value="bloom-7b1">BLOOM 7B1</SelectOption>
+                  </SelectList>
+                </Select>
+              </FormGroup>
+
+              <div style={{ paddingLeft: '16px', paddingRight: '16px' }}>
+                <FormGroup 
+                  label={
+                    <span style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                      Temperature
+                      <Tooltip content="Controls randomness in the output. Lower values make the output more focused and deterministic, while higher values increase creativity and diversity.">
+                        <OutlinedQuestionCircleIcon style={{ fontSize: '14px', color: 'var(--pf-v6-global--icon-Color--subtle)' }} />
+                      </Tooltip>
+                    </span>
+                  }
+                  fieldId="temperature"
+                  style={{ marginTop: '1.5rem' }}
+                >
+                  <Slider
+                    id="temperature"
+                    value={temperature}
+                    onChange={(_event, value) => setTemperature(value)}
+                    min={0}
+                    max={2}
+                    step={0.1}
+                    isInputVisible
+                    inputValue={temperature}
+                  />
+                </FormGroup>
+
+                <FormGroup 
+                  label={
+                    <span style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                      Top P
+                      <Tooltip content="Controls diversity via nucleus sampling. The model considers the smallest set of tokens whose cumulative probability exceeds the threshold. Lower values make output more focused.">
+                        <OutlinedQuestionCircleIcon style={{ fontSize: '14px', color: 'var(--pf-v6-global--icon-Color--subtle)' }} />
+                      </Tooltip>
+                    </span>
+                  }
+                  fieldId="top-p"
+                  style={{ marginTop: '1rem' }}
+                >
+                  <Slider
+                    id="top-p"
+                    value={topP}
+                    onChange={(_event, value) => setTopP(value)}
+                    min={0}
+                    max={1}
+                    step={0.1}
+                    isInputVisible
+                    inputValue={topP}
+                  />
+                </FormGroup>
+
+                <FormGroup 
+                  label={
+                    <span style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                      Max token
+                      <Tooltip content="The maximum number of tokens to generate in the response. One token is roughly 4 characters. Higher values allow for longer responses.">
+                        <OutlinedQuestionCircleIcon style={{ fontSize: '14px', color: 'var(--pf-v6-global--icon-Color--subtle)' }} />
+                      </Tooltip>
+                    </span>
+                  }
+                  fieldId="max-tokens"
+                  style={{ marginTop: '1rem' }}
+                >
+                  <Slider
+                    id="max-tokens"
+                    value={maxTokens}
+                    onChange={(_event, value) => setMaxTokens(value)}
+                    min={1}
+                    max={4096}
+                    step={1}
+                    isInputVisible
+                    inputValue={maxTokens}
+                  />
+                </FormGroup>
+
+                <FormGroup 
+                  label={
+                    <span style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                      Repetition
+                      <Tooltip content="Penalty for repeating tokens. Higher values discourage the model from repeating the same words or phrases. Values greater than 1.0 penalize repetition.">
+                        <OutlinedQuestionCircleIcon style={{ fontSize: '14px', color: 'var(--pf-v6-global--icon-Color--subtle)' }} />
+                      </Tooltip>
+                    </span>
+                  }
+                  fieldId="repetition"
+                  style={{ marginTop: '1rem' }}
+                >
+                  <Slider
+                    id="repetition"
+                    value={repetition}
+                    onChange={(_event, value) => setRepetition(value)}
+                    min={0}
+                    max={2}
+                    step={0.1}
+                    isInputVisible
+                    inputValue={repetition}
+                  />
+                </FormGroup>
+              </div>
+            </>
+          )}
+          
           {selectedBuildTab === 'prompt-lab' && (
             <>
-              <FormGroup label="System instructions" fieldId="system-instructions">
+              <Flex alignItems={{ default: 'alignItemsCenter' }} justifyContent={{ default: 'justifyContentSpaceBetween' }} style={{ marginBottom: '0.5rem' }}>
+                <FlexItem>
+                  <Title headingLevel="h3" size="md">
+                    System instructions
+                  </Title>
+                </FlexItem>
+                <FlexItem>
+                  <Button 
+                    variant="link" 
+                    icon={<PlusCircleIcon />} 
+                    onClick={() => setIsLoadPromptModalOpen(true)}
+                    id="load-prompt-button"
+                  >
+                    Load prompt
+                  </Button>
+                </FlexItem>
+              </Flex>
+              <FormGroup fieldId="system-instructions">
                 <TextArea
                   id="system-instructions"
                   value={systemPrompt}
@@ -376,17 +430,8 @@ const Playground: React.FunctionComponent = () => {
                   }}
                 />
               </FormGroup>
-              <Flex style={{ marginTop: '1rem' }} gap={{ default: 'gapSm' }}>
-                <FlexItem>
-                  <Button 
-                    variant="link" 
-                    icon={<PlusCircleIcon />} 
-                    onClick={() => setIsLoadPromptModalOpen(true)}
-                  >
-                    Load prompt
-                  </Button>
-                </FlexItem>
-                {isSystemPromptReadOnly && systemPrompt && (
+              {isSystemPromptReadOnly && systemPrompt && (
+                <Flex style={{ marginTop: '1rem' }} gap={{ default: 'gapSm' }}>
                   <FlexItem>
                     <Button
                       variant="link"
@@ -399,8 +444,8 @@ const Playground: React.FunctionComponent = () => {
                       Edit prompt
                     </Button>
                   </FlexItem>
-                )}
-              </Flex>
+                </Flex>
+              )}
             </>
           )}
           
@@ -584,22 +629,59 @@ const Playground: React.FunctionComponent = () => {
           )}
           
           {selectedBuildTab === 'guardrails' && (
-            <div>
+            <>
               {/* Guardrails Header */}
-              <Flex alignItems={{ default: 'alignItemsCenter' }} spaceItems={{ default: 'spaceItemsSm' }} style={{ marginBottom: '1.5rem' }}>
+              <Flex alignItems={{ default: 'alignItemsCenter' }} spaceItems={{ default: 'spaceItemsSm' }} style={{ marginBottom: '1rem' }}>
                 <FlexItem>
                   <Title headingLevel="h3" size="md">Guardrails</Title>
                 </FlexItem>
                 <FlexItem>
-                  <Label variant="outline" color="blue">12 enabled</Label>
+                  <Badge isRead>{guardrailsCount}</Badge>
                 </FlexItem>
               </Flex>
 
+              {/* Model Dropdown */}
+              <FormGroup label="Model" fieldId="guardrails-model-select" style={{ marginBottom: '1.5rem' }}>
+                <Select
+                  id="guardrails-model-select"
+                  isOpen={isModelSelectOpen}
+                  selected={selectedModel}
+                  onSelect={(_event, value) => {
+                    setSelectedModel(value as string);
+                    setIsModelSelectOpen(false);
+                  }}
+                  onOpenChange={(isOpen) => setIsModelSelectOpen(isOpen)}
+                  toggle={(toggleRef) => (
+                    <MenuToggle
+                      ref={toggleRef}
+                      onClick={() => setIsModelSelectOpen(!isModelSelectOpen)}
+                      isExpanded={isModelSelectOpen}
+                      id="guardrails-model-select-toggle"
+                      style={{ width: '100%' }}
+                    >
+                      {selectedModel === 'llama-3.1-8b-instruct' ? 'Llama 3.1 8B-Instruct' :
+                       selectedModel === 'mistral-7b-instruct' ? 'Mistral 7B-Instruct' :
+                       selectedModel === 'granite-8b-code' ? 'Granite 8B Code' :
+                       selectedModel === 'falcon-7b' ? 'Falcon 7B' :
+                       selectedModel === 'bloom-7b1' ? 'BLOOM 7B1' : 'Select model'}
+                    </MenuToggle>
+                  )}
+                >
+                  <SelectList>
+                    <SelectOption value="llama-3.1-8b-instruct">Llama 3.1 8B-Instruct</SelectOption>
+                    <SelectOption value="mistral-7b-instruct">Mistral 7B-Instruct</SelectOption>
+                    <SelectOption value="granite-8b-code">Granite 8B Code</SelectOption>
+                    <SelectOption value="falcon-7b">Falcon 7B</SelectOption>
+                    <SelectOption value="bloom-7b1">BLOOM 7B1</SelectOption>
+                  </SelectList>
+                </Select>
+              </FormGroup>
+
               {/* User Input Section */}
               <div style={{ marginBottom: '2rem' }}>
-                <h4 style={{ fontSize: '0.875rem', fontWeight: 600, marginBottom: '1rem', marginTop: 0 }}>
+                <Title headingLevel="h4" size="md" style={{ marginBottom: '1rem' }}>
                   User input
-                </h4>
+                </Title>
 
                 {/* Jailbreaks and prompt attacks */}
                 <Flex alignItems={{ default: 'alignItemsCenter' }} spaceItems={{ default: 'spaceItemsSm' }} style={{ marginBottom: '1rem' }}>
@@ -611,8 +693,11 @@ const Playground: React.FunctionComponent = () => {
                       aria-label="Enable jailbreaks protection"
                     />
                   </FlexItem>
-                  <FlexItem style={{ flex: 1 }}>
+                  <FlexItem style={{ flex: 1, display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
                     Jailbreaks and prompt attacks
+                    <Tooltip content="Protects against attempts to bypass model safety measures and malicious prompt injection attacks">
+                      <OutlinedQuestionCircleIcon style={{ fontSize: '14px', color: 'var(--pf-v6-global--icon-Color--subtle)' }} />
+                    </Tooltip>
                   </FlexItem>
                 </Flex>
 
@@ -626,16 +711,11 @@ const Playground: React.FunctionComponent = () => {
                       aria-label="Enable content moderation for user input"
                     />
                   </FlexItem>
-                  <FlexItem style={{ flex: 1 }}>
+                  <FlexItem style={{ flex: 1, display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
                     Content moderation
-                  </FlexItem>
-                  <FlexItem>
-                    <Button 
-                      variant="plain" 
-                      icon={<CogIcon />} 
-                      aria-label="Configure content moderation"
-                      onClick={() => console.log('Configure content moderation')}
-                    />
+                    <Tooltip content="Filters inappropriate content in user messages">
+                      <OutlinedQuestionCircleIcon style={{ fontSize: '14px', color: 'var(--pf-v6-global--icon-Color--subtle)' }} />
+                    </Tooltip>
                   </FlexItem>
                 </Flex>
 
@@ -649,40 +729,79 @@ const Playground: React.FunctionComponent = () => {
                       aria-label="Enable PII detection for user input"
                     />
                   </FlexItem>
-                  <FlexItem style={{ flex: 1 }}>
+                  <FlexItem style={{ flex: 1, display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
                     Personal identifiable information (PII)
+                    <Tooltip content="Detects and protects personally identifiable information in user messages">
+                      <OutlinedQuestionCircleIcon style={{ fontSize: '14px', color: 'var(--pf-v6-global--icon-Color--subtle)' }} />
+                    </Tooltip>
                   </FlexItem>
                 </Flex>
               </div>
 
               {/* Model Output Section */}
               <div>
-                <h4 style={{ fontSize: '0.875rem', fontWeight: 600, marginBottom: '1rem', marginTop: 0 }}>
+                <Title headingLevel="h4" size="md" style={{ marginBottom: '1rem' }}>
                   Model output
-                </h4>
+                </Title>
 
                 {/* Content moderation - Model output */}
-                <Flex alignItems={{ default: 'alignItemsCenter' }} spaceItems={{ default: 'spaceItemsSm' }} style={{ marginBottom: '1rem' }}>
-                  <FlexItem>
-                    <Switch
-                      id="guardrails-content-mod-output"
-                      isChecked={contentModerationOutputEnabled}
-                      onChange={(_event, checked) => setContentModerationOutputEnabled(checked)}
-                      aria-label="Enable content moderation for model output"
-                    />
-                  </FlexItem>
-                  <FlexItem style={{ flex: 1 }}>
-                    Content moderation
-                  </FlexItem>
-                  <FlexItem>
-                    <Button 
-                      variant="plain" 
-                      icon={<CogIcon />} 
-                      aria-label="Configure content moderation for output"
-                      onClick={() => console.log('Configure content moderation for output')}
-                    />
-                  </FlexItem>
-                </Flex>
+                <div style={{ marginBottom: '1rem' }}>
+                  <Flex alignItems={{ default: 'alignItemsCenter' }} spaceItems={{ default: 'spaceItemsSm' }} style={{ marginBottom: '0.5rem' }}>
+                    <FlexItem>
+                      <Switch
+                        id="guardrails-content-mod-output"
+                        isChecked={contentModerationOutputEnabled}
+                        onChange={(_event, checked) => {
+                          setContentModerationOutputEnabled(checked);
+                          // Optionally uncheck all sub-options when main toggle is off
+                          if (!checked) {
+                            setToxicityEnabled(false);
+                            setSexualContentEnabled(false);
+                            setViolenceEnabled(false);
+                            setHarassmentEnabled(false);
+                          }
+                        }}
+                        aria-label="Enable content moderation for model output"
+                      />
+                    </FlexItem>
+                    <FlexItem style={{ flex: 1, display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                      Content moderation
+                      <Tooltip content="Filters inappropriate content in model responses">
+                        <OutlinedQuestionCircleIcon style={{ fontSize: '14px', color: 'var(--pf-v6-global--icon-Color--subtle)' }} />
+                      </Tooltip>
+                    </FlexItem>
+                  </Flex>
+
+                  {/* Content Moderation Sub-options */}
+                  {contentModerationOutputEnabled && (
+                    <div style={{ marginLeft: '3rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                      <Checkbox
+                        id="toxicity-checkbox"
+                        label="Toxicity / Hate Speech"
+                        isChecked={toxicityEnabled}
+                        onChange={(_event, checked) => setToxicityEnabled(checked)}
+                      />
+                      <Checkbox
+                        id="sexual-content-checkbox"
+                        label="Sexual Content"
+                        isChecked={sexualContentEnabled}
+                        onChange={(_event, checked) => setSexualContentEnabled(checked)}
+                      />
+                      <Checkbox
+                        id="violence-checkbox"
+                        label="Violence / Self Harm"
+                        isChecked={violenceEnabled}
+                        onChange={(_event, checked) => setViolenceEnabled(checked)}
+                      />
+                      <Checkbox
+                        id="harassment-checkbox"
+                        label="Harassment"
+                        isChecked={harassmentEnabled}
+                        onChange={(_event, checked) => setHarassmentEnabled(checked)}
+                      />
+                    </div>
+                  )}
+                </div>
 
                 {/* PII - Model output */}
                 <Flex alignItems={{ default: 'alignItemsCenter' }} spaceItems={{ default: 'spaceItemsSm' }}>
@@ -694,12 +813,15 @@ const Playground: React.FunctionComponent = () => {
                       aria-label="Enable PII detection for model output"
                     />
                   </FlexItem>
-                  <FlexItem style={{ flex: 1 }}>
+                  <FlexItem style={{ flex: 1, display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
                     Personal identifiable information (PII)
+                    <Tooltip content="Detects and protects personally identifiable information in model responses">
+                      <OutlinedQuestionCircleIcon style={{ fontSize: '14px', color: 'var(--pf-v6-global--icon-Color--subtle)' }} />
+                    </Tooltip>
                   </FlexItem>
                 </Flex>
               </div>
-            </div>
+            </>
           )}
         </div>
       </DrawerContentBody>
@@ -867,7 +989,6 @@ const Playground: React.FunctionComponent = () => {
 
   const MainContent = (
     <div style={{ display: 'flex', height: 'calc(100vh - 200px)', width: '100%' }}>
-      <NavigationRail />
       <Drawer isExpanded isInline position="left" style={{ flex: 1, minWidth: 0 }}>
         <DrawerContent panelContent={BuildPanelContent}>
           <DrawerContentBody style={{ padding: 0, display: 'flex', flexDirection: 'column', height: '100%' }}>
@@ -938,7 +1059,7 @@ const Playground: React.FunctionComponent = () => {
 
           <FlexItem>
             <Flex gap={{ default: 'gapSm' }}>
-              <Button variant="link" icon={<SaveIcon />} id="save-button">
+              <Button variant="link" icon={<SaveIcon />} id="save-button" onClick={() => setIsSaveConfigModalOpen(true)}>
                 Save
               </Button>
               <Button variant="link" icon={<PlusIcon />} id="new-chat-button">
@@ -1042,6 +1163,80 @@ const Playground: React.FunctionComponent = () => {
           setIsSystemPromptReadOnly(isReadOnly);
         }}
       />
+
+      {/* Save Configuration Modal */}
+      <Modal
+        variant={ModalVariant.small}
+        isOpen={isSaveConfigModalOpen}
+        onClose={() => {
+          setIsSaveConfigModalOpen(false);
+          setConfigName('');
+          setConfigDescription('');
+        }}
+      >
+        <ModalHeader
+          title="Save configuration"
+          description={
+            <span style={{ fontSize: '14px' }}>
+              Save your configuration including prompt, model parameters, knowledge and tool selection
+            </span>
+          }
+        />
+        <ModalBody>
+          <FormGroup 
+            label="Name"
+            isRequired
+            fieldId="config-name"
+          >
+            <TextInput
+              id="config-name"
+              value={configName}
+              onChange={(_event, value) => setConfigName(value)}
+              placeholder="Name your session"
+              isRequired
+            />
+          </FormGroup>
+
+          <FormGroup 
+            label="Description"
+            fieldId="config-description"
+            style={{ marginTop: '1rem' }}
+          >
+            <TextArea
+              id="config-description"
+              value={configDescription}
+              onChange={(_event, value) => setConfigDescription(value)}
+              placeholder="Describe your use case"
+              rows={3}
+            />
+          </FormGroup>
+        </ModalBody>
+        <ModalFooter>
+          <Button
+            variant="primary"
+            onClick={() => {
+              // Handle save logic here
+              console.log('Saving configuration:', { name: configName, description: configDescription });
+              setIsSaveConfigModalOpen(false);
+              setConfigName('');
+              setConfigDescription('');
+            }}
+            isDisabled={!configName.trim()}
+          >
+            Save
+          </Button>
+          <Button
+            variant="link"
+            onClick={() => {
+              setIsSaveConfigModalOpen(false);
+              setConfigName('');
+              setConfigDescription('');
+            }}
+          >
+            Cancel
+          </Button>
+        </ModalFooter>
+      </Modal>
     </>
   );
 };
