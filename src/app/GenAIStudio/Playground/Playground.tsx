@@ -16,12 +16,19 @@ import {
   Dropdown,
   DropdownItem,
   DropdownList,
+  EmptyState,
+  EmptyStateBody,
   Flex,
   FlexItem,
   FormGroup,
   InputGroup,
   InputGroupItem,
   Label,
+  Menu,
+  MenuContent,
+  MenuGroup,
+  MenuItem,
+  MenuList,
   MenuToggle,
   MenuToggleElement,
   Modal,
@@ -55,6 +62,7 @@ import {
   AngleRightIcon,
   CodeIcon,
   CogIcon,
+  CubesIcon,
   DownloadIcon,
   EllipsisVIcon,
   FolderIcon,
@@ -128,10 +136,10 @@ const Playground: React.FunctionComponent = () => {
   
   // Vector stores and MCP servers state
   const [vectorStores, setVectorStores] = useState([
-    { id: '1', name: 'HR benefits bot', type: 'In memory', selected: true },
-    { id: '2', name: 'IT tech support documents', type: 'In memory', selected: false },
-    { id: '3', name: 'Customer support agent', type: 'External connection', selected: false },
-    { id: '4', name: 'Coding guidelines and docs', type: 'In memory', selected: false },
+    { id: '1', name: 'HR test', type: 'In memory', provider: 'Milvus', selected: false, addedToKnowledge: false },
+    { id: '2', name: 'Test 2', type: 'In memory', provider: 'Milvus', selected: false, addedToKnowledge: false },
+    { id: '3', name: 'HR benefits Q&A', type: 'External connection', provider: 'PGVector', selected: false, addedToKnowledge: false },
+    { id: '4', name: 'Expense tracker', type: 'External connection', provider: 'Milvus', selected: false, addedToKnowledge: false },
   ]);
   const [mcpServers] = useState([
     { id: '1', name: 'Github', enabled: true, toolsCount: 12, hasAuth: true },
@@ -278,7 +286,7 @@ const Playground: React.FunctionComponent = () => {
                       onClick={() => setIsModelSelectOpen(!isModelSelectOpen)}
                       isExpanded={isModelSelectOpen}
                       id="model-select-toggle"
-                      style={{ width: '100%' }}
+                      style={{ width: '100%', maxWidth: '350px' }}
                     >
                       {selectedModel === 'llama-3.1-8b-instruct' ? 'Llama 3.1 8B-Instruct' :
                        selectedModel === 'mistral-7b-instruct' ? 'Mistral 7B-Instruct' :
@@ -450,58 +458,123 @@ const Playground: React.FunctionComponent = () => {
           )}
           
           {selectedBuildTab === 'knowledge' && (
-            <div>
-              <Flex justifyContent={{ default: 'justifyContentSpaceBetween' }} alignItems={{ default: 'alignItemsCenter' }} style={{ marginBottom: '1rem' }}>
-                <FlexItem>
-                  <Title headingLevel="h3" size="md">Knowledge</Title>
-                </FlexItem>
-                <FlexItem>
-                  <Button
-                    variant="plain"
-                    icon={<AngleRightIcon style={{ transform: isRagEnabled ? 'rotate(90deg)' : 'none', transition: 'transform 0.2s' }} />}
-                    onClick={() => setIsRagEnabled(!isRagEnabled)}
-                    aria-label="Toggle knowledge section"
-                  />
-                  <Switch
-                    id="knowledge-toggle-build"
-                    isChecked={isRagEnabled}
-                    onChange={(_event, checked) => setIsRagEnabled(checked)}
-                    aria-label="Enable Knowledge"
-                  />
-                </FlexItem>
-              </Flex>
-
-              {isRagEnabled && (
-                <>
-                  <Dropdown
-                    isOpen={isVectorStoreDropdownOpen}
-                    onSelect={() => {}}
-                    onOpenChange={(isOpen: boolean) => setIsVectorStoreDropdownOpen(isOpen)}
-                    toggle={(toggleRef: React.Ref<MenuToggleElement>) => (
-                      <MenuToggle
-                        ref={toggleRef}
-                        onClick={() => setIsVectorStoreDropdownOpen(!isVectorStoreDropdownOpen)}
-                        isExpanded={isVectorStoreDropdownOpen}
-                        style={{ width: '100%', marginBottom: '1rem' }}
-                        id="vector-store-dropdown"
-                      >
-                        Browse or add vector stores
-                      </MenuToggle>
-                    )}
-                    id="vector-store-dropdown-menu"
+            <>
+              <Title headingLevel="h3" size="md" style={{ marginBottom: '1rem' }}>
+                Knowledge
+              </Title>
+              <Dropdown
+                isOpen={isVectorStoreDropdownOpen}
+                onSelect={() => {}}
+                onOpenChange={(isOpen: boolean) => setIsVectorStoreDropdownOpen(isOpen)}
+                toggle={(toggleRef: React.Ref<MenuToggleElement>) => (
+                  <MenuToggle
+                    ref={toggleRef}
+                    onClick={() => setIsVectorStoreDropdownOpen(!isVectorStoreDropdownOpen)}
+                    isExpanded={isVectorStoreDropdownOpen}
+                    style={{ width: '100%', marginBottom: '1rem', maxWidth: '350px' }}
+                    id="vector-store-dropdown"
                   >
-                    <DropdownList>
-                      <DropdownItem key="header" isDisabled>
-                        <strong>Vector store</strong>
-                      </DropdownItem>
-                      {vectorStores.map((store) => (
-                        <DropdownItem
-                          key={store.id}
-                        >
+                    Browse or add vector stores
+                  </MenuToggle>
+                )}
+                id="vector-store-dropdown-menu"
+              >
+                <Menu style={{ maxWidth: '350px' }}>
+                  <MenuContent>
+                    <MenuList>
+                      <MenuGroup label="Inline vector store">
+                        {vectorStores.filter(s => s.type === 'In memory').map((store) => (
+                          <MenuItem
+                            key={store.id}
+                            itemId={store.id}
+                            onClick={() => {
+                              setIsVectorStoreDropdownOpen(false);
+                              setVectorStores(stores =>
+                                stores.map(s =>
+                                  s.id === store.id ? { ...s, addedToKnowledge: true, selected: true } : s
+                                )
+                              );
+                            }}
+                          >
+                            <Flex justifyContent={{ default: 'justifyContentSpaceBetween' }} style={{ width: '100%' }}>
+                              <FlexItem>{store.name}</FlexItem>
+                              <FlexItem style={{ color: 'var(--pf-v6-global--Color--200)', fontSize: '0.875rem' }}>
+                                {store.provider}
+                              </FlexItem>
+                            </Flex>
+                          </MenuItem>
+                        ))}
+                      </MenuGroup>
+                      <Divider />
+                      <MenuGroup label="RAG vector stores">
+                        {vectorStores.filter(s => s.type === 'External connection').map((store) => (
+                          <MenuItem
+                            key={store.id}
+                            itemId={store.id}
+                            onClick={() => {
+                              setIsVectorStoreDropdownOpen(false);
+                              setVectorStores(stores =>
+                                stores.map(s =>
+                                  s.id === store.id ? { ...s, addedToKnowledge: true, selected: true } : s
+                                )
+                              );
+                            }}
+                          >
+                            <Flex justifyContent={{ default: 'justifyContentSpaceBetween' }} style={{ width: '100%' }}>
+                              <FlexItem>{store.name}</FlexItem>
+                              <FlexItem style={{ color: 'var(--pf-v6-global--Color--200)', fontSize: '0.875rem' }}>
+                                {store.provider}
+                              </FlexItem>
+                            </Flex>
+                          </MenuItem>
+                        ))}
+                      </MenuGroup>
+                      <Divider />
+                      <MenuItem
+                        icon={<PlusIcon />}
+                        onClick={() => {
+                          setIsVectorStoreDropdownOpen(false);
+                          setIsAddVectorStoreModalOpen(true);
+                        }}
+                      >
+                        Create new vector store
+                      </MenuItem>
+                    </MenuList>
+                  </MenuContent>
+                </Menu>
+              </Dropdown>
+
+              {/* Table of added vector stores or Empty State */}
+              {vectorStores.filter(s => s.addedToKnowledge).length > 0 ? (
+                <Table variant="compact" aria-label="Added vector stores" id="selected-vector-stores-table">
+                  <Thead>
+                    <Tr>
+                      <Th width={10}>
+                        <Checkbox
+                          id="select-all-vector-stores"
+                          isChecked={vectorStores.filter(s => s.addedToKnowledge).length > 0 && vectorStores.filter(s => s.addedToKnowledge).every(s => s.selected)}
+                          onChange={(_event, checked) => {
+                            setVectorStores(stores =>
+                              stores.map(s =>
+                                s.addedToKnowledge ? { ...s, selected: checked } : s
+                              )
+                            );
+                          }}
+                          aria-label="Select all vector stores"
+                        />
+                      </Th>
+                      <Th>Name</Th>
+                      <Th>Provider</Th>
+                      <Th width={10}></Th>
+                    </Tr>
+                  </Thead>
+                  <Tbody>
+                    {vectorStores.filter(s => s.addedToKnowledge).map((store) => (
+                      <Tr key={store.id}>
+                        <Td>
                           <Checkbox
-                            id={`dropdown-vs-${store.id}`}
+                            id={`vs-checkbox-${store.id}`}
                             isChecked={store.selected}
-                            label={store.name}
                             onChange={(_event, checked) => {
                               setVectorStores(stores =>
                                 stores.map(s =>
@@ -509,85 +582,63 @@ const Playground: React.FunctionComponent = () => {
                                 )
                               );
                             }}
+                            aria-label={`Select ${store.name}`}
                           />
-                        </DropdownItem>
-                      ))}
-                      <Divider component="li" />
-                      <DropdownItem key="add-new">
-                        <Button 
-                          variant="link" 
-                          icon={<PlusIcon />}
-                          onClick={() => {
-                            setIsVectorStoreDropdownOpen(false);
-                            setIsAddVectorStoreModalOpen(true);
-                          }}
-                          style={{ padding: 0, fontWeight: 400 }}
-                        >
-                          Add new vector store
-                        </Button>
-                      </DropdownItem>
-                    </DropdownList>
-                  </Dropdown>
-
-                  {/* Table of selected vector stores */}
-                  {vectorStores.filter(s => s.selected).length > 0 && (
-                    <Table variant="compact" aria-label="Selected vector stores" id="selected-vector-stores-table">
-                      <Thead>
-                        <Tr>
-                          <Th>Name</Th>
-                          <Th>Type</Th>
-                          <Th width={10}></Th>
-                        </Tr>
-                      </Thead>
-                      <Tbody>
-                        {vectorStores.filter(s => s.selected).map((store) => (
-                          <Tr key={store.id}>
-                            <Td>{store.name}</Td>
-                            <Td>{store.type}</Td>
-                            <Td>
-                              <Dropdown
-                                isOpen={openVectorStoreActionId === store.id}
-                                onSelect={() => setOpenVectorStoreActionId(null)}
-                                onOpenChange={(isOpen: boolean) => setOpenVectorStoreActionId(isOpen ? store.id : null)}
-                                toggle={(toggleRef: React.Ref<MenuToggleElement>) => (
-                                  <MenuToggle
-                                    ref={toggleRef}
-                                    variant="plain"
-                                    onClick={() => setOpenVectorStoreActionId(openVectorStoreActionId === store.id ? null : store.id)}
-                                    isExpanded={openVectorStoreActionId === store.id}
-                                    id={`vs-actions-${store.id}`}
-                                  >
-                                    <EllipsisVIcon />
-                                  </MenuToggle>
-                                )}
+                        </Td>
+                        <Td>{store.name}</Td>
+                        <Td>{store.provider}</Td>
+                        <Td>
+                          <Dropdown
+                            isOpen={openVectorStoreActionId === store.id}
+                            onSelect={() => setOpenVectorStoreActionId(null)}
+                            onOpenChange={(isOpen: boolean) => setOpenVectorStoreActionId(isOpen ? store.id : null)}
+                            toggle={(toggleRef: React.Ref<MenuToggleElement>) => (
+                              <MenuToggle
+                                ref={toggleRef}
+                                variant="plain"
+                                onClick={() => setOpenVectorStoreActionId(openVectorStoreActionId === store.id ? null : store.id)}
+                                isExpanded={openVectorStoreActionId === store.id}
+                                id={`vs-actions-${store.id}`}
                               >
-                                <DropdownList>
-                                  <DropdownItem key="edit" onClick={() => {
-                                    setEditingVectorStore(store);
-                                    setIsAddVectorStoreModalOpen(true);
-                                  }}>
-                                    Edit vector store
-                                  </DropdownItem>
-                                  <DropdownItem key="remove" onClick={() => {
-                                    setVectorStores(stores =>
-                                      stores.map(s =>
-                                        s.id === store.id ? { ...s, selected: false } : s
-                                      )
-                                    );
-                                  }}>
-                                    Remove
-                                  </DropdownItem>
-                                </DropdownList>
-                              </Dropdown>
-                            </Td>
-                          </Tr>
-                        ))}
-                      </Tbody>
-                    </Table>
-                  )}
-                </>
+                                <EllipsisVIcon />
+                              </MenuToggle>
+                            )}
+                          >
+                            <DropdownList>
+                              <DropdownItem key="edit" onClick={() => {
+                                setEditingVectorStore(store);
+                                setIsAddVectorStoreModalOpen(true);
+                              }}>
+                                Edit vector store
+                              </DropdownItem>
+                              <DropdownItem key="remove" onClick={() => {
+                                setVectorStores(stores =>
+                                  stores.map(s =>
+                                    s.id === store.id ? { ...s, addedToKnowledge: false, selected: false } : s
+                                  )
+                                );
+                              }}>
+                                Remove vector store
+                              </DropdownItem>
+                            </DropdownList>
+                          </Dropdown>
+                        </Td>
+                      </Tr>
+                    ))}
+                  </Tbody>
+                </Table>
+              ) : (
+                <EmptyState 
+                  headingLevel="h4" 
+                  icon={CubesIcon} 
+                  titleText="No vector stores added"
+                >
+                  <EmptyStateBody>
+                    Add vector stores to provide your model with custom knowledge and context. Browse available stores or create a new one to get started.
+                  </EmptyStateBody>
+                </EmptyState>
               )}
-            </div>
+            </>
           )}
           
           {selectedBuildTab === 'mcp' && (
@@ -657,7 +708,7 @@ const Playground: React.FunctionComponent = () => {
                       onClick={() => setIsModelSelectOpen(!isModelSelectOpen)}
                       isExpanded={isModelSelectOpen}
                       id="guardrails-model-select-toggle"
-                      style={{ width: '100%' }}
+                      style={{ width: '100%', maxWidth: '350px' }}
                     >
                       {selectedModel === 'llama-3.1-8b-instruct' ? 'Llama 3.1 8B-Instruct' :
                        selectedModel === 'mistral-7b-instruct' ? 'Mistral 7B-Instruct' :
@@ -1138,6 +1189,7 @@ const Playground: React.FunctionComponent = () => {
           setIsAddVectorStoreModalOpen(false);
           setEditingVectorStore(null);
         }}
+        editingStore={editingVectorStore}
         onSave={(vectorStoreData) => {
           if (editingVectorStore) {
             // Update existing vector store
