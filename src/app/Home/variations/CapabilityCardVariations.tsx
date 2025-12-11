@@ -19,9 +19,10 @@ interface CapabilityData {
   title: string;
   description: string;
   icon: React.ReactNode;
-  path: string;
+  path?: string;
   isNew?: boolean;
   category: 'ai-hub' | 'gen-ai' | 'develop' | 'observe';
+  onClick?: () => void;
 }
 
 interface CapabilityCardProps {
@@ -48,7 +49,15 @@ export const CapabilityCardIconTop: React.FunctionComponent<CapabilityCardProps>
   capability,
 }) => {
   const navigate = useNavigate();
-  const { description, icon, path, isNew, category, title } = capability;
+  const { description, icon, path, isNew, category, title, onClick } = capability;
+
+  const handleClick = () => {
+    if (onClick) {
+      onClick();
+    } else if (path) {
+      navigate(path);
+    }
+  };
 
   return (
     <Card style={{ height: '100%', textAlign: 'center' }}>
@@ -91,7 +100,7 @@ export const CapabilityCardIconTop: React.FunctionComponent<CapabilityCardProps>
         </Stack>
       </CardBody>
       <CardFooter>
-        <Button variant="link" onClick={() => navigate(path)} isInline>
+        <Button variant="link" onClick={handleClick} isInline>
           Go to <b>{title}</b>
         </Button>
       </CardFooter>
@@ -104,7 +113,15 @@ export const CapabilityCardIconSide: React.FunctionComponent<CapabilityCardProps
   capability,
 }) => {
   const navigate = useNavigate();
-  const { description, icon, path, isNew, category, title } = capability;
+  const { description, icon, path, isNew, category, title, onClick } = capability;
+
+  const handleClick = () => {
+    if (onClick) {
+      onClick();
+    } else if (path) {
+      navigate(path);
+    }
+  };
 
   return (
     <Card style={{ height: '100%' }}>
@@ -151,7 +168,7 @@ export const CapabilityCardIconSide: React.FunctionComponent<CapabilityCardProps
         </Stack>
       </CardBody>
       <CardFooter>
-        <Button variant="link" onClick={() => navigate(path)} isInline>
+        <Button variant="link" onClick={handleClick} isInline>
           Go to <b>{title}</b>
         </Button>
       </CardFooter>
@@ -164,7 +181,15 @@ export const CapabilityCardMinimal: React.FunctionComponent<CapabilityCardProps>
   capability,
 }) => {
   const navigate = useNavigate();
-  const { description, icon, path, isNew, category, title } = capability;
+  const { description, icon, path, isNew, category, title, onClick } = capability;
+
+  const handleClick = () => {
+    if (onClick) {
+      onClick();
+    } else if (path) {
+      navigate(path);
+    }
+  };
 
   return (
     <Card
@@ -214,7 +239,7 @@ export const CapabilityCardMinimal: React.FunctionComponent<CapabilityCardProps>
         </Stack>
       </CardBody>
       <CardFooter>
-        <Button variant="link" onClick={() => navigate(path)} isInline>
+        <Button variant="link" onClick={handleClick} isInline>
           Go to <b>{title}</b>
         </Button>
       </CardFooter>
@@ -227,7 +252,15 @@ export const CapabilityCardEditorial: React.FunctionComponent<CapabilityCardProp
   capability,
 }) => {
   const navigate = useNavigate();
-  const { description, icon, path, isNew, category, title } = capability;
+  const { description, icon, path, isNew, category, title, onClick } = capability;
+
+  const handleClick = () => {
+    if (onClick) {
+      onClick();
+    } else if (path) {
+      navigate(path);
+    }
+  };
 
   return (
     <Card
@@ -277,7 +310,7 @@ export const CapabilityCardEditorial: React.FunctionComponent<CapabilityCardProp
         </Stack>
       </CardBody>
       <CardFooter>
-        <Button variant="link" onClick={() => navigate(path)} isInline>
+        <Button variant="link" onClick={handleClick} isInline>
           Go to <b>{title}</b>
         </Button>
       </CardFooter>
