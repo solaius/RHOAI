@@ -24,9 +24,10 @@ interface CapabilityData {
   title: string;
   description: string;
   icon: React.ReactNode;
-  path: string;
+  path?: string;
   category: CapabilityCategory;
   isNew?: boolean;
+  onClick?: () => void;
 }
 
 interface CapabilityGroupVariation2CardsProps {
@@ -87,8 +88,22 @@ const CapabilityGroupVariation2Cards: React.FunctionComponent<
     'observe',
   ];
 
+  // Initialize selectedCategory from localStorage or default to first category
+  const getInitialCategory = (): CapabilityCategory => {
+    const stored = localStorage.getItem('homeCapabilitiesSelectedCategory');
+    if (stored && categoriesToShow.includes(stored as CapabilityCategory)) {
+      return stored as CapabilityCategory;
+    }
+    return categoriesToShow[0];
+  };
+
   const [selectedCategory, setSelectedCategory] =
-    React.useState<CapabilityCategory>(categoriesToShow[0]);
+    React.useState<CapabilityCategory>(getInitialCategory);
+
+  // Save selectedCategory to localStorage when it changes
+  React.useEffect(() => {
+    localStorage.setItem('homeCapabilitiesSelectedCategory', selectedCategory);
+  }, [selectedCategory]);
 
   // Group capabilities by category
   const groupedCapabilities: Record<CapabilityCategory, CapabilityData[]> = {

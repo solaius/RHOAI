@@ -15,9 +15,10 @@ interface CapabilityData {
   title: string;
   description: string;
   icon: React.ReactNode;
-  path: string;
+  path?: string;
   category: CapabilityCategory;
   isNew?: boolean;
+  onClick?: () => void;
 }
 
 interface CapabilityGroupVariation1TabsProps {
@@ -34,7 +35,22 @@ const categoryLabels: Record<CapabilityCategory, string> = {
 const CapabilityGroupVariation1Tabs: React.FunctionComponent<
   CapabilityGroupVariation1TabsProps
 > = ({ capabilities }) => {
-  const [activeTabKey, setActiveTabKey] = React.useState<CapabilityCategory>('ai-hub');
+  // Initialize activeTabKey from localStorage or default to 'ai-hub'
+  const getInitialTabKey = (): CapabilityCategory => {
+    const stored = localStorage.getItem('homeCapabilitiesTabKey');
+    const validCategories: CapabilityCategory[] = ['ai-hub', 'gen-ai', 'develop', 'observe'];
+    if (stored && validCategories.includes(stored as CapabilityCategory)) {
+      return stored as CapabilityCategory;
+    }
+    return 'ai-hub';
+  };
+
+  const [activeTabKey, setActiveTabKey] = React.useState<CapabilityCategory>(getInitialTabKey);
+
+  // Save activeTabKey to localStorage when it changes
+  React.useEffect(() => {
+    localStorage.setItem('homeCapabilitiesTabKey', activeTabKey);
+  }, [activeTabKey]);
 
   // Group capabilities by category
   const groupedCapabilities: Record<CapabilityCategory, CapabilityData[]> = {
@@ -98,5 +114,6 @@ const CapabilityGroupVariation1Tabs: React.FunctionComponent<
 };
 
 export default CapabilityGroupVariation1Tabs;
+
 
 
