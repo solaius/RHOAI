@@ -100,6 +100,7 @@ import ChatbotIcon from '@app/assets/chatbotIcon.svg';
 import PlaceholderImage from '@app/assets/placeholderImage.svg';
 import AIIcon from '@app/assets/AI_Icon.svg';
 import SlidersIcon from '@app/assets/pf-sliders.svg';
+import { PlaygroundIcon } from '@app/Home/icons';
 
 const Playground: React.FunctionComponent = () => {
   useDocumentTitle('Playground');
@@ -1136,10 +1137,9 @@ const Playground: React.FunctionComponent = () => {
           <FlexItem>
             <Flex alignItems={{ default: 'alignItemsCenter' }}>
               <FlexItem>
-                <div 
-                  style={{ width: '40px', height: '40px', display: 'flex', alignItems: 'center' }}
-                  dangerouslySetInnerHTML={{ __html: PageIcon }}
-                />
+                <div style={{ width: '40px', height: '40px', display: 'flex', alignItems: 'center' }}>
+                  <PlaygroundIcon withBackground size={32} />
+                </div>
               </FlexItem>
               <FlexItem>
                 <Title headingLevel="h1">Playground</Title>
