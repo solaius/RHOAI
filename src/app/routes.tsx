@@ -87,7 +87,18 @@ import { CreateTier } from '@app/Settings/Tiers/CreateTier';
 import { EditTier } from '@app/Settings/Tiers/EditTier';
 
 // Icons
-import { createFontAwesomeIcon } from '@app/utils/IconHelper';
+import {
+  createFontAwesomeIcon,
+  createHomeNavIcon,
+  createProjectsNavIcon,
+  createAiHubNavIcon,
+  createGenAiStudioNavIcon,
+  createDevelopAndTrainNavIcon,
+  createApplicationsNavIcon,
+  createLearningResourcesNavIcon,
+  createSettingsNavIcon,
+  createObserveAndMonitorNavIcon,
+} from '@app/utils/IconHelper';
 import { createConnectionsIcon } from '@app/Connections/ConnectionsIcon';
 
 export interface IAppRoute {
@@ -120,7 +131,7 @@ const routes: AppRouteConfig[] = [
     label: 'Home',
     path: '/',
     title: 'RHOAI 3.1 Console | Home',
-    icon: createFontAwesomeIcon('fa-light fa-house'),
+    icon: createHomeNavIcon(),
   },
   {
     element: <Projects />,
@@ -128,7 +139,7 @@ const routes: AppRouteConfig[] = [
     label: 'Projects',
     path: '/projects',
     title: 'RHOAI 3.1 Console | Projects',
-    icon: createFontAwesomeIcon('fa-light fa-folder'),
+    icon: createProjectsNavIcon(),
   },
   {
     element: <ProjectDetail />,
@@ -146,7 +157,7 @@ const routes: AppRouteConfig[] = [
   },
   {
     label: 'AI hub',
-    icon: createFontAwesomeIcon('fa-light fa-brain'),
+    icon: createAiHubNavIcon(),
     routes: [
       {
         element: <ModelCatalog />,
@@ -173,7 +184,7 @@ const routes: AppRouteConfig[] = [
   },
   {
     label: 'Gen AI studio',
-    icon: createFontAwesomeIcon('fa-light fa-brain'),
+    icon: createGenAiStudioNavIcon(),
     routes: [
       {
         element: <AvailableAIAssets />,
@@ -252,7 +263,7 @@ const routes: AppRouteConfig[] = [
   },
   {
     label: 'Develop & train',
-    icon: createFontAwesomeIcon('fa-light fa-flask'),
+    icon: createDevelopAndTrainNavIcon(),
     routes: [
       {
         element: <Workbenches />,
@@ -366,7 +377,7 @@ const routes: AppRouteConfig[] = [
   },
   {
     label: 'Observe & monitor',
-    icon: createFontAwesomeIcon('fa-light fa-magnifying-glass'),
+    icon: createObserveAndMonitorNavIcon(),
     routes: [
       {
         element: <Dashboard />,
@@ -397,19 +408,11 @@ const routes: AppRouteConfig[] = [
     label: 'Learning resources',
     path: '/learning-resources',
     title: 'RHOAI 3.1 Console | Learning Resources',
-    icon: createFontAwesomeIcon('fa-light fa-book'),
-  },
-  {
-    element: <HomePageVariations />,
-    exact: true,
-    label: 'Home page variations',
-    path: '/home-variations',
-    title: 'RHOAI 3.1 Console | Home Page Variations',
-    icon: createFontAwesomeIcon('fa-light fa-table-cells-large'),
+    icon: createLearningResourcesNavIcon(),
   },
   {
     label: 'Applications',
-    icon: createFontAwesomeIcon('fa-light fa-code'),
+    icon: createApplicationsNavIcon(),
     routes: [
       {
         element: <Enabled />,
@@ -429,7 +432,7 @@ const routes: AppRouteConfig[] = [
   },
   {
     label: 'Settings',
-    icon: createFontAwesomeIcon('fa-light fa-gear'),
+    icon: createSettingsNavIcon(),
     routes: [
       {
         label: 'Cluster settings',
@@ -519,6 +522,14 @@ const routes: AppRouteConfig[] = [
         tbd: true,
       },
     ],
+  },
+  {
+    element: <HomePageVariations />,
+    exact: true,
+    label: 'Home page variations',
+    path: '/home-variations',
+    title: 'RHOAI 3.1 Console | Home Page Variations',
+    icon: createFontAwesomeIcon('fa-light fa-table-cells-large'),
   },
   // Additional routes not in navigation
   {

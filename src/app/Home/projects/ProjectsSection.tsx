@@ -95,11 +95,11 @@ const ProjectsSection: React.FunctionComponent = () => {
             <FlexItem>
               {shownProjects.length > 0 && (
                 <Content>
-                  <Content component="small">
+                  <small>
                     {shownProjects.length < projects.length
                       ? `${shownProjects.length} of ${projects.length} projects`
-                      : 'Showing all projects'}
-                  </Content>
+                      : 'Showing all AI projects'}
+                  </small>
                 </Content>
               )}
             </FlexItem>
