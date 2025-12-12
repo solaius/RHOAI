@@ -81,7 +81,7 @@ export const CapabilityCardIconTop: React.FunctionComponent<CapabilityCardProps>
               spaceItems={{ default: 'spaceItemsSm' }}
             >
               <FlexItem>
-                <Label color={categoryColors[category]} isCompact>
+                <Label color="grey" variant="outline" isCompact>
                   {categoryLabels[category]}
                 </Label>
               </FlexItem>
@@ -145,7 +145,7 @@ export const CapabilityCardIconSide: React.FunctionComponent<CapabilityCardProps
                   <StackItem>
                     <Flex gap={{ default: 'gapSm' }} spaceItems={{ default: 'spaceItemsSm' }}>
                       <FlexItem>
-                        <Label color={categoryColors[category]} isCompact>
+                        <Label color="grey" variant="outline" isCompact>
                           {categoryLabels[category]}
                         </Label>
                       </FlexItem>
@@ -208,7 +208,7 @@ export const CapabilityCardMinimal: React.FunctionComponent<CapabilityCardProps>
               <FlexItem>
                 <Flex gap={{ default: 'gapSm' }}>
                   <FlexItem>
-                    <Label color={categoryColors[category]} isCompact>
+                    <Label color="grey" variant="outline" isCompact>
                       {categoryLabels[category]}
                     </Label>
                   </FlexItem>
@@ -289,7 +289,7 @@ export const CapabilityCardEditorial: React.FunctionComponent<CapabilityCardProp
               <FlexItem>
                 <Flex gap={{ default: 'gapSm' }}>
                   <FlexItem>
-                    <Label color={categoryColors[category]} isCompact>
+                    <Label color="grey" variant="outline" isCompact>
                       {categoryLabels[category]}
                     </Label>
                   </FlexItem>
