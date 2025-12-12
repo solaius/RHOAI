@@ -1371,12 +1371,12 @@ const AutoRAG: React.FunctionComponent = () => {
                   </CardHeader>
                   <CardBody style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
                     {/* Body Copy */}
-                    <div style={{ color: 'var(--pf-v5-global--Color--200)', fontSize: 'var(--pf-v5-global--FontSize--sm)', marginBottom: '1rem' }}>
+                    <div style={{ color: 'var(--pf-v5-global--Color--200)', fontSize: 'var(--pf-v5-global--FontSize--sm)', marginBottom: '20px' }}>
                         Drag and drop or browse existing document files from your local computer or add a connection.
                     </div>
 
                     {/* Multiple File Upload */}
-                    <div style={{ marginBottom: '1rem' }}>
+                    <div style={{ marginBottom: 'var(--pf-v5-global--spacer--md)' }}>
                       <MultipleFileUpload
                         onFileDrop={handleFileDrop}
                         dropzoneProps={{
@@ -1395,6 +1395,7 @@ const AutoRAG: React.FunctionComponent = () => {
                           titleText="Drag and drop files here"
                           titleTextSeparator="or"
                           infoText="Accepted file types: PDF, TXT, JSON, DOCX, DOC"
+                          style={{ boxSizing: 'content-box' }}
                         />
                         {uploadingFiles.length > 0 && (
                           <MultipleFileUploadStatus>
@@ -1413,7 +1414,7 @@ const AutoRAG: React.FunctionComponent = () => {
                     </div>
 
                     {/* Add Connection Button */}
-                    <Flex justifyContent={{ default: 'justifyContentFlexStart' }} style={{ marginBottom: '1.5rem' }}>
+                    <Flex justifyContent={{ default: 'justifyContentFlexStart' }} style={{ boxSizing: 'content-box', paddingTop: '20px' }}>
                       <Button variant="secondary" onClick={handleAddConnection} id="add-connection-button">
                         Add connection
                       </Button>
@@ -1422,7 +1423,7 @@ const AutoRAG: React.FunctionComponent = () => {
                     {/* Documents and Connections List */}
                     {documents.length > 0 && (
                       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0, overflow: 'hidden' }}>
-                        <Title headingLevel="h3" size="md" id="documents-list-title" style={{ marginBottom: '1rem' }}>
+                        <Title headingLevel="h3" size="md" id="documents-list-title" style={{ boxSizing: 'content-box', marginTop: '20px' }}>
                           Sources
                         </Title>
                         <div style={{ flex: 1, overflow: 'auto' }}>
@@ -1502,7 +1503,6 @@ const AutoRAG: React.FunctionComponent = () => {
                           <FormGroup
                             label="Where would you like to index your documents?"
                             fieldId="vector-database"
-                            style={{ marginBottom: '1.5rem' }}
                           >
                             <Select
                               isOpen={isVectorDbOpen}
@@ -1542,7 +1542,6 @@ const AutoRAG: React.FunctionComponent = () => {
                             label="Add the data source you would like to use for evaluation."
                             isRequired
                             fieldId="evaluation-source"
-                            style={{ marginBottom: '1.5rem' }}
                           >
                             <FileUpload
                               id="evaluation-source-file-upload"
@@ -1592,7 +1591,7 @@ const AutoRAG: React.FunctionComponent = () => {
 
 
                           {/* Selected Settings Display */}
-                          <Grid hasGutter style={{ marginTop: '1rem', marginBottom: '1.5rem' }}>
+                          <Grid hasGutter style={{ marginTop: '2rem' }}>
                             <GridItem span={6}>
                               <div id="optimization-metric-column">
                                 <div style={{ fontSize: 'var(--pf-v5-global--FontSize--sm)', color: 'var(--pf-v5-global--Color--200)', marginBottom: '0.5rem', fontWeight: 'bold' }}>
@@ -1633,7 +1632,7 @@ const AutoRAG: React.FunctionComponent = () => {
                                   <Flex alignItems={{ default: 'alignItemsCenter' }} spaceItems={{ default: 'spaceItemsSm' }}>
                                     <FlexItem style={{ fontSize: '1.5rem' }} id="models-to-consider-link">
                                       {selectedFoundationModels.size > 0 || selectedEmbeddingModels.size > 0
-                                        ? `${selectedFoundationModels.size} foundation${selectedFoundationModels.size !== 1 ? 's' : ''}, ${selectedEmbeddingModels.size} embedding${selectedEmbeddingModels.size !== 1 ? 's' : ''}`
+                                        ? `${selectedFoundationModels.size} foundation, ${selectedEmbeddingModels.size} embedding${selectedEmbeddingModels.size !== 1 ? 's' : ''}`
                                         : 'None selected'}
                                     </FlexItem>
                                     <FlexItem>
@@ -2106,18 +2105,11 @@ const AutoRAG: React.FunctionComponent = () => {
       >
         <ModalHeader>
           <Title headingLevel="h2" size="xl" id="evaluation-source-modal-title">
-            What is an evaluation source?
+            Evaluation data template
           </Title>
         </ModalHeader>
         <ModalBody>
           <div style={{ marginBottom: '1.5rem' }}>
-            <Title headingLevel="h3" size="lg" style={{ marginBottom: '1rem' }}>
-              Evaluation data template
-            </Title>
-            <p style={{ marginBottom: '1.5rem', fontSize: 'var(--pf-v5-global--FontSize--md)' }}>
-              Data should have examples that represent the user input and model output.
-            </p>
-            
             <div style={{ 
               backgroundColor: 'var(--pf-v5-global--BackgroundColor--200)',
               border: '1px solid var(--pf-v5-global--BorderColor--200)',
