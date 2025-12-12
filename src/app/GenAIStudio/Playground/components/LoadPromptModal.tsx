@@ -3,9 +3,16 @@ import {
   Button,
   Card,
   CardBody,
+  CardHeader,
+  CardTitle,
   Flex,
   FlexItem,
+  Grid,
+  GridItem,
   Modal,
+  ModalBody,
+  ModalFooter,
+  ModalHeader,
   ModalVariant,
   Select,
   SelectList,
@@ -141,37 +148,35 @@ export const LoadPromptModal: React.FunctionComponent<LoadPromptModalProps> = ({
       variant={ModalVariant.medium}
       isOpen={isOpen}
       onClose={handleClose}
-      aria-labelledby="load-prompt-modal-title"
     >
       {step === 1 ? (
-        <div style={{ padding: '2rem' }}>
-          <Title headingLevel="h2" size="xl" style={{ marginBottom: '0.5rem' }}>
-            Load prompt
-          </Title>
-          <p style={{ 
-            marginBottom: '2rem',
-            color: 'var(--pf-v6-global--Color--200)',
-            fontSize: '0.875rem'
-          }}>
-            Choose where to load your prompt from
-          </p>
-
-          <div style={{ display: 'flex', gap: '1rem', marginBottom: '2rem' }}>
-            <Card
-              isClickable
-              isSelectable
-              isSelected={selectedType === 'registry'}
-              onClick={() => handleSelectType('registry')}
-              style={{ flex: 1, minHeight: '150px' }}
-            >
-              <CardBody>
-                <Flex direction={{ default: 'column' }} spaceItems={{ default: 'spaceItemsMd' }}>
-                  <FlexItem>
-                    <Title headingLevel="h3" size="lg">
-                      Prompt registry
-                    </Title>
-                  </FlexItem>
-                  <FlexItem>
+        <>
+          <ModalHeader
+            title="Load prompt"
+            description="Choose where to load your prompt from"
+          />
+          <ModalBody>
+            <Grid hasGutter>
+              <GridItem span={6}>
+                <Card
+                  id="prompt-registry-card"
+                  isSelectable
+                  isSelected={selectedType === 'registry'}
+                  isFullHeight
+                >
+                  <CardHeader
+                    selectableActions={{
+                      selectableActionId: 'registry-card-input',
+                      selectableActionAriaLabelledby: 'registry-card-title',
+                      name: 'prompt-source-type',
+                      variant: 'single',
+                      onChange: () => handleSelectType('registry'),
+                      hasNoOffset: true
+                    }}
+                  >
+                    <CardTitle id="registry-card-title">Prompt registry</CardTitle>
+                  </CardHeader>
+                  <CardBody>
                     <p style={{ 
                       margin: 0,
                       fontSize: '0.875rem',
@@ -179,26 +184,29 @@ export const LoadPromptModal: React.FunctionComponent<LoadPromptModalProps> = ({
                     }}>
                       Load a versioned prompt from your organization's registry
                     </p>
-                  </FlexItem>
-                </Flex>
-              </CardBody>
-            </Card>
-
-            <Card
-              isClickable
-              isSelectable
-              isSelected={selectedType === 'samples'}
-              onClick={() => handleSelectType('samples')}
-              style={{ flex: 1, minHeight: '150px' }}
-            >
-              <CardBody>
-                <Flex direction={{ default: 'column' }} spaceItems={{ default: 'spaceItemsMd' }}>
-                  <FlexItem>
-                    <Title headingLevel="h3" size="lg">
-                      Sample prompts
-                    </Title>
-                  </FlexItem>
-                  <FlexItem>
+                  </CardBody>
+                </Card>
+              </GridItem>
+              <GridItem span={6}>
+                <Card
+                  id="sample-prompts-card"
+                  isSelectable
+                  isSelected={selectedType === 'samples'}
+                  isFullHeight
+                >
+                  <CardHeader
+                    selectableActions={{
+                      selectableActionId: 'samples-card-input',
+                      selectableActionAriaLabelledby: 'samples-card-title',
+                      name: 'prompt-source-type',
+                      variant: 'single',
+                      onChange: () => handleSelectType('samples'),
+                      hasNoOffset: true
+                    }}
+                  >
+                    <CardTitle id="samples-card-title">Sample prompts</CardTitle>
+                  </CardHeader>
+                  <CardBody>
                     <p style={{ 
                       margin: 0,
                       fontSize: '0.875rem',
@@ -206,31 +214,29 @@ export const LoadPromptModal: React.FunctionComponent<LoadPromptModalProps> = ({
                     }}>
                       Choose from pre-built prompt templates by use case
                     </p>
-                  </FlexItem>
-                </Flex>
-              </CardBody>
-            </Card>
-          </div>
-        </div>
+                  </CardBody>
+                </Card>
+              </GridItem>
+            </Grid>
+          </ModalBody>
+          <ModalFooter>
+            <Button variant="link" onClick={handleClose}>
+              Cancel
+            </Button>
+          </ModalFooter>
+        </>
       ) : selectedType === 'registry' ? (
-        <div style={{ padding: '1.5rem' }}>
-          <Title headingLevel="h2" size="xl" style={{ marginBottom: '0.5rem' }}>
-            Prompt registry
-          </Title>
-          <p style={{ 
-            marginBottom: '1.5rem',
-            color: 'var(--pf-v6-global--Color--200)',
-            fontSize: '0.875rem'
-          }}>
-            Select a prompt and version from your registry
-          </p>
-
-          <Table 
-            variant="compact" 
-            aria-label="Prompt registry" 
-            id="prompt-registry-table"
-            style={{ marginBottom: '2rem' }}
-          >
+        <>
+          <ModalHeader
+            title="Prompt registry"
+            description="Select a prompt and version from your registry"
+          />
+          <ModalBody>
+            <Table 
+              variant="compact" 
+              aria-label="Prompt registry" 
+              id="prompt-registry-table"
+            >
             <Thead>
               <Tr>
                 <Th>Name</Th>
@@ -303,11 +309,8 @@ export const LoadPromptModal: React.FunctionComponent<LoadPromptModalProps> = ({
               ))}
             </Tbody>
           </Table>
-
-          <Flex justifyContent={{ default: 'justifyContentFlexEnd' }} gap={{ default: 'gapSm' }}>
-            <Button variant="link" onClick={handleBack}>
-              Back
-            </Button>
+          </ModalBody>
+          <ModalFooter>
             <Button
               variant="primary"
               onClick={handleSelectPromptFromRegistry}
@@ -315,22 +318,19 @@ export const LoadPromptModal: React.FunctionComponent<LoadPromptModalProps> = ({
             >
               Select
             </Button>
-          </Flex>
-        </div>
+            <Button variant="link" onClick={handleBack}>
+              Back
+            </Button>
+          </ModalFooter>
+        </>
       ) : (
-        <div style={{ padding: '1.5rem' }}>
-          <Title headingLevel="h2" size="xl" style={{ marginBottom: '0.5rem' }}>
-            Sample prompts
-          </Title>
-          <p style={{ 
-            marginBottom: '1.5rem',
-            color: 'var(--pf-v6-global--Color--200)',
-            fontSize: '0.875rem'
-          }}>
-            Choose a pre-built prompt template
-          </p>
-
-          {['General', 'Development', 'Customer Service'].map((category) => {
+        <>
+          <ModalHeader
+            title="Sample prompts"
+            description="Choose a pre-built prompt template"
+          />
+          <ModalBody>
+            {['General', 'Development', 'Customer Service'].map((category) => {
             const categoryPrompts = samplePrompts.filter((p) => p.useCase === category);
             if (categoryPrompts.length === 0) return null;
             
@@ -379,13 +379,13 @@ export const LoadPromptModal: React.FunctionComponent<LoadPromptModalProps> = ({
               </div>
             );
           })}
-
-          <Flex justifyContent={{ default: 'justifyContentFlexEnd' }} gap={{ default: 'gapSm' }} style={{ marginTop: '2rem' }}>
+          </ModalBody>
+          <ModalFooter>
             <Button variant="link" onClick={handleBack}>
               Back
             </Button>
-          </Flex>
-        </div>
+          </ModalFooter>
+        </>
       )}
     </Modal>
   );

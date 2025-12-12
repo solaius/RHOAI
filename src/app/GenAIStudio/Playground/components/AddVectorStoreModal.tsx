@@ -1,12 +1,13 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Button,
+  Card,
+  CardBody,
+  CardHeader,
+  CardTitle,
+  DropEvent,
   Divider,
-  FileUpload,
-  Flex,
-  FlexItem,
   FormGroup,
-  FormSection,
   Grid,
   GridItem,
   HelperText,
@@ -14,18 +15,20 @@ import {
   MenuToggle,
   MenuToggleElement,
   Modal,
+  ModalBody,
+  ModalFooter,
+  ModalHeader,
   ModalVariant,
+  MultipleFileUpload,
+  MultipleFileUploadMain,
+  MultipleFileUploadStatus,
+  MultipleFileUploadStatusItem,
   Select,
   SelectList,
   SelectOption,
-  Sidebar,
-  SidebarContent,
-  SidebarPanel,
   TextArea,
   TextInput,
-  Title,
-  ToggleGroup,
-  ToggleGroupItem,
+  Tooltip,
 } from '@patternfly/react-core';
 import {
   Table,
@@ -35,204 +38,291 @@ import {
   Tbody,
   Td,
 } from '@patternfly/react-table';
-import { TrashIcon, UploadIcon } from '@patternfly/react-icons';
+import { TrashIcon, OutlinedQuestionCircleIcon, UploadIcon } from '@patternfly/react-icons';
+import PatternflyLogo from '@app/bgimages/Patternfly-Logo.svg';
 
 interface AddVectorStoreModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSave: (vectorStore: any) => void;
+  editingStore?: any;
 }
 
-interface UploadedFile {
-  id: string;
-  name: string;
-  size: string;
-  type: string;
+interface readFile {
+  fileName: string;
+  data?: string;
+  loadResult?: 'danger' | 'success';
 }
 
 export const AddVectorStoreModal: React.FunctionComponent<AddVectorStoreModalProps> = ({
   isOpen,
   onClose,
   onSave,
+  editingStore,
 }) => {
-  const [vectorStoreType, setVectorStoreType] = useState('in-memory');
+  const [step, setStep] = useState<1 | 2>(1);
+  const [vectorStoreType, setVectorStoreType] = useState<'inline' | 'external'>('inline');
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
-  const [embeddingModel, setEmbeddingModel] = useState('text-embedding-ada-002');
-  const [isEmbeddingModelOpen, setIsEmbeddingModelOpen] = useState(false);
-  const [chunkSize, setChunkSize] = useState('512');
-  const [chunkOverlap, setChunkOverlap] = useState('50');
-  const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([]);
   
-  // File upload state
-  const [filename, setFilename] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
+  // File upload state for MultipleFileUpload
+  const [currentFiles, setCurrentFiles] = useState<File[]>([]);
+  const [readFileData, setReadFileData] = useState<readFile[]>([]);
+  const [showStatus, setShowStatus] = useState(false);
+  const [statusIcon, setStatusIcon] = useState<'inProgress' | 'success' | 'danger'>('inProgress');
+  
+  // External connection state
+  const [provider, setProvider] = useState('');
+  const [isProviderOpen, setIsProviderOpen] = useState(false);
+  const [endpointUrl, setEndpointUrl] = useState('');
+  const [apiKey, setApiKey] = useState('');
 
-  const handleFileInputChange = (_event: React.ChangeEvent<HTMLInputElement>, file: File) => {
-    setFilename(file.name);
-    setIsLoading(true);
-    
-    // Simulate file upload
-    setTimeout(() => {
-      const newFile: UploadedFile = {
-        id: Date.now().toString(),
-        name: file.name,
-        size: `${(file.size / 1024).toFixed(1)} KB`,
-        type: file.type || 'application/pdf'
-      };
-      setUploadedFiles([...uploadedFiles, newFile]);
-      setFilename('');
-      setIsLoading(false);
-    }, 1000);
+  // Load editing store data when modal opens in edit mode
+  useEffect(() => {
+    if (isOpen && editingStore) {
+      setStep(2);
+      setName(editingStore.name || '');
+      setVectorStoreType(editingStore.type === 'External connection' ? 'external' : 'inline');
+      
+      if (editingStore.type === 'In memory' && editingStore.files) {
+        // Convert stored file data back to File objects for editing
+        setCurrentFiles(editingStore.files);
+      } else if (editingStore.type === 'External connection') {
+        setProvider(editingStore.provider || '');
+        setEndpointUrl(editingStore.endpointUrl || '');
+        setApiKey(editingStore.apiKey || '');
+      }
+    } else if (isOpen && !editingStore) {
+      // Reset to step 1 when opening for new creation
+      setStep(1);
+    }
+  }, [isOpen, editingStore]);
+
+  // Show status component once files are uploaded
+  if (!showStatus && currentFiles.length > 0) {
+    setShowStatus(true);
+  }
+
+  // Update status icon based on file read results
+  useEffect(() => {
+    if (readFileData.length < currentFiles.length) {
+      setStatusIcon('inProgress');
+    } else if (readFileData.every((file) => file.loadResult === 'success')) {
+      setStatusIcon('success');
+    } else if (readFileData.some((file) => file.loadResult === 'danger')) {
+      setStatusIcon('danger');
+    }
+  }, [readFileData, currentFiles]);
+
+  const removeFiles = (namesOfFilesToRemove: string[]) => {
+    const newCurrentFiles = currentFiles.filter(
+      (currentFile) => !namesOfFilesToRemove.some((fileName) => fileName === currentFile.name)
+    );
+    setCurrentFiles(newCurrentFiles);
+
+    const newReadFiles = readFileData.filter(
+      (readFile) => !namesOfFilesToRemove.some((fileName) => fileName === readFile.fileName)
+    );
+    setReadFileData(newReadFiles);
   };
 
-  const handleClear = () => {
-    setFilename('');
+  const handleFileDrop = (_event: DropEvent, droppedFiles: File[]) => {
+    const currentFileNames = currentFiles.map((file) => file.name);
+    const reUploads = droppedFiles.filter((droppedFile) => currentFileNames.includes(droppedFile.name));
+
+    Promise.resolve()
+      .then(() => removeFiles(reUploads.map((file) => file.name)))
+      .then(() => setCurrentFiles((prevFiles) => [...prevFiles, ...droppedFiles]));
   };
 
-  const handleRemoveFile = (fileId: string) => {
-    setUploadedFiles(files => files.filter(f => f.id !== fileId));
+  const handleReadSuccess = (data: string, file: File) => {
+    setReadFileData((prevReadFiles) => [...prevReadFiles, { data, fileName: file.name, loadResult: 'success' }]);
+  };
+
+  const handleReadFail = (_error: DOMException, file: File) => {
+    setReadFileData((prevReadFiles) => [...prevReadFiles, { fileName: file.name, loadResult: 'danger' }]);
   };
 
   const handleCreate = () => {
-    const newVectorStore = {
-      id: Date.now().toString(),
+    const vectorStoreData = {
+      id: editingStore?.id || Date.now().toString(),
       name: name || 'Untitled vector store',
-      type: vectorStoreType === 'in-memory' ? 'In memory' : 'External connection',
-      selected: true,
-      embeddingModel,
-      chunkSize,
-      chunkOverlap,
-      files: uploadedFiles
+      type: vectorStoreType === 'inline' ? 'In memory' : 'External connection',
+      provider: vectorStoreType === 'inline' ? 'Milvus' : (provider || 'PGVector'),
+      selected: editingStore?.selected ?? true,
+      addedToKnowledge: true,
+      files: currentFiles,
+      endpointUrl,
+      apiKey
     };
-    onSave(newVectorStore);
+    onSave(vectorStoreData);
     handleModalClose();
   };
 
   const handleModalClose = () => {
     // Reset form
+    setStep(1);
     setName('');
     setDescription('');
-    setUploadedFiles([]);
-    setFilename('');
-    setVectorStoreType('in-memory');
-    setEmbeddingModel('text-embedding-ada-002');
-    setChunkSize('512');
-    setChunkOverlap('50');
+    setCurrentFiles([]);
+    setReadFileData([]);
+    setShowStatus(false);
+    setStatusIcon('inProgress');
+    setVectorStoreType('inline');
+    setProvider('');
+    setEndpointUrl('');
+    setApiKey('');
     onClose();
   };
 
-  const sidebarPanel = (
-    <SidebarPanel width={{ default: 'width_25' }} style={{ padding: '1rem', backgroundColor: 'var(--pf-v6-global--BackgroundColor--100)' }}>
-      <ToggleGroup aria-label="Vector store type" isVertical>
-        <ToggleGroupItem
-          text="In memory"
-          buttonId="in-memory"
-          isSelected={vectorStoreType === 'in-memory'}
-          onChange={() => setVectorStoreType('in-memory')}
-        />
-        <ToggleGroupItem
-          text="External connection"
-          buttonId="external-connection"
-          isSelected={vectorStoreType === 'external-connection'}
-          onChange={() => setVectorStoreType('external-connection')}
-        />
-      </ToggleGroup>
-    </SidebarPanel>
-  );
+  const handleNext = () => {
+    setStep(2);
+  };
+
+  const handleBack = () => {
+    setStep(1);
+  };
 
   return (
     <Modal
-      variant={ModalVariant.large}
-      title="Add vector store"
-      description="Create a new vector store to ground your model with custom data within your playground."
+      variant={ModalVariant.medium}
       isOpen={isOpen}
       onClose={handleModalClose}
-      actions={[
-        <Button key="create" variant="primary" onClick={handleCreate} isDisabled={!name}>
-          Create
-        </Button>,
-        <Button key="cancel" variant="link" onClick={handleModalClose}>
-          Cancel
-        </Button>,
-      ]}
     >
-      <Sidebar hasGutter>
-        {sidebarPanel}
-        <SidebarContent style={{ padding: '1rem' }}>
-          {vectorStoreType === 'in-memory' ? (
-            <>
-              <Title headingLevel="h3" size="md" style={{ marginBottom: '1rem' }}>
-                New vector store
-              </Title>
-
-              {/* File Upload Section */}
-              <FormGroup label="Upload documents" fieldId="file-upload">
-                <FileUpload
-                  id="file-upload"
-                  value={filename}
-                  filename={filename}
-                  filenamePlaceholder="Drag and drop files here or upload"
-                  onFileInputChange={handleFileInputChange}
-                  onClearClick={handleClear}
-                  browseButtonText="Upload"
-                  isLoading={isLoading}
-                  dropzoneProps={{
-                    accept: {
-                      'application/pdf': ['.pdf'],
-                      'image/jpeg': ['.jpg', '.jpeg'],
-                      'image/png': ['.png'],
-                      'image/gif': ['.gif']
-                    }
-                  }}
-                />
-                <HelperText>
-                  <HelperTextItem>Accepted file types: JPEG, PDF, PNG, GIF</HelperTextItem>
-                </HelperText>
-              </FormGroup>
-
-              {/* Name Field */}
+      <ModalHeader
+        title={step === 1 ? 'Add vector store' : (vectorStoreType === 'inline' ? 'Add files' : 'Connection details')}
+        description={
+          step === 1 
+            ? 'Add your vector store details and choose the type of vector store you want to add.'
+            : vectorStoreType === 'inline'
+              ? 'Choose the type of vector store you want to add. You can add up to 10 files.'
+              : 'Add the connection details of your external vector store'
+        }
+      />
+      <ModalBody>
+        {step === 1 ? (
+          <>
               <FormGroup label="Name" isRequired fieldId="vector-store-name">
                 <TextInput
                   id="vector-store-name"
                   value={name}
                   onChange={(_event, value) => setName(value)}
-                  placeholder="Name your vector store"
+                placeholder="sample-app"
+                isRequired
                 />
               </FormGroup>
 
-              {/* Description Field */}
-              <FormGroup label="Description" fieldId="vector-store-description">
+            <FormGroup label="Description" fieldId="vector-store-description" style={{ marginTop: '1rem' }}>
                 <TextArea
                   id="vector-store-description"
                   value={description}
                   onChange={(_event, value) => setDescription(value)}
-                  placeholder="What is the purpose of this vector store?"
+                placeholder="What's the purpose of your vector store"
                   rows={3}
                 />
               </FormGroup>
 
-              {/* Uploaded Files Table */}
-              {uploadedFiles.length > 0 && (
-                <FormGroup label="Uploaded documents" fieldId="uploaded-files">
+            <div style={{ marginTop: '1.5rem' }}>
+              <Grid hasGutter>
+                <GridItem span={6}>
+                  <Card 
+                    id="inline-vector-store-card"
+                    isSelectable
+                    isSelected={vectorStoreType === 'inline'}
+                    isFullHeight
+                  >
+                    <CardHeader
+                      selectableActions={{
+                        selectableActionId: 'inline-card-input',
+                        selectableActionAriaLabelledby: 'inline-card-title',
+                        name: 'vector-store-type',
+                        variant: 'single',
+                        onChange: () => setVectorStoreType('inline'),
+                        hasNoOffset: true
+                      }}
+                    >
+                      <CardTitle id="inline-card-title">Inline vector store</CardTitle>
+                    </CardHeader>
+                    <CardBody>
+                      <div style={{ fontSize: '0.875rem', color: 'var(--pf-v6-global--Color--200)' }}>
+                        Good for quick RAG experiments. Upload sample documents to test model performance with grounding data.
+                      </div>
+                    </CardBody>
+                  </Card>
+                </GridItem>
+                <GridItem span={6}>
+                  <Card 
+                    id="external-vector-store-card"
+                    isSelectable
+                    isSelected={vectorStoreType === 'external'}
+                    isFullHeight
+                  >
+                    <CardHeader
+                      selectableActions={{
+                        selectableActionId: 'external-card-input',
+                        selectableActionAriaLabelledby: 'external-card-title',
+                        name: 'vector-store-type',
+                        variant: 'single',
+                        onChange: () => setVectorStoreType('external'),
+                        hasNoOffset: true
+                      }}
+                    >
+                      <CardTitle id="external-card-title">External vector score</CardTitle>
+                    </CardHeader>
+                    <CardBody>
+                      <div style={{ fontSize: '0.875rem', color: 'var(--pf-v6-global--Color--200)' }}>
+                        Connect to an external vector store to test model performance with existing RAG vector database.
+                      </div>
+                    </CardBody>
+                  </Card>
+                </GridItem>
+              </Grid>
+            </div>
+          </>
+        ) : vectorStoreType === 'inline' ? (
+          <>
+            {currentFiles.length === 0 ? (
+              /* No files uploaded - show full width upload */
+              <MultipleFileUpload
+                onFileDrop={handleFileDrop}
+                dropzoneProps={{
+                  accept: {
+                    'image/jpeg': ['.jpg', '.jpeg'],
+                    'application/pdf': ['.pdf'],
+                    'image/png': ['.png'],
+                    'image/gif': ['.gif']
+                  }
+                }}
+              >
+                <MultipleFileUploadMain
+                  titleIcon={<UploadIcon />}
+                  titleText="Drag and drop files here"
+                  titleTextSeparator="or"
+                  infoText="Accepted file types: JPEG, PDF, PNG, GIF"
+                />
+              </MultipleFileUpload>
+            ) : (
+              /* Files uploaded - show 2 column layout */
+              <Grid hasGutter>
+                <GridItem span={8}>
                   <Table variant="compact" aria-label="Uploaded files" id="uploaded-files-table">
                     <Thead>
                       <Tr>
                         <Th>File name</Th>
-                        <Th>Size</Th>
+                        <Th>File size</Th>
                         <Th width={10}></Th>
                       </Tr>
                     </Thead>
                     <Tbody>
-                      {uploadedFiles.map((file) => (
-                        <Tr key={file.id}>
+                      {currentFiles.map((file) => (
+                        <Tr key={file.name}>
                           <Td>{file.name}</Td>
-                          <Td>{file.size}</Td>
+                          <Td>{(file.size / 1024).toFixed(1)} KB</Td>
                           <Td>
                             <Button
                               variant="plain"
                               icon={<TrashIcon />}
-                              onClick={() => handleRemoveFile(file.id)}
+                              onClick={() => removeFiles([file.name])}
                               aria-label={`Remove ${file.name}`}
                             />
                           </Td>
@@ -240,98 +330,154 @@ export const AddVectorStoreModal: React.FunctionComponent<AddVectorStoreModalPro
                       ))}
                     </Tbody>
                   </Table>
-                </FormGroup>
-              )}
-
-              <Divider style={{ margin: '1.5rem 0' }} />
-
-              {/* Advanced Settings */}
-              <FormSection title="Advanced settings">
-                <FormGroup label="Embedding model" fieldId="embedding-model">
-                  <Select
-                    id="embedding-model"
-                    isOpen={isEmbeddingModelOpen}
-                    selected={embeddingModel}
-                    onSelect={(_event, value) => {
-                      setEmbeddingModel(value as string);
-                      setIsEmbeddingModelOpen(false);
+                </GridItem>
+                <GridItem span={4}>
+                  <MultipleFileUpload
+                    onFileDrop={handleFileDrop}
+                    dropzoneProps={{
+                      accept: {
+                        'image/jpeg': ['.jpg', '.jpeg'],
+                        'application/pdf': ['.pdf'],
+                        'image/png': ['.png'],
+                        'image/gif': ['.gif']
+                      }
                     }}
-                    onOpenChange={(isOpen) => setIsEmbeddingModelOpen(isOpen)}
+                  >
+                    <MultipleFileUploadMain
+                      titleIcon={<UploadIcon />}
+                      titleText="Drag and drop files here"
+                      titleTextSeparator="or"
+                      infoText="Accepted file types: JPEG, PDF, PNG, GIF"
+                    />
+                  </MultipleFileUpload>
+                </GridItem>
+              </Grid>
+            )}
+          </>
+        ) : (
+          /* External vector store connection details */
+          <>
+            <FormGroup 
+              label={
+                <span style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                  Provider
+                  <span style={{ color: 'var(--pf-v6-global--danger-color--100)' }}>*</span>
+                  <Tooltip content="Select the vector database provider you want to connect to">
+                    <OutlinedQuestionCircleIcon style={{ fontSize: '14px', color: 'var(--pf-v6-global--icon-Color--subtle)' }} />
+                  </Tooltip>
+                </span>
+              }
+              isRequired 
+              fieldId="provider-select"
+            >
+              <Select
+                id="provider-select"
+                isOpen={isProviderOpen}
+                selected={provider}
+                onSelect={(_event, value) => {
+                  setProvider(value as string);
+                  setIsProviderOpen(false);
+                }}
+                onOpenChange={(isOpen) => setIsProviderOpen(isOpen)}
                     toggle={(toggleRef) => (
                       <MenuToggle
                         ref={toggleRef}
-                        onClick={() => setIsEmbeddingModelOpen(!isEmbeddingModelOpen)}
-                        isExpanded={isEmbeddingModelOpen}
+                    onClick={() => setIsProviderOpen(!isProviderOpen)}
+                    isExpanded={isProviderOpen}
                         style={{ width: '100%' }}
                       >
-                        {embeddingModel}
+                    {provider || 'Milvus'}
                       </MenuToggle>
                     )}
                   >
                     <SelectList>
-                      <SelectOption value="text-embedding-ada-002">text-embedding-ada-002</SelectOption>
-                      <SelectOption value="text-embedding-3-small">text-embedding-3-small</SelectOption>
-                      <SelectOption value="text-embedding-3-large">text-embedding-3-large</SelectOption>
+                  <SelectOption value="Milvus">Milvus</SelectOption>
+                  <SelectOption value="PGVector">PGVector</SelectOption>
+                  <SelectOption value="Pinecone">Pinecone</SelectOption>
+                  <SelectOption value="Weaviate">Weaviate</SelectOption>
+                  <SelectOption value="ChromaDB">ChromaDB</SelectOption>
                     </SelectList>
                   </Select>
                 </FormGroup>
 
-                <Grid hasGutter>
-                  <GridItem span={6}>
-                    <FormGroup label="Chunk size" fieldId="chunk-size">
+            <FormGroup 
+              label={
+                <span style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                  Endpoint URL
+                  <span style={{ color: 'var(--pf-v6-global--danger-color--100)' }}>*</span>
+                  <Tooltip content="The URL endpoint of your external vector database">
+                    <OutlinedQuestionCircleIcon style={{ fontSize: '14px', color: 'var(--pf-v6-global--icon-Color--subtle)' }} />
+                  </Tooltip>
+                </span>
+              }
+              isRequired 
+              fieldId="endpoint-url"
+              style={{ marginTop: '1rem' }}
+            >
                       <TextInput
-                        id="chunk-size"
-                        type="number"
-                        value={chunkSize}
-                        onChange={(_event, value) => setChunkSize(value)}
-                      />
-                      <HelperText>
-                        <HelperTextItem>Default: 512 tokens</HelperTextItem>
-                      </HelperText>
+                id="endpoint-url"
+                value={endpointUrl}
+                onChange={(_event, value) => setEndpointUrl(value)}
+                placeholder=""
+                isRequired
+              />
                     </FormGroup>
-                  </GridItem>
-                  <GridItem span={6}>
-                    <FormGroup label="Chunk overlap" fieldId="chunk-overlap">
+
+            <FormGroup 
+              label={
+                <span style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                  API key
+                  <span style={{ color: 'var(--pf-v6-global--danger-color--100)' }}>*</span>
+                  <Tooltip content="The API key or authentication token for your vector database">
+                    <OutlinedQuestionCircleIcon style={{ fontSize: '14px', color: 'var(--pf-v6-global--icon-Color--subtle)' }} />
+                  </Tooltip>
+                </span>
+              }
+              isRequired 
+              fieldId="api-key"
+              style={{ marginTop: '1rem' }}
+            >
                       <TextInput
-                        id="chunk-overlap"
-                        type="number"
-                        value={chunkOverlap}
-                        onChange={(_event, value) => setChunkOverlap(value)}
-                      />
-                      <HelperText>
-                        <HelperTextItem>Default: 50 tokens</HelperTextItem>
-                      </HelperText>
-                    </FormGroup>
-                  </GridItem>
-                </Grid>
-              </FormSection>
-            </>
-          ) : (
-            <>
-              <Title headingLevel="h3" size="md" style={{ marginBottom: '1rem' }}>
-                External connection
-              </Title>
-              <FormGroup label="Connection" fieldId="external-connection">
-                <Select
-                  id="external-connection"
-                  toggle={(toggleRef) => (
-                    <MenuToggle ref={toggleRef} style={{ width: '100%' }}>
-                      Select a connection
-                    </MenuToggle>
-                  )}
-                >
-                  <SelectList>
-                    <SelectOption value="pinecone">Pinecone</SelectOption>
-                    <SelectOption value="weaviate">Weaviate</SelectOption>
-                    <SelectOption value="chromadb">ChromaDB</SelectOption>
-                  </SelectList>
-                </Select>
+                id="api-key"
+                type="password"
+                value={apiKey}
+                onChange={(_event, value) => setApiKey(value)}
+                placeholder=""
+                isRequired
+              />
               </FormGroup>
             </>
           )}
-        </SidebarContent>
-      </Sidebar>
+      </ModalBody>
+      <ModalFooter>
+        {step === 2 && !editingStore && (
+          <Button variant="secondary" onClick={handleBack}>
+            Back
+          </Button>
+        )}
+        <Button
+          variant="primary"
+          onClick={step === 1 ? handleNext : handleCreate}
+          isDisabled={
+            step === 1 
+              ? !name.trim()
+              : vectorStoreType === 'inline'
+                ? currentFiles.length === 0
+                : !provider || !endpointUrl || !apiKey
+          }
+        >
+          {step === 1 
+            ? 'Next' 
+            : editingStore 
+              ? 'Update' 
+              : vectorStoreType === 'inline' 
+                ? 'Create' 
+                : 'Connect'}
+        </Button>
+        <Button variant="link" onClick={handleModalClose}>
+          Cancel
+        </Button>
+      </ModalFooter>
     </Modal>
   );
 };
-
