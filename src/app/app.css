@@ -26,3 +26,8 @@ body.fidelity-low * {
   background-color: var(--pf-v6-global--BackgroundColor--200);
   color: var(--pf-v6-global--Color--100);
 }
+
+/* AutoRAG specific styles */
+#documents-file-upload .pf-v6-c-multiple-file-upload__main {
+  box-sizing: content-box;
+}
