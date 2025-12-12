@@ -15,9 +15,11 @@ import {
   InputGroup,
   InputGroupItem,
   Label,
+  LabelGroup,
   MenuToggle,
   PageSection,
   Pagination,
+  Popover,
   SearchInput,
   Select,
   SelectList,
@@ -241,9 +243,9 @@ const PromptLab: React.FunctionComponent = () => {
               >
                 Name
               </Th>
-              <Th width={10}>Latest version</Th>
+              <Th modifier="fitContent">Latest version</Th>
               <Th
-                width={15}
+                modifier="fitContent"
                 sort={{
                   sortBy: { index: 2, direction: sortBy === 'lastModified' ? sortDirection : undefined },
                   onSort: () => handleSort('lastModified'),
@@ -253,14 +255,13 @@ const PromptLab: React.FunctionComponent = () => {
                 Last modified
               </Th>
               <Th width={20}>Commit message</Th>
-              <Th width={10}>Alias</Th>
               <Th width={15}>Tags</Th>
-              <Th width={5}></Th>
+              <Th modifier="fitContent" textCenter></Th>
             </Tr>
           </Thead>
           <Tbody>
             {getPaginatedPrompts().map((prompt) => (
-              <Tr key={prompt.id} id={`prompt-row-${prompt.id}`}>
+              <Tr key={prompt.id} id={`prompt-row-${prompt.id}`} style={{ verticalAlign: 'middle' }}>
                 <Td dataLabel="Name">
                   <Button
                     variant="link"
@@ -270,34 +271,47 @@ const PromptLab: React.FunctionComponent = () => {
                   >
                     {prompt.name}
                   </Button>
-                  {prompt.description && (
-                    <div style={{ fontSize: 'var(--pf-v5-global--FontSize--sm)', color: 'var(--pf-v5-global--Color--200)' }}>
-                      {prompt.description}
-                    </div>
-                  )}
                 </Td>
                 <Td dataLabel="Latest version">{prompt.latestVersion}</Td>
                 <Td dataLabel="Last modified">{formatDate(prompt.lastModified)}</Td>
                 <Td dataLabel="Commit message">
                   {prompt.commitMessage || '-'}
                 </Td>
-                <Td dataLabel="Alias">
-                  {prompt.alias ? <Label color="blue">{prompt.alias}</Label> : '-'}
-                </Td>
-                <Td dataLabel="Tags">
+                <Td dataLabel="Tags" modifier="fitContent">
                   {prompt.tags.length > 0 ? (
-                    <div style={{ display: 'flex', gap: '0.25rem', flexWrap: 'wrap' }}>
-                      {prompt.tags.map((tag, index) => (
-                        <Label key={`${prompt.id}-tag-${index}`} color="grey" isCompact>
-                          {tag}
+                    <Flex spaceItems={{ default: 'spaceItemsSm' }} alignItems={{ default: 'alignItemsCenter' }}>
+                      <FlexItem>
+                        <Label color="grey">
+                          {prompt.tags[0]}
                         </Label>
-                      ))}
-                    </div>
+                      </FlexItem>
+                      {prompt.tags.length > 1 && (
+                        <FlexItem>
+                          <Popover
+                            headerContent={<div>All tags</div>}
+                            bodyContent={
+                              <LabelGroup>
+                                {prompt.tags.map((tag, index) => (
+                                  <Label key={`${prompt.id}-all-tag-${index}`} color="grey">
+                                    {tag}
+                                  </Label>
+                                ))}
+                              </LabelGroup>
+                            }
+                            id={`tags-popover-${prompt.id}`}
+                          >
+                            <Button variant="link" isInline id={`show-more-tags-${prompt.id}`}>
+                              {prompt.tags.length - 1} more
+                            </Button>
+                          </Popover>
+                        </FlexItem>
+                      )}
+                    </Flex>
                   ) : (
                     '-'
                   )}
                 </Td>
-                <Td dataLabel="Actions" style={{ textAlign: 'right', width: '60px' }}>
+                <Td dataLabel="Actions" modifier="fitContent" textCenter>
                   <Dropdown
                     isOpen={openKebabMenus.has(prompt.id)}
                     onOpenChange={(isOpen) => {
@@ -372,16 +386,12 @@ const PromptLab: React.FunctionComponent = () => {
       {/* Title Section */}
       <PageSection id="prompt-lab-header">
         <Flex alignItems={{ default: 'alignItemsCenter' }} spaceItems={{ default: 'spaceItemsSm' }}>
-          <FlexItem>
+          <FlexItem spacer={{ default: 'spacerSm' }}>
             <div
               style={{
                 display: 'inline-block',
                 width: '40px',
                 height: '40px',
-                padding: '4px',
-                borderRadius: '20px',
-                background: '#DBF2F2',
-                color: 'var(--pf-v5-global--Color--dark-100)',
               }}
             >
               <span dangerouslySetInnerHTML={{ __html: PageIcon }} />
@@ -389,7 +399,7 @@ const PromptLab: React.FunctionComponent = () => {
           </FlexItem>
           <FlexItem>
             <Title headingLevel="h2" size="xl" id="prompt-lab-title">
-              Prompt Lab
+              Prompt lab
             </Title>
           </FlexItem>
           <FlexItem>
@@ -401,7 +411,7 @@ const PromptLab: React.FunctionComponent = () => {
             />
           </FlexItem>
         </Flex>
-        <div style={{ color: 'var(--pf-v5-global--Color--200)', marginTop: '0.5rem' }}>
+        <div style={{ color: 'var(--pf-v5-global--Color--200)', marginTop: 'var(--pf-v5-global--spacer--sm)' }}>
           Manage and version prompts for AI systems
         </div>
       </PageSection>
@@ -458,7 +468,7 @@ const PromptLab: React.FunctionComponent = () => {
       )}
 
       {/* Main Toolbar and Content */}
-      <PageSection style={{ paddingTop: '0.5rem' }} id="prompt-lab-content">
+      <PageSection style={{ paddingTop: '0.5rem' }} isFilled id="prompt-lab-content">
         <Toolbar id="prompt-lab-toolbar">
           <ToolbarContent>
             <ToolbarGroup variant="filter-group">
