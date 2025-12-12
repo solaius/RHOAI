@@ -21,6 +21,9 @@ import {
   Tbody,
   Td,
 } from '@patternfly/react-table';
+import { PromptsTable } from '@app/GenAIStudio/PromptLab/components/PromptsTable';
+import { Prompt } from '@app/GenAIStudio/PromptLab/types';
+import { mockPrompts } from '@app/GenAIStudio/PromptLab/mockData';
 
 interface LoadPromptModalProps {
   isOpen: boolean;
@@ -51,11 +54,15 @@ export const LoadPromptModal: React.FunctionComponent<LoadPromptModalProps> = ({
 }) => {
   const [step, setStep] = useState<1 | 2>(1);
   const [selectedType, setSelectedType] = useState<'registry' | 'samples' | null>(null);
+  const [selectedPromptRegistry, setSelectedPromptRegistry] = useState<Prompt | null>(null);
   const [selectedPrompt, setSelectedPrompt] = useState<PromptRegistryItem | null>(null);
   const [selectedVersion, setSelectedVersion] = useState('');
   const [isVersionSelectOpen, setIsVersionSelectOpen] = useState(false);
 
-  const promptRegistry: PromptRegistryItem[] = [
+  // Use Prompt Lab data for registry
+  const promptRegistry = mockPrompts;
+
+  const legacyPromptRegistry: PromptRegistryItem[] = [
     {
       id: '1',
       name: 'HR benefits Q&A',
@@ -115,9 +122,12 @@ export const LoadPromptModal: React.FunctionComponent<LoadPromptModalProps> = ({
   };
 
   const handleSelectPromptFromRegistry = () => {
-    if (selectedPrompt && selectedVersion) {
-      const promptKey = `${selectedPrompt.id}-${selectedVersion}`;
-      const content = mockPromptContent[promptKey] || `Prompt: ${selectedPrompt.name} - ${selectedVersion}`;
+    if (selectedPromptRegistry && selectedVersion) {
+      // Find the selected version in the prompt's versions array
+      const version = selectedPromptRegistry.versions.find(
+        (v) => v.versionNumber === selectedVersion
+      );
+      const content = version?.promptText || `Prompt: ${selectedPromptRegistry.name} - ${selectedVersion}`;
       onLoadPrompt(content, true);
       handleClose();
     }
@@ -225,93 +235,61 @@ export const LoadPromptModal: React.FunctionComponent<LoadPromptModalProps> = ({
             Select a prompt and version from your registry
           </p>
 
-          <Table 
-            variant="compact" 
-            aria-label="Prompt registry" 
-            id="prompt-registry-table"
-            style={{ marginBottom: '2rem' }}
-          >
-            <Thead>
-              <Tr>
-                <Th>Name</Th>
-                <Th>Use Case</Th>
-                <Th>Last Updated</Th>
-                <Th>Version</Th>
-              </Tr>
-            </Thead>
-            <Tbody>
-              {promptRegistry.map((prompt) => (
-                <Tr
-                  key={prompt.id}
-                  isClickable
-                  isRowSelected={selectedPrompt?.id === prompt.id}
-                  onRowClick={() => {
-                    setSelectedPrompt(prompt);
-                    setSelectedVersion(prompt.versions[prompt.versions.length - 1]);
-                  }}
-                >
-                  <Td>
-                    <div>
-                      <div style={{ fontWeight: 600 }}>{prompt.name}</div>
-                      <div style={{ fontSize: '0.875rem', color: 'var(--pf-v6-global--Color--200)' }}>
-                        {prompt.description}
-                      </div>
-                    </div>
-                  </Td>
-                  <Td>{prompt.useCase}</Td>
-                  <Td>{prompt.date}</Td>
-                  <Td>
-                    {selectedPrompt?.id === prompt.id ? (
-                      <Select
-                        id={`version-select-${prompt.id}`}
-                        isOpen={isVersionSelectOpen}
-                        selected={selectedVersion}
-                        onSelect={(_event, value) => {
-                          setSelectedVersion(value as string);
-                          setIsVersionSelectOpen(false);
-                        }}
-                        onOpenChange={(isOpen) => setIsVersionSelectOpen(isOpen)}
-                        toggle={(toggleRef) => (
-                          <MenuToggle
-                            ref={toggleRef}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setIsVersionSelectOpen(!isVersionSelectOpen);
-                            }}
-                            isExpanded={isVersionSelectOpen}
-                            style={{ minWidth: '100px' }}
-                          >
-                            {selectedVersion}
-                          </MenuToggle>
-                        )}
-                      >
-                        <SelectList>
-                          {prompt.versions.map((version) => (
-                            <SelectOption key={version} value={version}>
-                              {version}
-                            </SelectOption>
-                          ))}
-                        </SelectList>
-                      </Select>
-                    ) : (
-                      <span style={{ color: 'var(--pf-v6-global--Color--200)' }}>
-                        {prompt.versions[prompt.versions.length - 1]}
-                      </span>
-                    )}
-                  </Td>
-                </Tr>
-              ))}
-            </Tbody>
-          </Table>
+          <PromptsTable
+            prompts={promptRegistry}
+            onPromptSelect={(prompt) => {
+              setSelectedPromptRegistry(prompt);
+              if (prompt.versions.length > 0) {
+                setSelectedVersion(prompt.versions[prompt.versions.length - 1].versionNumber);
+              }
+            }}
+            showPagination={false}
+            id="playground-prompt-registry-table"
+          />
 
-          <Flex justifyContent={{ default: 'justifyContentFlexEnd' }} gap={{ default: 'gapSm' }}>
+          {selectedPromptRegistry && (
+            <div style={{ marginTop: '1.5rem' }}>
+              <Title headingLevel="h4" size="md" style={{ marginBottom: '0.5rem' }}>
+                Select Version
+              </Title>
+              <Select
+                isOpen={isVersionSelectOpen}
+                selected={selectedVersion}
+                onSelect={(_event, value) => {
+                  setSelectedVersion(value as string);
+                  setIsVersionSelectOpen(false);
+                }}
+                onOpenChange={(isOpen) => setIsVersionSelectOpen(isOpen)}
+                toggle={(toggleRef) => (
+                  <MenuToggle
+                    ref={toggleRef}
+                    onClick={() => setIsVersionSelectOpen(!isVersionSelectOpen)}
+                    isExpanded={isVersionSelectOpen}
+                    style={{ width: '200px' }}
+                  >
+                    {selectedVersion}
+                  </MenuToggle>
+                )}
+              >
+                <SelectList>
+                  {selectedPromptRegistry.versions.map((version) => (
+                    <SelectOption key={version.id} value={version.versionNumber}>
+                      Version {version.versionNumber}
+                    </SelectOption>
+                  ))}
+                </SelectList>
+              </Select>
+            </div>
+          )}
+
+          <Flex justifyContent={{ default: 'justifyContentFlexEnd' }} gap={{ default: 'gapSm' }} style={{ marginTop: '2rem' }}>
             <Button variant="link" onClick={handleBack}>
               Back
             </Button>
             <Button
               variant="primary"
               onClick={handleSelectPromptFromRegistry}
-              isDisabled={!selectedPrompt || !selectedVersion}
+              isDisabled={!selectedPromptRegistry || !selectedVersion}
             >
               Select
             </Button>

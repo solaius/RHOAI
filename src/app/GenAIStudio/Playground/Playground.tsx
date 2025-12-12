@@ -78,6 +78,9 @@ import { useDocumentTitle } from '@app/utils/useDocumentTitle';
 import { useFeatureFlags } from '@app/utils/FeatureFlagsContext';
 import { AddVectorStoreModal } from './components/AddVectorStoreModal';
 import { LoadPromptModal } from './components/LoadPromptModal';
+import { CreatePromptModal } from '@app/GenAIStudio/PromptLab/components/CreatePromptModal';
+import { CreateVersionModal } from '@app/GenAIStudio/PromptLab/components/CreateVersionModal';
+import { PromptVariableEditor } from '@app/GenAIStudio/PromptLab/components/PromptVariableEditor';
 import PageIcon from '@app/assets/PageIcon.svg';
 import ChatbotIcon from '@app/assets/chatbotIcon.svg';
 import PlaceholderImage from '@app/assets/placeholderImage.svg';
@@ -96,6 +99,9 @@ const Playground: React.FunctionComponent = () => {
   const [selectedModel, setSelectedModel] = useState('llama-3.1-8b-instruct');
   const [isModelSelectOpen, setIsModelSelectOpen] = useState(false);
   const [isLoadPromptModalOpen, setIsLoadPromptModalOpen] = useState(false);
+  const [isSavePromptModalOpen, setIsSavePromptModalOpen] = useState(false);
+  const [isEditPromptModalOpen, setIsEditPromptModalOpen] = useState(false);
+  const [loadedPrompt, setLoadedPrompt] = useState<any>(null);
   
   // Build panel toggle state (using ToggleGroup instead of Tabs)
   const [selectedBuildTab, setSelectedBuildTab] = useState('prompt-lab');
@@ -938,7 +944,12 @@ const Playground: React.FunctionComponent = () => {
 
           <FlexItem>
             <Flex gap={{ default: 'gapSm' }}>
-              <Button variant="link" icon={<SaveIcon />} id="save-button">
+              <Button 
+                variant="link" 
+                icon={<SaveIcon />} 
+                id="save-button"
+                onClick={() => setIsSavePromptModalOpen(true)}
+              >
                 Save
               </Button>
               <Button variant="link" icon={<PlusIcon />} id="new-chat-button">
@@ -1041,6 +1052,32 @@ const Playground: React.FunctionComponent = () => {
           setSystemPrompt(prompt);
           setIsSystemPromptReadOnly(isReadOnly);
         }}
+      />
+
+      {/* Save Prompt Modal */}
+      <CreatePromptModal
+        isOpen={isSavePromptModalOpen}
+        onClose={() => setIsSavePromptModalOpen(false)}
+        onSubmit={async (promptData) => {
+          // Save the prompt to Prompt Lab
+          console.log('Saving prompt:', promptData);
+          // In a real implementation, this would save to the Prompt Lab context
+        }}
+        initialPromptText={systemPrompt}
+        initialPromptType="text"
+      />
+
+      {/* Edit Prompt Version Modal */}
+      <CreateVersionModal
+        isOpen={isEditPromptModalOpen}
+        onClose={() => setIsEditPromptModalOpen(false)}
+        onSubmit={async (versionData) => {
+          // Save new version to Prompt Lab
+          console.log('Saving version:', versionData);
+          // In a real implementation, this would create a new version in Prompt Lab
+        }}
+        existingPrompt={loadedPrompt}
+        currentPromptText={systemPrompt}
       />
     </>
   );
