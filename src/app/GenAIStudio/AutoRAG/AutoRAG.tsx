@@ -1010,10 +1010,14 @@ const AutoRAG: React.FunctionComponent = () => {
             </Flex>
 
             {/* Pipeline Visualization */}
-            <Title headingLevel="h2" size="lg" id="pipeline-section-title" style={{ marginBottom: '1rem' }}>
-              Experiment Pipeline
-            </Title>
-            <Card style={{ marginBottom: '2rem' }} id="pipeline-visualization-card">
+            <Card id="pipeline-visualization-card">
+              <CardHeader>
+                <CardTitle>
+                  <Title headingLevel="h2" size="lg" id="pipeline-section-title">
+                    Experiment Pipeline
+                  </Title>
+                </CardTitle>
+              </CardHeader>
               <CardBody>
                 <div style={{ 
                   padding: '2.5rem', 
@@ -1024,7 +1028,7 @@ const AutoRAG: React.FunctionComponent = () => {
               <Flex alignItems={{ default: 'alignItemsCenter' }} spaceItems={{ default: 'spaceItemsLg' }} wrap="wrap">
                 {/* Step 1 */}
                 <FlexItem>
-                  <Label color="blue" style={{ padding: '0.75rem 1rem', fontSize: 'var(--pf-v5-global--FontSize--md)', minWidth: '100px', textAlign: 'center' }} id="pipeline-step-1">
+                  <Label color="grey" style={{ padding: '0.75rem 1rem', fontSize: 'var(--pf-v5-global--FontSize--md)', minWidth: '100px', textAlign: 'center' }} id="pipeline-step-1">
                     Step 1
                   </Label>
                 </FlexItem>
@@ -1034,7 +1038,7 @@ const AutoRAG: React.FunctionComponent = () => {
                 
                 {/* Step 2 */}
                 <FlexItem>
-                  <Label color="blue" style={{ padding: '0.75rem 1rem', fontSize: 'var(--pf-v5-global--FontSize--md)', minWidth: '100px', textAlign: 'center' }} id="pipeline-step-2">
+                  <Label color="grey" style={{ padding: '0.75rem 1rem', fontSize: 'var(--pf-v5-global--FontSize--md)', minWidth: '100px', textAlign: 'center' }} id="pipeline-step-2">
                     Step 2
                   </Label>
                 </FlexItem>
@@ -1044,7 +1048,7 @@ const AutoRAG: React.FunctionComponent = () => {
                 
                 {/* Step 3 */}
                 <FlexItem>
-                  <Label color="blue" style={{ padding: '0.75rem 1rem', fontSize: 'var(--pf-v5-global--FontSize--md)', minWidth: '100px', textAlign: 'center' }} id="pipeline-step-3">
+                  <Label color="grey" style={{ padding: '0.75rem 1rem', fontSize: 'var(--pf-v5-global--FontSize--md)', minWidth: '100px', textAlign: 'center' }} id="pipeline-step-3">
                     Step 3
                   </Label>
                 </FlexItem>
@@ -1055,16 +1059,16 @@ const AutoRAG: React.FunctionComponent = () => {
                 {/* Foundation Models Branch */}
                 <FlexItem>
                   <Flex direction={{ default: 'column' }} spaceItems={{ default: 'spaceItemsSm' }} alignItems={{ default: 'alignItemsCenter' }}>
-                    <Label color="blue" style={{ padding: '0.75rem 1rem', fontSize: 'var(--pf-v5-global--FontSize--md)', minWidth: '120px', textAlign: 'center' }} id="pipeline-foundation-model-1">
+                    <Label color="grey" style={{ padding: '0.75rem 1rem', fontSize: 'var(--pf-v5-global--FontSize--md)', minWidth: '120px', textAlign: 'center' }} id="pipeline-foundation-model-1">
                       Foundation Model 1
                     </Label>
                     <div style={{ fontSize: '1.5rem' }}>↓</div>
                     <Flex spaceItems={{ default: 'spaceItemsSm' }} alignItems={{ default: 'alignItemsCenter' }}>
                       <StarIcon style={{ color: '#f0ab00', fontSize: 'var(--pf-v5-global--FontSize--md)' }} id="pipeline-star-icon" />
-                      <Label color="green" style={{ padding: '0.5rem 0.75rem', fontSize: 'var(--pf-v5-global--FontSize--sm)' }} id="pipeline-pattern-1">
+                      <Label color="grey" style={{ padding: '0.5rem 0.75rem', fontSize: 'var(--pf-v5-global--FontSize--sm)' }} id="pipeline-pattern-1">
                         Pattern 1
                       </Label>
-                      <Label color="green" style={{ padding: '0.5rem 0.75rem', fontSize: 'var(--pf-v5-global--FontSize--sm)' }} id="pipeline-pattern-2">
+                      <Label color="grey" style={{ padding: '0.5rem 0.75rem', fontSize: 'var(--pf-v5-global--FontSize--sm)' }} id="pipeline-pattern-2">
                         Pattern 2
                       </Label>
                     </Flex>
@@ -1077,15 +1081,15 @@ const AutoRAG: React.FunctionComponent = () => {
                 
                 <FlexItem>
                   <Flex direction={{ default: 'column' }} spaceItems={{ default: 'spaceItemsSm' }} alignItems={{ default: 'alignItemsCenter' }}>
-                    <Label color="blue" style={{ padding: '0.75rem 1rem', fontSize: 'var(--pf-v5-global--FontSize--md)', minWidth: '120px', textAlign: 'center' }} id="pipeline-foundation-model-2">
+                    <Label color="grey" style={{ padding: '0.75rem 1rem', fontSize: 'var(--pf-v5-global--FontSize--md)', minWidth: '120px', textAlign: 'center' }} id="pipeline-foundation-model-2">
                       Foundation Model 2
                     </Label>
                     <div style={{ fontSize: '1.5rem' }}>↓</div>
                     <Flex spaceItems={{ default: 'spaceItemsSm' }}>
-                      <Label color="green" style={{ padding: '0.5rem 0.75rem', fontSize: 'var(--pf-v5-global--FontSize--sm)' }} id="pipeline-pattern-3">
+                      <Label color="grey" style={{ padding: '0.5rem 0.75rem', fontSize: 'var(--pf-v5-global--FontSize--sm)' }} id="pipeline-pattern-3">
                         Pattern 3
                       </Label>
-                      <Label color="green" style={{ padding: '0.5rem 0.75rem', fontSize: 'var(--pf-v5-global--FontSize--sm)' }} id="pipeline-pattern-4">
+                      <Label color="grey" style={{ padding: '0.5rem 0.75rem', fontSize: 'var(--pf-v5-global--FontSize--sm)' }} id="pipeline-pattern-4">
                         Pattern 4
                       </Label>
                     </Flex>
@@ -1098,15 +1102,15 @@ const AutoRAG: React.FunctionComponent = () => {
                 
                 <FlexItem>
                   <Flex direction={{ default: 'column' }} spaceItems={{ default: 'spaceItemsSm' }} alignItems={{ default: 'alignItemsCenter' }}>
-                    <Label color="blue" style={{ padding: '0.75rem 1rem', fontSize: 'var(--pf-v5-global--FontSize--md)', minWidth: '120px', textAlign: 'center' }} id="pipeline-foundation-model-3">
+                    <Label color="grey" style={{ padding: '0.75rem 1rem', fontSize: 'var(--pf-v5-global--FontSize--md)', minWidth: '120px', textAlign: 'center' }} id="pipeline-foundation-model-3">
                       Foundation Model 3
                     </Label>
                     <div style={{ fontSize: '1.5rem' }}>↓</div>
                     <Flex spaceItems={{ default: 'spaceItemsSm' }}>
-                      <Label color="green" style={{ padding: '0.5rem 0.75rem', fontSize: 'var(--pf-v5-global--FontSize--sm)' }} id="pipeline-pattern-5">
+                      <Label color="grey" style={{ padding: '0.5rem 0.75rem', fontSize: 'var(--pf-v5-global--FontSize--sm)' }} id="pipeline-pattern-5">
                         Pattern 5
                       </Label>
-                      <Label color="green" style={{ padding: '0.5rem 0.75rem', fontSize: 'var(--pf-v5-global--FontSize--sm)' }} id="pipeline-pattern-6">
+                      <Label color="grey" style={{ padding: '0.5rem 0.75rem', fontSize: 'var(--pf-v5-global--FontSize--sm)' }} id="pipeline-pattern-6">
                         Pattern 6
                       </Label>
                     </Flex>
@@ -1118,7 +1122,7 @@ const AutoRAG: React.FunctionComponent = () => {
             </Card>
 
             {/* Results Table */}
-            <Card style={{ marginTop: '2rem' }} id="results-table-card">
+            <Card id="results-table-card" style={{ marginTop: '20px' }}>
               <CardHeader>
                 <CardTitle>
                   <Title headingLevel="h2" size="lg" id="autorag-results-table-title">
@@ -1202,7 +1206,8 @@ const AutoRAG: React.FunctionComponent = () => {
                   const baseBackgroundColor = index % 2 === 0 
                     ? 'var(--pf-v5-global--BackgroundColor--200)' 
                     : 'transparent';
-                  const rankOneBackgroundColor = '#e8f5e9';
+                  const rankOneBackgroundColor = '#fffaec';
+                  const isLinkEnabled = index < 3; // Enable links for rows 1-3, disable for rows 4-6
                   
                   return (
                   <Tr 
@@ -1210,11 +1215,11 @@ const AutoRAG: React.FunctionComponent = () => {
                     id={`result-row-${result.id}`}
                     style={{
                       backgroundColor: isRankOne ? rankOneBackgroundColor : baseBackgroundColor,
-                      borderLeft: isRankOne ? '4px solid #3e8635' : '4px solid transparent',
+                      borderLeft: isRankOne ? '4px solid #f0ab00' : '4px solid transparent',
                     }}
                     onMouseEnter={(e) => {
                       e.currentTarget.style.backgroundColor = isRankOne 
-                        ? '#d4edda' 
+                        ? '#fef0cd' 
                         : 'var(--pf-v5-global--BackgroundColor--200)';
                     }}
                     onMouseLeave={(e) => {
@@ -1227,8 +1232,8 @@ const AutoRAG: React.FunctionComponent = () => {
                       {isRankOne ? (
                         <Badge 
                           style={{ 
-                            backgroundColor: '#3e8635',
-                            color: '#ffffff',
+                            backgroundColor: '#f0ab00',
+                            color: '#151515',
                             fontWeight: 'bold',
                             padding: '0.25rem 0.5rem',
                             borderRadius: '4px'
@@ -1249,7 +1254,7 @@ const AutoRAG: React.FunctionComponent = () => {
                     <Td dataLabel="Model name">{result.modelName}</Td>
                     <Td 
                       dataLabel="Answer faithfulness"
-                      style={isRankOne ? { fontWeight: 'bold', color: '#3e8635' } : {}}
+                      style={isRankOne ? { fontWeight: 'bold', color: '#f0ab00' } : {}}
                     >
                       {result.status === 'In Progress' ? '-' : result.answerFaithfulness.toFixed(2)}
                     </Td>
@@ -1269,34 +1274,58 @@ const AutoRAG: React.FunctionComponent = () => {
                     <Td dataLabel="Actions">
                       <Flex spaceItems={{ default: 'spaceItemsSm' }}>
                         <FlexItem>
-                          <Button
-                            variant="link"
-                            onClick={() => handleViewDetails(result.id)}
+                          <a
+                            href="#"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              if (isLinkEnabled) handleViewDetails(result.id);
+                            }}
                             id={`view-details-${result.id}`}
-                            isDisabled={result.status === 'In Progress'}
+                            style={{
+                              color: isLinkEnabled ? '#0066cc' : '#6a6e73',
+                              textDecoration: 'none',
+                              cursor: isLinkEnabled ? 'pointer' : 'not-allowed',
+                              pointerEvents: isLinkEnabled ? 'auto' : 'none'
+                            }}
                           >
                             View details
-                          </Button>
+                          </a>
                         </FlexItem>
                         <FlexItem>
-                          <Button
-                            variant="link"
-                            onClick={() => handleTestInPlayground(result.id)}
+                          <a
+                            href="#"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              if (isLinkEnabled) handleTestInPlayground(result.id);
+                            }}
                             id={`test-playground-${result.id}`}
-                            isDisabled={result.status === 'In Progress'}
+                            style={{
+                              color: isLinkEnabled ? '#0066cc' : '#6a6e73',
+                              textDecoration: 'none',
+                              cursor: isLinkEnabled ? 'pointer' : 'not-allowed',
+                              pointerEvents: isLinkEnabled ? 'auto' : 'none'
+                            }}
                           >
                             Test in playground
-                          </Button>
+                          </a>
                         </FlexItem>
                         <FlexItem>
-                          <Button
-                            variant="link"
-                            onClick={() => handleViewCode(result.id)}
+                          <a
+                            href="#"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              if (isLinkEnabled) handleViewCode(result.id);
+                            }}
                             id={`view-code-${result.id}`}
-                            isDisabled={result.status === 'In Progress'}
+                            style={{
+                              color: isLinkEnabled ? '#0066cc' : '#6a6e73',
+                              textDecoration: 'none',
+                              cursor: isLinkEnabled ? 'pointer' : 'not-allowed',
+                              pointerEvents: isLinkEnabled ? 'auto' : 'none'
+                            }}
                           >
                             View code
-                          </Button>
+                          </a>
                         </FlexItem>
                       </Flex>
                     </Td>
