@@ -1516,7 +1516,6 @@ const Playground: React.FunctionComponent = () => {
           </Button>
         </ModalFooter>
       </Modal>
->>>>>>> origin/3.4
     </>
   );
 };
