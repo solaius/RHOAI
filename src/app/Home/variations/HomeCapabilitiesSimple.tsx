@@ -26,6 +26,7 @@ import {
   KnowledgeSourcesIcon,
   AutoRAGIcon,
   PromptLabIcon,
+  AIAssetEndpointsIcon,
 } from '../icons';
 
 const HomeCapabilitiesSimple: React.FunctionComponent = () => {
@@ -66,6 +67,13 @@ const HomeCapabilitiesSimple: React.FunctionComponent = () => {
       icon: <DeploymentsIcon withBackground size={32} />,
       path: '/ai-hub/deployments',
       category: 'ai-hub',
+    },
+    {
+      title: 'AI asset endpoints',
+      description: 'Access and manage endpoints for deployed AI models and services',
+      icon: <AIAssetEndpointsIcon withBackground size={32} />,
+      path: '/gen-ai-studio/asset-endpoints',
+      category: 'gen-ai',
     },
     {
       title: 'Playground',

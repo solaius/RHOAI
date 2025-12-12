@@ -9,7 +9,7 @@ import {
   EmptyStateActions,
   EmptyStateFooter,
 } from '@patternfly/react-core';
-import { OutlinedFolderIcon } from '@patternfly/react-icons';
+import ProjectIcon from './ProjectIcon';
 
 interface EmptyProjectsCardProps {
   allowCreate: boolean;
@@ -21,9 +21,9 @@ const EmptyProjectsCard: React.FunctionComponent<EmptyProjectsCardProps> = ({
   onCreateProject,
 }) => {
   return (
-    <Card isRounded>
+    <Card>
       <CardBody>
-        <EmptyState icon={OutlinedFolderIcon}>
+        <EmptyState icon={ProjectIcon}>
           <EmptyStateBody>
             Projects are workspaces where you can create and manage your AI/ML workloads. Get
             started by creating your first project.

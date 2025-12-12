@@ -254,7 +254,6 @@ const routes: AppRouteConfig[] = [
         label: 'API keys',
         path: '/gen-ai-studio/api-keys',
         title: 'RHOAI 3.1 Console | Gen AI Studio - API Keys',
-        new: true,
       },
       {
         element: <APIKeyDetails />,

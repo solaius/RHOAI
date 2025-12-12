@@ -9,9 +9,9 @@ import {
   ToggleGroupItem,
   Content,
 } from '@patternfly/react-core';
-import { LayerGroupIcon, RocketIcon, CubeIcon } from '@patternfly/react-icons';
+import { LayerGroupIcon, RocketIcon, CubeIcon, OutlinedLightbulbIcon } from '@patternfly/react-icons';
 
-export type HomeVariation = 'projects' | 'capabilities' | 'quickstarts';
+export type HomeVariation = 'projects' | 'capabilities' | 'quickstarts' | 'illustrated-getting-started';
 
 interface HomeVariationToggleProps {
   selectedVariation: HomeVariation;
@@ -86,6 +86,19 @@ const HomeVariationToggle: React.FunctionComponent<HomeVariationToggleProps> = (
                 buttonId="quickstarts-toggle"
                 isSelected={selectedVariation === 'quickstarts'}
                 onChange={() => onVariationChange('quickstarts')}
+              />
+              <ToggleGroupItem
+                text={
+                  <Flex gap={{ default: 'gapSm' }} alignItems={{ default: 'alignItemsCenter' }}>
+                    <FlexItem>
+                      <OutlinedLightbulbIcon />
+                    </FlexItem>
+                    <FlexItem>Illustrated Getting Started</FlexItem>
+                  </Flex>
+                }
+                buttonId="illustrated-getting-started-toggle"
+                isSelected={selectedVariation === 'illustrated-getting-started'}
+                onChange={() => onVariationChange('illustrated-getting-started')}
               />
             </ToggleGroup>
           </FlexItem>

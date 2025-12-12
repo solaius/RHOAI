@@ -10,4 +10,5 @@ export { ExperimentsIcon } from './ExperimentsIcon';
 export { KnowledgeSourcesIcon } from './KnowledgeSourcesIcon';
 export { AutoRAGIcon } from './AutoRAGIcon';
 export { PromptLabIcon } from './PromptLabIcon';
+export { AIAssetEndpointsIcon } from './AIAssetEndpointsIcon';
 

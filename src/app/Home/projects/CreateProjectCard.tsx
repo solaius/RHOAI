@@ -9,7 +9,7 @@ import {
   EmptyStateBody,
   EmptyStateFooter,
 } from '@patternfly/react-core';
-import { OutlinedFolderIcon } from '@patternfly/react-icons';
+import ProjectIcon from './ProjectIcon';
 
 interface CreateProjectCardProps {
   allowCreate: boolean;
@@ -25,10 +25,10 @@ const CreateProjectCard: React.FunctionComponent<CreateProjectCardProps> = ({
   }
 
   return (
-    <Card isFullHeight isFlat data-testid="create-project-card">
+    <Card isFullHeight data-testid="create-project-card">
       <CardBody>
         <Bullseye>
-          <EmptyState variant="xs" icon={OutlinedFolderIcon}>
+          <EmptyState variant="xs" icon={ProjectIcon}>
             <EmptyStateBody>
               Create a new project to organize your AI/ML workloads
             </EmptyStateBody>
