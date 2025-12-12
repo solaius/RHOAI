@@ -36,6 +36,8 @@ import { MyAgents } from '@app/GenAIStudio/MyAgents/MyAgents';
 import { PromptEngineering } from '@app/GenAIStudio/PromptEngineering/PromptEngineering';
 import { KnowledgeSources } from '@app/GenAIStudio/KnowledgeSources/KnowledgeSources';
 import { AutoRAG } from '@app/GenAIStudio/AutoRAG/AutoRAG';
+import { PromptLab } from '@app/GenAIStudio/PromptLab/PromptLab';
+import { PromptDetails } from '@app/GenAIStudio/PromptLab/PromptDetails';
 
 // Observability - imported from migrated src-3.0
 import { Tracing } from '@app/Observability/Tracing/Tracing';
@@ -238,6 +240,13 @@ const routes: AppRouteConfig[] = [
         label: 'AutoRAG',
         path: '/gen-ai-studio/autorag',
         title: 'RHOAI 3.1 Console | Gen AI Studio - AutoRAG',
+      },
+      {
+        element: <PromptLab />,
+        exact: true,
+        label: 'Prompt lab',
+        path: '/gen-ai-studio/prompt-lab',
+        title: 'RHOAI 3.1 Console | Gen AI Studio - Prompt Lab',
       },
       {
         element: <APIKeys />,
@@ -537,6 +546,12 @@ const routes: AppRouteConfig[] = [
     exact: true,
     path: '/ai-hub/deployments/deploy',
     title: 'RHOAI 3.1 Console | Deploy Model',
+  },
+  {
+    element: <PromptDetails />,
+    exact: true,
+    path: '/gen-ai-studio/prompt-lab/:promptId',
+    title: 'RHOAI 3.1 Console | Gen AI Studio - Prompt Details',
   },
   {
     element: <RegisterModel />,

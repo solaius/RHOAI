@@ -92,6 +92,9 @@ import { useDocumentTitle } from '@app/utils/useDocumentTitle';
 import { useFeatureFlags } from '@app/utils/FeatureFlagsContext';
 import { AddVectorStoreModal } from './components/AddVectorStoreModal';
 import { LoadPromptModal } from './components/LoadPromptModal';
+import { CreatePromptModal } from '@app/GenAIStudio/PromptLab/components/CreatePromptModal';
+import { CreateVersionModal } from '@app/GenAIStudio/PromptLab/components/CreateVersionModal';
+import { PromptVariableEditor } from '@app/GenAIStudio/PromptLab/components/PromptVariableEditor';
 import PageIcon from '@app/assets/PageIcon.svg';
 import ChatbotIcon from '@app/assets/chatbotIcon.svg';
 import PlaceholderImage from '@app/assets/placeholderImage.svg';
@@ -112,6 +115,9 @@ const Playground: React.FunctionComponent = () => {
   const [selectedModel, setSelectedModel] = useState('llama-3.1-8b-instruct');
   const [isModelSelectOpen, setIsModelSelectOpen] = useState(false);
   const [isLoadPromptModalOpen, setIsLoadPromptModalOpen] = useState(false);
+  const [isSavePromptModalOpen, setIsSavePromptModalOpen] = useState(false);
+  const [isEditPromptModalOpen, setIsEditPromptModalOpen] = useState(false);
+  const [loadedPrompt, setLoadedPrompt] = useState<any>(null);
   
   // Build panel toggle state (using ToggleGroup instead of Tabs)
   const [selectedBuildTab, setSelectedBuildTab] = useState('model');
