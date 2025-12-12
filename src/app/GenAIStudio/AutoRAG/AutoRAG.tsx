@@ -143,7 +143,7 @@ const AutoRAG: React.FunctionComponent = () => {
   const [hasAddedDocuments, setHasAddedDocuments] = React.useState(false);
   const [isConfiguring, setIsConfiguring] = React.useState(false);
   const [vectorDatabase, setVectorDatabase] = React.useState('Milvus (in line)');
-  const [selectedFoundationModels, setSelectedFoundationModels] = React.useState<Set<string>>(new Set(['1']));
+  const [selectedFoundationModels, setSelectedFoundationModels] = React.useState<Set<string>>(new Set(['1', '2', '3']));
   const [selectedEmbeddingModels, setSelectedEmbeddingModels] = React.useState<Set<string>>(new Set(['1']));
   const [selectAllFoundation, setSelectAllFoundation] = React.useState(false);
   const [selectAllEmbedding, setSelectAllEmbedding] = React.useState(false);
@@ -156,7 +156,7 @@ const AutoRAG: React.FunctionComponent = () => {
   const [sortDirection, setSortDirection] = React.useState<'asc' | 'desc'>('asc');
   const [activeModelTabKey, setActiveModelTabKey] = React.useState<string | number>(0);
   const [isEvaluationSettingsModalOpen, setIsEvaluationSettingsModalOpen] = React.useState(false);
-  const [initialFoundationModels, setInitialFoundationModels] = React.useState<Set<string>>(new Set(['1']));
+  const [initialFoundationModels, setInitialFoundationModels] = React.useState<Set<string>>(new Set(['1', '2', '3']));
   const [initialEmbeddingModels, setInitialEmbeddingModels] = React.useState<Set<string>>(new Set(['1']));
   const [initialCriteria, setInitialCriteria] = React.useState<string>('answer faithfulness');
   const [evaluationSources, setEvaluationSources] = React.useState<Document[]>([]);
@@ -181,6 +181,7 @@ const AutoRAG: React.FunctionComponent = () => {
   const foundationModels: Model[] = [
     { id: '1', name: 'Llama 3.1 8B', description: 'Large language model for general purpose tasks', tag: 'LLM' },
     { id: '2', name: 'Mistral 7B', description: 'Efficient language model for text generation', tag: 'LLM' },
+    { id: '3', name: 'GPT-3.5 Turbo', description: 'Fast and efficient conversational AI model', tag: 'LLM' },
   ];
 
   const embeddingModels: Model[] = [
@@ -915,11 +916,7 @@ const AutoRAG: React.FunctionComponent = () => {
           </FlexItem>
         </Flex>
         <div style={{ color: 'var(--pf-v5-global--Color--200)', marginTop: '0.5rem' }}>
-          {isCreating
-            ? 'Automatically prepare and optimize a RAG pattern based on your document collections'
-            : experimentCreated
-            ? 'Automatically prepare and optimize a RAG pattern based on your document collections'
-            : 'Automatically configure and optimize your Retrieval-Augmented Generation workflows.'}
+          Automatically configure and optimize your Retrieval-Augmented Generation workflows.
         </div>
   </PageSection>
 
@@ -1599,7 +1596,7 @@ const AutoRAG: React.FunctionComponent = () => {
                             <GridItem span={6}>
                               <div id="optimization-metric-column">
                                 <div style={{ fontSize: 'var(--pf-v5-global--FontSize--sm)', color: 'var(--pf-v5-global--Color--200)', marginBottom: '0.5rem', fontWeight: 'bold' }}>
-                                  Optimization metric
+                                  Optimization metric <span style={{ color: '#c9190b' }}>*</span>
                                 </div>
                                 <Flex alignItems={{ default: 'alignItemsCenter' }} spaceItems={{ default: 'spaceItemsSm' }}>
                                   <FlexItem style={{ fontSize: '1.5rem' }} id="optimization-metric-link">
@@ -1621,7 +1618,7 @@ const AutoRAG: React.FunctionComponent = () => {
                             <GridItem span={6}>
                               <div id="models-to-consider-column">
                                 <div style={{ fontSize: 'var(--pf-v5-global--FontSize--sm)', color: 'var(--pf-v5-global--Color--200)', marginBottom: '0.5rem', fontWeight: 'bold' }}>
-                                  Models to consider
+                                  Models to consider <span style={{ color: '#c9190b' }}>*</span>
                                 </div>
                                 {!hasAddedDocuments ? (
                                   <div style={{ 
@@ -1783,7 +1780,7 @@ const AutoRAG: React.FunctionComponent = () => {
             }}>
               <EmptyState headingLevel="h2" titleText="AutoRAG Experiment" icon={PlusCircleIcon} id="autorag-empty-state">
                 <EmptyStateBody>
-                  Automatically prepare and optimize RAG patterns based on your document collection.
+                  Automatically configure and optimize your Retrieval-Augmented Generation workflows.
                 </EmptyStateBody>
                 <EmptyStateFooter>
                   <EmptyStateActions>
@@ -1921,7 +1918,7 @@ const AutoRAG: React.FunctionComponent = () => {
                       variant="primary" 
                       onClick={handleSubmit} 
                       id="autorag-create-button"
-                      isDisabled={!name.trim()}
+                      isDisabled={!name.trim() || !criteria || (selectedFoundationModels.size === 0 && selectedEmbeddingModels.size === 0)}
                     >
                       Create
                     </Button>
@@ -1950,6 +1947,7 @@ const AutoRAG: React.FunctionComponent = () => {
             {/* Models to Test - Tabbed Layout */}
             <FormGroup
               label="Models to test"
+              isRequired
               fieldId="models-to-test"
               style={{ marginBottom: '1.5rem' }}
             >
@@ -2048,6 +2046,7 @@ const AutoRAG: React.FunctionComponent = () => {
             {/* Criteria to Test */}
             <FormGroup
               label="Criteria to test"
+              isRequired
               fieldId="criteria"
               style={{ marginBottom: '1.5rem' }}
             >
