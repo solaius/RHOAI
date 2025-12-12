@@ -40,6 +40,7 @@ import {
   MultipleFileUploadStatus,
   MultipleFileUploadStatusItem,
   PageSection,
+  Radio,
   Select,
   SelectList,
   SelectOption,
@@ -66,6 +67,7 @@ import {
   CogIcon,
   FolderOpenIcon,
   OutlinedFolderIcon,
+  PencilAltIcon,
   PlusCircleIcon,
   PlusIcon,
   DownloadIcon,
@@ -141,11 +143,11 @@ const AutoRAG: React.FunctionComponent = () => {
   const [hasAddedDocuments, setHasAddedDocuments] = React.useState(false);
   const [isConfiguring, setIsConfiguring] = React.useState(false);
   const [vectorDatabase, setVectorDatabase] = React.useState('Milvus (in line)');
-  const [selectedFoundationModels, setSelectedFoundationModels] = React.useState<Set<string>>(new Set());
-  const [selectedEmbeddingModels, setSelectedEmbeddingModels] = React.useState<Set<string>>(new Set());
+  const [selectedFoundationModels, setSelectedFoundationModels] = React.useState<Set<string>>(new Set(['1']));
+  const [selectedEmbeddingModels, setSelectedEmbeddingModels] = React.useState<Set<string>>(new Set(['1']));
   const [selectAllFoundation, setSelectAllFoundation] = React.useState(false);
   const [selectAllEmbedding, setSelectAllEmbedding] = React.useState(false);
-  const [criteria, setCriteria] = React.useState<Set<string>>(new Set());
+  const [criteria, setCriteria] = React.useState<string>('answer faithfulness');
   const [isVectorDbOpen, setIsVectorDbOpen] = React.useState(false);
   const [experimentRunning, setExperimentRunning] = React.useState(false);
   const [experimentCompleted, setExperimentCompleted] = React.useState(false);
@@ -154,6 +156,9 @@ const AutoRAG: React.FunctionComponent = () => {
   const [sortDirection, setSortDirection] = React.useState<'asc' | 'desc'>('asc');
   const [activeModelTabKey, setActiveModelTabKey] = React.useState<string | number>(0);
   const [isEvaluationSettingsModalOpen, setIsEvaluationSettingsModalOpen] = React.useState(false);
+  const [initialFoundationModels, setInitialFoundationModels] = React.useState<Set<string>>(new Set(['1']));
+  const [initialEmbeddingModels, setInitialEmbeddingModels] = React.useState<Set<string>>(new Set(['1']));
+  const [initialCriteria, setInitialCriteria] = React.useState<string>('answer faithfulness');
   const [evaluationSources, setEvaluationSources] = React.useState<Document[]>([]);
   const [activeSourcesTabKey, setActiveSourcesTabKey] = React.useState<string | number>(0);
   const [isEvaluationSourceModalOpen, setIsEvaluationSourceModalOpen] = React.useState(false);
@@ -209,9 +214,9 @@ const AutoRAG: React.FunctionComponent = () => {
     setEvaluationSourceFile(null);
     setEvaluationSourceFilename('');
     setVectorDatabase('Milvus (in line)');
-    setSelectedFoundationModels(new Set());
-    setSelectedEmbeddingModels(new Set());
-    setCriteria(new Set());
+    setSelectedFoundationModels(new Set(['1']));
+    setSelectedEmbeddingModels(new Set(['1']));
+    setCriteria('answer faithfulness');
     setPatternResults([]);
   };
 
@@ -397,7 +402,7 @@ const AutoRAG: React.FunctionComponent = () => {
       evaluationSourceFile: evaluationSourceFile?.name || null,
       foundationModels: Array.from(selectedFoundationModels),
       embeddingModels: Array.from(selectedEmbeddingModels),
-      criteria: Array.from(criteria),
+      criteria: criteria,
     });
     
     // Update experiment status to Processing
@@ -606,7 +611,7 @@ const AutoRAG: React.FunctionComponent = () => {
             status = 'Processing';
           } else if (experimentCompleted) {
             status = 'completed';
-          } else if (documents.length > 0 && evaluationSourceFile && vectorDatabase && criteria.size > 0 && (selectedFoundationModels.size > 0 || selectedEmbeddingModels.size > 0)) {
+          } else if (documents.length > 0 && evaluationSourceFile && vectorDatabase && criteria && (selectedFoundationModels.size > 0 || selectedEmbeddingModels.size > 0)) {
             status = 'incomplete'; // Still incomplete until run
           } else if (documents.length === 0 && !evaluationSourceFile) {
             status = 'incomplete';
@@ -624,7 +629,7 @@ const AutoRAG: React.FunctionComponent = () => {
         return exp;
       }));
     }
-  }, [documents.length, evaluationSourceFile, vectorDatabase, criteria.size, selectedFoundationModels.size, selectedEmbeddingModels.size, experimentRunning, experimentCompleted, selectedExperimentId]);
+  }, [documents.length, evaluationSourceFile, vectorDatabase, criteria, selectedFoundationModels.size, selectedEmbeddingModels.size, experimentRunning, experimentCompleted, selectedExperimentId]);
 
   // Handle clicking on experiment name to navigate
   const handleExperimentClick = (experiment: Experiment) => {
@@ -688,14 +693,61 @@ const AutoRAG: React.FunctionComponent = () => {
     }
   };
 
-  const handleCriteriaToggle = (criterion: string) => {
-    const newSet = new Set(criteria);
-    if (newSet.has(criterion)) {
-      newSet.delete(criterion);
-    } else {
-      newSet.add(criterion);
+  const handleCriteriaChange = (criterion: string) => {
+    setCriteria(criterion);
+  };
+
+  const handleOpenEvaluationSettingsModal = () => {
+    // Store initial values when modal opens
+    setInitialFoundationModels(new Set(selectedFoundationModels));
+    setInitialEmbeddingModels(new Set(selectedEmbeddingModels));
+    setInitialCriteria(criteria);
+    setIsEvaluationSettingsModalOpen(true);
+  };
+
+  const handleSaveEvaluationSettings = () => {
+    // Update initial values to current values after save
+    setInitialFoundationModels(new Set(selectedFoundationModels));
+    setInitialEmbeddingModels(new Set(selectedEmbeddingModels));
+    setInitialCriteria(criteria);
+    setIsEvaluationSettingsModalOpen(false);
+  };
+
+  const handleCancelEvaluationSettings = () => {
+    // Revert to initial values
+    setSelectedFoundationModels(new Set(initialFoundationModels));
+    setSelectedEmbeddingModels(new Set(initialEmbeddingModels));
+    setCriteria(initialCriteria);
+    setIsEvaluationSettingsModalOpen(false);
+  };
+
+  const hasEvaluationSettingsChanged = () => {
+    // Check if foundation models changed
+    if (selectedFoundationModels.size !== initialFoundationModels.size) {
+      return true;
     }
-    setCriteria(newSet);
+    for (const model of selectedFoundationModels) {
+      if (!initialFoundationModels.has(model)) {
+        return true;
+      }
+    }
+    
+    // Check if embedding models changed
+    if (selectedEmbeddingModels.size !== initialEmbeddingModels.size) {
+      return true;
+    }
+    for (const model of selectedEmbeddingModels) {
+      if (!initialEmbeddingModels.has(model)) {
+        return true;
+      }
+    }
+    
+    // Check if criteria changed
+    if (criteria !== initialCriteria) {
+      return true;
+    }
+    
+    return false;
   };
 
 
@@ -1282,7 +1334,7 @@ const AutoRAG: React.FunctionComponent = () => {
             <div style={{ flex: 1, overflowY: 'auto', paddingBottom: '100px' }}>
               <Grid hasGutter>
                 {/* Column 1: Documents */}
-                <GridItem span={3} style={{ display: 'flex' }}>
+                <GridItem span={4} style={{ display: 'flex' }}>
                 <Card id="autorag-documents-card" style={{ display: 'flex', flexDirection: 'column', flex: 1, width: '100%' }}>
                   <CardHeader>
                     <CardTitle>
@@ -1352,22 +1404,20 @@ const AutoRAG: React.FunctionComponent = () => {
                             <Thead>
                               <Tr>
                                 <Th>Name</Th>
-                                <Th>Type</Th>
                                 <Th>Source</Th>
-                                <Th width={10}>Actions</Th>
+                                <Th modifier="fitContent">Actions</Th>
                               </Tr>
                             </Thead>
                             <Tbody>
                               {documents.map((doc) => (
                                 <Tr key={doc.id} id={`document-row-${doc.id}`}>
                                   <Td dataLabel="Name">{doc.name}</Td>
-                                  <Td dataLabel="Type">{doc.type}</Td>
                                   <Td dataLabel="Source">
                                     <Label color={doc.sourceType === 'connection' ? 'blue' : 'grey'}>
                                       {doc.sourceType === 'connection' ? 'Connection' : 'Document'}
                                     </Label>
                                   </Td>
-                                  <Td dataLabel="Actions">
+                                  <Td dataLabel="Actions" modifier="fitContent">
                                     <Button
                                       variant="plain"
                                       onClick={() => handleFileRemove(doc.id)}
@@ -1389,7 +1439,7 @@ const AutoRAG: React.FunctionComponent = () => {
               </GridItem>
 
               {/* Column 2: Configure Details */}
-              <GridItem span={9} style={{ display: 'flex' }}>
+              <GridItem span={8} style={{ display: 'flex' }}>
                     <Card id="autorag-configure-card" style={{ 
                       display: 'flex', 
                       flexDirection: 'column', 
@@ -1464,6 +1514,7 @@ const AutoRAG: React.FunctionComponent = () => {
                           {/* Evaluation Source */}
                           <FormGroup
                             label="Add the data source you would like to use for evaluation."
+                            isRequired
                             fieldId="evaluation-source"
                             style={{ marginBottom: '1.5rem' }}
                           >
@@ -1498,14 +1549,13 @@ const AutoRAG: React.FunctionComponent = () => {
                             />
                             <FormHelperText>
                               <HelperText>
-                                <HelperTextItem>Optionally supply a JSON or YAML file with test questions and answers to evaluate the quality of Q&A responses. If none are selected, evaluation data will be automatically generated with an LLM.</HelperTextItem>
                                 <HelperTextItem>
+                                  Supply a JSON or YAML file with test questions and answers to evaluate the quality of Q&A responses.{' '}
                                   <Button
                                     variant="link"
                                     isInline
                                     onClick={() => setIsEvaluationSourceModalOpen(true)}
                                     id="what-is-evaluation-source-link"
-                                    style={{ paddingLeft: 0 }}
                                   >
                                     What is an evaluation source?
                                   </Button>
@@ -1522,17 +1572,21 @@ const AutoRAG: React.FunctionComponent = () => {
                                 <div style={{ fontSize: 'var(--pf-v5-global--FontSize--sm)', color: 'var(--pf-v5-global--Color--200)', marginBottom: '0.5rem', fontWeight: 'bold' }}>
                                   Optimization metric
                                 </div>
-                                <div style={{ fontSize: '1.5rem', marginBottom: '0.5rem' }} id="optimization-metric-link">
-                                  {criteria.size > 0 ? Array.from(criteria).join(', ') : 'None selected'}
-                                </div>
-                                <Button
-                                  variant="secondary"
-                                  onClick={() => setIsEvaluationSettingsModalOpen(true)}
-                                  id="optimization-metric-select-button"
-                                  size="sm"
-                                >
-                                  Select
-                                </Button>
+                                <Flex alignItems={{ default: 'alignItemsCenter' }} spaceItems={{ default: 'spaceItemsSm' }}>
+                                  <FlexItem style={{ fontSize: '1.5rem' }} id="optimization-metric-link">
+                                    {criteria || 'None selected'}
+                                  </FlexItem>
+                                  <FlexItem>
+                                    <Button
+                                      variant="plain"
+                                      onClick={handleOpenEvaluationSettingsModal}
+                                      id="optimization-metric-edit-button"
+                                      aria-label="Edit optimization metric"
+                                    >
+                                      <PencilAltIcon />
+                                    </Button>
+                                  </FlexItem>
+                                </Flex>
                               </div>
                             </GridItem>
                             <GridItem span={6}>
@@ -1550,21 +1604,23 @@ const AutoRAG: React.FunctionComponent = () => {
                                     Upload one or more document in the Documents column to get started.
                                   </div>
                                 ) : (
-                                  <>
-                                    <div style={{ fontSize: '1.5rem', marginBottom: '0.5rem' }} id="models-to-consider-link">
+                                  <Flex alignItems={{ default: 'alignItemsCenter' }} spaceItems={{ default: 'spaceItemsSm' }}>
+                                    <FlexItem style={{ fontSize: '1.5rem' }} id="models-to-consider-link">
                                       {selectedFoundationModels.size > 0 || selectedEmbeddingModels.size > 0
                                         ? `${selectedFoundationModels.size} foundation${selectedFoundationModels.size !== 1 ? 's' : ''}, ${selectedEmbeddingModels.size} embedding${selectedEmbeddingModels.size !== 1 ? 's' : ''}`
                                         : 'None selected'}
-                                    </div>
-                                    <Button
-                                      variant="secondary"
-                                      onClick={() => setIsEvaluationSettingsModalOpen(true)}
-                                      id="models-to-consider-select-button"
-                                      size="sm"
-                                    >
-                                      Select
-                                    </Button>
-                                  </>
+                                    </FlexItem>
+                                    <FlexItem>
+                                      <Button
+                                        variant="plain"
+                                        onClick={handleOpenEvaluationSettingsModal}
+                                        id="models-to-consider-edit-button"
+                                        aria-label="Edit models to consider"
+                                      >
+                                        <PencilAltIcon />
+                                      </Button>
+                                    </FlexItem>
+                                  </Flex>
                                 )}
                               </div>
                             </GridItem>
@@ -1604,7 +1660,7 @@ const AutoRAG: React.FunctionComponent = () => {
                         documents.length === 0 ||
                         evaluationSourceFile === null ||
                         vectorDatabase === '' ||
-                        criteria.size === 0 ||
+                        !criteria ||
                         (selectedFoundationModels.size === 0 && selectedEmbeddingModels.size === 0)
                       }
                     >
@@ -1852,12 +1908,12 @@ const AutoRAG: React.FunctionComponent = () => {
       <Modal
         variant={ModalVariant.large}
         isOpen={isEvaluationSettingsModalOpen}
-        onClose={() => setIsEvaluationSettingsModalOpen(false)}
+        onClose={handleCancelEvaluationSettings}
         id="evaluation-settings-modal"
       >
         <ModalHeader>
           <Title headingLevel="h2" size="xl" id="evaluation-settings-modal-title">
-            Evaluation source settings
+            Experiment settings
           </Title>
         </ModalHeader>
         <ModalBody>
@@ -1895,7 +1951,6 @@ const AutoRAG: React.FunctionComponent = () => {
                           <Th width={10}></Th>
                           <Th>Name</Th>
                           <Th>Description</Th>
-                          <Th>Tag</Th>
                         </Tr>
                       </Thead>
                       <Tbody>
@@ -1910,9 +1965,6 @@ const AutoRAG: React.FunctionComponent = () => {
                             </Td>
                             <Td dataLabel="Name">{model.name}</Td>
                             <Td dataLabel="Description">{model.description}</Td>
-                            <Td dataLabel="Tag">
-                              <Label>{model.tag}</Label>
-                            </Td>
                           </Tr>
                         ))}
                       </Tbody>
@@ -1941,7 +1993,6 @@ const AutoRAG: React.FunctionComponent = () => {
                           <Th width={10}></Th>
                           <Th>Name</Th>
                           <Th>Description</Th>
-                          <Th>Tag</Th>
                         </Tr>
                       </Thead>
                       <Tbody>
@@ -1956,9 +2007,6 @@ const AutoRAG: React.FunctionComponent = () => {
                             </Td>
                             <Td dataLabel="Name">{model.name}</Td>
                             <Td dataLabel="Description">{model.description}</Td>
-                            <Td dataLabel="Tag">
-                              <Label>{model.tag}</Label>
-                            </Td>
                           </Tr>
                         ))}
                       </Tbody>
@@ -1976,26 +2024,29 @@ const AutoRAG: React.FunctionComponent = () => {
             >
               <Flex direction={{ default: 'column' }} spaceItems={{ default: 'spaceItemsSm' }}>
                 <FlexItem>
-                  <Checkbox
+                  <Radio
                     id="criteria-faithfulness"
-                    isChecked={criteria.has('answer faithfulness')}
-                    onChange={() => handleCriteriaToggle('answer faithfulness')}
+                    name="criteria"
+                    isChecked={criteria === 'answer faithfulness'}
+                    onChange={() => handleCriteriaChange('answer faithfulness')}
                     label="Answer faithfulness"
                   />
                 </FlexItem>
                 <FlexItem>
-                  <Checkbox
+                  <Radio
                     id="criteria-correctness"
-                    isChecked={criteria.has('answer correctness')}
-                    onChange={() => handleCriteriaToggle('answer correctness')}
+                    name="criteria"
+                    isChecked={criteria === 'answer correctness'}
+                    onChange={() => handleCriteriaChange('answer correctness')}
                     label="Answer correctness"
                   />
                 </FlexItem>
                 <FlexItem>
-                  <Checkbox
+                  <Radio
                     id="criteria-context"
-                    isChecked={criteria.has('context correctness')}
-                    onChange={() => handleCriteriaToggle('context correctness')}
+                    name="criteria"
+                    isChecked={criteria === 'context correctness'}
+                    onChange={() => handleCriteriaChange('context correctness')}
                     label="Context correctness"
                   />
                 </FlexItem>
@@ -2004,8 +2055,16 @@ const AutoRAG: React.FunctionComponent = () => {
           </Form>
         </ModalBody>
         <ModalFooter>
-          <Button variant="primary" onClick={() => setIsEvaluationSettingsModalOpen(false)} id="evaluation-settings-close-button">
-            Close
+          <Button 
+            variant="primary" 
+            onClick={handleSaveEvaluationSettings} 
+            id="evaluation-settings-save-button"
+            isDisabled={!hasEvaluationSettingsChanged()}
+          >
+            Save
+          </Button>
+          <Button variant="link" onClick={handleCancelEvaluationSettings} id="evaluation-settings-cancel-button">
+            Cancel
           </Button>
         </ModalFooter>
       </Modal>
