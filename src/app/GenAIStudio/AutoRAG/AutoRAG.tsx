@@ -74,9 +74,9 @@ import {
   CopyIcon,
   CheckCircleIcon,
   SyncIcon,
-  StarIcon,
 } from '@patternfly/react-icons';
 import { useFeatureFlags } from '@app/utils/FeatureFlagsContext';
+import PipelineVisualization from '@app/assets/Gemini_Generated_Image_w6e0x1w6e0x1w6e0.png';
 
 interface Document {
   id: string;
@@ -179,9 +179,9 @@ const AutoRAG: React.FunctionComponent = () => {
 
   // Mock data for models
   const foundationModels: Model[] = [
-    { id: '1', name: 'Llama 3.1 8B', description: 'Large language model for general purpose tasks', tag: 'LLM' },
-    { id: '2', name: 'Mistral 7B', description: 'Efficient language model for text generation', tag: 'LLM' },
-    { id: '3', name: 'GPT-3.5 Turbo', description: 'Fast and efficient conversational AI model', tag: 'LLM' },
+    { id: '1', name: 'gpt-oss-120b', description: 'Large language model for general purpose tasks', tag: 'LLM' },
+    { id: '2', name: 'llama-4-ma', description: 'Efficient language model for text generation', tag: 'LLM' },
+    { id: '3', name: 'llama-3-3-70b', description: 'Fast and efficient conversational AI model', tag: 'LLM' },
   ];
 
   const embeddingModels: Model[] = [
@@ -426,7 +426,7 @@ const AutoRAG: React.FunctionComponent = () => {
         id: '1',
         rank: 1,
         patternName: 'Pattern 1',
-        modelName: 'Foundation Model 1',
+        modelName: 'llama-4-ma',
         answerFaithfulness: 0.95,
         chunkMethod: 'Semantic',
         chunkSize: 512,
@@ -436,7 +436,7 @@ const AutoRAG: React.FunctionComponent = () => {
         id: '2',
         rank: 2,
         patternName: 'Pattern 2',
-        modelName: 'Foundation Model 1',
+        modelName: 'gpt-oss-120b',
         answerFaithfulness: 0.92,
         chunkMethod: 'Fixed',
         chunkSize: 256,
@@ -446,7 +446,7 @@ const AutoRAG: React.FunctionComponent = () => {
         id: '3',
         rank: 3,
         patternName: 'Pattern 3',
-        modelName: 'Foundation Model 2',
+        modelName: 'gpt-oss-120b',
         answerFaithfulness: 0.89,
         chunkMethod: 'Semantic',
         chunkSize: 1024,
@@ -456,7 +456,7 @@ const AutoRAG: React.FunctionComponent = () => {
         id: '4',
         rank: 4,
         patternName: 'Pattern 4',
-        modelName: 'Foundation Model 2',
+        modelName: 'llama-4-ma',
         answerFaithfulness: 0,
         chunkMethod: 'Fixed',
         chunkSize: 512,
@@ -466,7 +466,7 @@ const AutoRAG: React.FunctionComponent = () => {
         id: '5',
         rank: 5,
         patternName: 'Pattern 5',
-        modelName: 'Foundation Model 3',
+        modelName: 'llama-3-3-70b',
         answerFaithfulness: 0,
         chunkMethod: 'Semantic',
         chunkSize: 256,
@@ -476,7 +476,7 @@ const AutoRAG: React.FunctionComponent = () => {
         id: '6',
         rank: 6,
         patternName: 'Pattern 6',
-        modelName: 'Foundation Model 3',
+        modelName: 'llama-3-3-70b',
         answerFaithfulness: 0,
         chunkMethod: 'Fixed',
         chunkSize: 1024,
@@ -1017,103 +1017,24 @@ const AutoRAG: React.FunctionComponent = () => {
               </CardHeader>
               <CardBody>
                 <div style={{ 
-                  padding: '2.5rem', 
+                  padding: '2rem', 
                   backgroundColor: 'var(--pf-v5-global--BackgroundColor--200)', 
                   borderRadius: '4px',
-                  border: '1px solid var(--pf-v5-global--BorderColor--100)'
+                  border: '1px solid var(--pf-v5-global--BorderColor--100)',
+                  display: 'flex',
+                  justifyContent: 'center',
+                  alignItems: 'center'
                 }}>
-              <Flex alignItems={{ default: 'alignItemsCenter' }} spaceItems={{ default: 'spaceItemsLg' }} wrap="wrap">
-                {/* Step 1 */}
-                <FlexItem>
-                  <Label color="grey" style={{ padding: '0.75rem 1rem', fontSize: 'var(--pf-v5-global--FontSize--md)', minWidth: '100px', textAlign: 'center' }} id="pipeline-step-1">
-                    Step 1
-                  </Label>
-                </FlexItem>
-                <FlexItem>
-                  <div style={{ fontSize: '1.5rem' }}>→</div>
-                </FlexItem>
-                
-                {/* Step 2 */}
-                <FlexItem>
-                  <Label color="grey" style={{ padding: '0.75rem 1rem', fontSize: 'var(--pf-v5-global--FontSize--md)', minWidth: '100px', textAlign: 'center' }} id="pipeline-step-2">
-                    Step 2
-                  </Label>
-                </FlexItem>
-                <FlexItem>
-                  <div style={{ fontSize: '1.5rem' }}>→</div>
-                </FlexItem>
-                
-                {/* Step 3 */}
-                <FlexItem>
-                  <Label color="grey" style={{ padding: '0.75rem 1rem', fontSize: 'var(--pf-v5-global--FontSize--md)', minWidth: '100px', textAlign: 'center' }} id="pipeline-step-3">
-                    Step 3
-                  </Label>
-                </FlexItem>
-                <FlexItem>
-                  <div style={{ fontSize: '1.5rem' }}>→</div>
-                </FlexItem>
-                
-                {/* Foundation Models Branch */}
-                <FlexItem>
-                  <Flex direction={{ default: 'column' }} spaceItems={{ default: 'spaceItemsSm' }} alignItems={{ default: 'alignItemsCenter' }}>
-                    <Label color="grey" style={{ padding: '0.75rem 1rem', fontSize: 'var(--pf-v5-global--FontSize--md)', minWidth: '120px', textAlign: 'center' }} id="pipeline-foundation-model-1">
-                      Foundation Model 1
-                    </Label>
-                    <div style={{ fontSize: '1.5rem' }}>↓</div>
-                    <Flex spaceItems={{ default: 'spaceItemsSm' }} alignItems={{ default: 'alignItemsCenter' }}>
-                      <StarIcon style={{ color: '#f0ab00', fontSize: 'var(--pf-v5-global--FontSize--md)' }} id="pipeline-star-icon" />
-                      <Label color="grey" style={{ padding: '0.5rem 0.75rem', fontSize: 'var(--pf-v5-global--FontSize--sm)' }} id="pipeline-pattern-1">
-                        Pattern 1
-                      </Label>
-                      <Label color="grey" style={{ padding: '0.5rem 0.75rem', fontSize: 'var(--pf-v5-global--FontSize--sm)' }} id="pipeline-pattern-2">
-                        Pattern 2
-                      </Label>
-                    </Flex>
-                  </Flex>
-                </FlexItem>
-                
-                <FlexItem>
-                  <div style={{ fontSize: '1.5rem' }}>→</div>
-                </FlexItem>
-                
-                <FlexItem>
-                  <Flex direction={{ default: 'column' }} spaceItems={{ default: 'spaceItemsSm' }} alignItems={{ default: 'alignItemsCenter' }}>
-                    <Label color="grey" style={{ padding: '0.75rem 1rem', fontSize: 'var(--pf-v5-global--FontSize--md)', minWidth: '120px', textAlign: 'center' }} id="pipeline-foundation-model-2">
-                      Foundation Model 2
-                    </Label>
-                    <div style={{ fontSize: '1.5rem' }}>↓</div>
-                    <Flex spaceItems={{ default: 'spaceItemsSm' }}>
-                      <Label color="grey" style={{ padding: '0.5rem 0.75rem', fontSize: 'var(--pf-v5-global--FontSize--sm)' }} id="pipeline-pattern-3">
-                        Pattern 3
-                      </Label>
-                      <Label color="grey" style={{ padding: '0.5rem 0.75rem', fontSize: 'var(--pf-v5-global--FontSize--sm)' }} id="pipeline-pattern-4">
-                        Pattern 4
-                      </Label>
-                    </Flex>
-                  </Flex>
-                </FlexItem>
-                
-                <FlexItem>
-                  <div style={{ fontSize: '1.5rem' }}>→</div>
-                </FlexItem>
-                
-                <FlexItem>
-                  <Flex direction={{ default: 'column' }} spaceItems={{ default: 'spaceItemsSm' }} alignItems={{ default: 'alignItemsCenter' }}>
-                    <Label color="grey" style={{ padding: '0.75rem 1rem', fontSize: 'var(--pf-v5-global--FontSize--md)', minWidth: '120px', textAlign: 'center' }} id="pipeline-foundation-model-3">
-                      Foundation Model 3
-                    </Label>
-                    <div style={{ fontSize: '1.5rem' }}>↓</div>
-                    <Flex spaceItems={{ default: 'spaceItemsSm' }}>
-                      <Label color="grey" style={{ padding: '0.5rem 0.75rem', fontSize: 'var(--pf-v5-global--FontSize--sm)' }} id="pipeline-pattern-5">
-                        Pattern 5
-                      </Label>
-                      <Label color="grey" style={{ padding: '0.5rem 0.75rem', fontSize: 'var(--pf-v5-global--FontSize--sm)' }} id="pipeline-pattern-6">
-                        Pattern 6
-                      </Label>
-                    </Flex>
-                  </Flex>
-                </FlexItem>
-              </Flex>
+                  <img 
+                    src={PipelineVisualization} 
+                    alt="AutoRAG Pipeline Visualization showing the experiment flow from document collection through evaluation with multiple models" 
+                    style={{ 
+                      maxWidth: '100%', 
+                      height: 'auto',
+                      display: 'block'
+                    }}
+                    id="pipeline-visualization-image"
+                  />
                 </div>
               </CardBody>
             </Card>
