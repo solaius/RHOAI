@@ -922,9 +922,18 @@ const AutoRAG: React.FunctionComponent = () => {
       )}
 
       {/* Content: Empty State, Form, Experiment View, or Results */}
-      <PageSection style={{ paddingTop: '0.5rem' }} id="autorag-content">
+      <PageSection 
+        style={{ 
+          paddingTop: '0.5rem',
+          display: 'flex',
+          flexDirection: 'column',
+          minHeight: 'calc(100vh - 200px)',
+          flex: 1
+        }} 
+        id="autorag-content"
+      >
         {experimentCompleted ? (
-          <>
+          <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: '400px' }}>
             {/* Results Screen Header */}
             <Flex justifyContent={{ default: 'justifyContentSpaceBetween' }} alignItems={{ default: 'alignItemsCenter' }} style={{ marginBottom: '2rem' }}>
               <FlexItem>
@@ -1246,7 +1255,7 @@ const AutoRAG: React.FunctionComponent = () => {
             </Table>
               </CardBody>
             </Card>
-          </>
+          </div>
         ) : experimentCreated ? (
           <>
             {/* Experiment Header */}
@@ -1264,8 +1273,8 @@ const AutoRAG: React.FunctionComponent = () => {
             </Flex>
 
             {/* Configuration Screen */}
-            <div style={{ display: 'flex', flexDirection: 'column', minHeight: 'calc(100vh - 400px)' }}>
-            <Grid hasGutter>
+            <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: '400px' }}>
+            <Grid hasGutter style={{ flex: 1, display: 'flex' }}>
               {/* Column 1: Documents */}
               <GridItem span={3} style={{ display: 'flex' }}>
                 <Card id="autorag-documents-card" style={{ display: 'flex', flexDirection: 'column', flex: 1, width: '100%' }}>
@@ -1592,10 +1601,10 @@ const AutoRAG: React.FunctionComponent = () => {
                   </div>
                 </div>
             </div>
-              </>
-            ) : !isCreating ? (
+          </>
+        ) : !isCreating ? (
           experiments.length > 0 ? (
-            <>
+            <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: '400px' }}>
               {/* Experiments Table View */}
               <Flex justifyContent={{ default: 'justifyContentFlexEnd' }} style={{ marginBottom: '1.5rem' }}>
                 <Button variant="primary" onClick={handleCreateExperiment} id="create-new-experiment-button">
@@ -1665,24 +1674,32 @@ const AutoRAG: React.FunctionComponent = () => {
                   ))}
                 </Tbody>
               </Table>
-            </>
+            </div>
           ) : (
-            <EmptyState headingLevel="h2" titleText="AutoRAG Experiment" icon={PlusCircleIcon} id="autorag-empty-state">
-              <EmptyStateBody>
-                Automatically prepare and optimize RAG patterns based on your document collection.
-              </EmptyStateBody>
-              <EmptyStateFooter>
-                <EmptyStateActions>
-                  <Button variant="primary" onClick={handleCreateExperiment} id="create-autorag-experiment-button">
-                    Create AutoRAG Experiment
-                  </Button>
-                </EmptyStateActions>
-              </EmptyStateFooter>
-            </EmptyState>
+            <div style={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              justifyContent: 'center',
+              flex: 1,
+              minHeight: '400px'
+            }}>
+              <EmptyState headingLevel="h2" titleText="AutoRAG Experiment" icon={PlusCircleIcon} id="autorag-empty-state">
+                <EmptyStateBody>
+                  Automatically prepare and optimize RAG patterns based on your document collection.
+                </EmptyStateBody>
+                <EmptyStateFooter>
+                  <EmptyStateActions>
+                    <Button variant="primary" onClick={handleCreateExperiment} id="create-autorag-experiment-button">
+                      Create AutoRAG Experiment
+                    </Button>
+                  </EmptyStateActions>
+                </EmptyStateFooter>
+              </EmptyState>
+            </div>
           )
         ) : (
           <>
-            <div style={{ display: 'flex', flexDirection: 'column', minHeight: 'calc(100vh - 300px)' }}>
+            <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: '400px' }}>
               <Form id="autorag-experiment-form" isWidthLimited>
                 <Title headingLevel="h2" size="md" id="autorag-details-header" style={{ marginTop: '1.5rem', marginBottom: '0.25rem' }}>
                   Define Details
