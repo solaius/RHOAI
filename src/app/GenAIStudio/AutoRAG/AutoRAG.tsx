@@ -1273,10 +1273,16 @@ const AutoRAG: React.FunctionComponent = () => {
             </Flex>
 
             {/* Configuration Screen */}
-            <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: '400px' }}>
-            <Grid hasGutter style={{ flex: 1, display: 'flex' }}>
-              {/* Column 1: Documents */}
-              <GridItem span={3} style={{ display: 'flex' }}>
+            <div style={{ 
+              display: 'flex', 
+              flexDirection: 'column', 
+              flex: 1, 
+              minHeight: '400px'
+            }}>
+            <div style={{ flex: 1, overflowY: 'auto', paddingBottom: '100px' }}>
+              <Grid hasGutter>
+                {/* Column 1: Documents */}
+                <GridItem span={3} style={{ display: 'flex' }}>
                 <Card id="autorag-documents-card" style={{ display: 'flex', flexDirection: 'column', flex: 1, width: '100%' }}>
                   <CardHeader>
                     <CardTitle>
@@ -1569,37 +1575,44 @@ const AutoRAG: React.FunctionComponent = () => {
                     </Card>
               </GridItem>
             </Grid>
+            </div>
 
-                <div style={{ marginTop: 'auto', paddingTop: '2rem' }}>
-                  <Divider style={{ marginBottom: '1.5rem' }} />
-                  {/* Bottom Action Bar */}
-                  <div style={{ 
-                    padding: '1rem 1.5rem', 
-                    backgroundColor: 'var(--pf-v5-global--BackgroundColor--200)', 
-                    borderTop: '1px solid var(--pf-v5-global--BorderColor--200)',
-                    display: 'flex',
-                    justifyContent: 'flex-end',
-                    gap: '1rem'
-                  }}>
-                  <Button variant="secondary" onClick={handleBack} id="config-back-button">
-                    Back to experiments
-                  </Button>
-                  <Button 
-                    variant="primary" 
-                    onClick={handleRunExperiment} 
-                    id="run-experiment-button"
-                    isDisabled={
-                      documents.length === 0 ||
-                      evaluationSourceFile === null ||
-                      vectorDatabase === '' ||
-                      criteria.size === 0 ||
-                      (selectedFoundationModels.size === 0 && selectedEmbeddingModels.size === 0)
-                    }
-                  >
-                    Run experiment
-                  </Button>
-                  </div>
-                </div>
+              {/* Sticky Footer */}
+              <div style={{ 
+                position: 'fixed',
+                bottom: 0,
+                left: 0,
+                right: 0,
+                backgroundColor: '#ffffff',
+                borderTop: '1px solid var(--pf-v5-global--BorderColor--100)',
+                boxShadow: '0 -2px 4px rgba(0,0,0,0.1)',
+                padding: '1rem 1.5rem',
+                zIndex: 100
+              }}>
+                <Flex justifyContent={{ default: 'justifyContentFlexEnd' }} spaceItems={{ default: 'spaceItemsSm' }}>
+                  <FlexItem>
+                    <Button variant="secondary" onClick={handleBack} id="config-back-button">
+                      Back to experiments
+                    </Button>
+                  </FlexItem>
+                  <FlexItem>
+                    <Button 
+                      variant="primary" 
+                      onClick={handleRunExperiment} 
+                      id="run-experiment-button"
+                      isDisabled={
+                        documents.length === 0 ||
+                        evaluationSourceFile === null ||
+                        vectorDatabase === '' ||
+                        criteria.size === 0 ||
+                        (selectedFoundationModels.size === 0 && selectedEmbeddingModels.size === 0)
+                      }
+                    >
+                      Run experiment
+                    </Button>
+                  </FlexItem>
+                </Flex>
+              </div>
             </div>
           </>
         ) : !isCreating ? (
@@ -1699,99 +1712,120 @@ const AutoRAG: React.FunctionComponent = () => {
           )
         ) : (
           <>
-            <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: '400px' }}>
-              <Form id="autorag-experiment-form" isWidthLimited>
-                <Title headingLevel="h2" size="md" id="autorag-details-header" style={{ marginTop: '1.5rem', marginBottom: '0.25rem' }}>
-                  Define Details
-                </Title>
+            <div style={{ 
+              display: 'flex', 
+              flexDirection: 'column', 
+              flex: 1, 
+              minHeight: '400px'
+            }}>
+              <div style={{ 
+                flex: 1, 
+                overflowY: 'auto',
+                paddingBottom: '100px'
+              }}>
+                <Form id="autorag-experiment-form" isWidthLimited>
+                  <Title headingLevel="h2" size="md" id="autorag-details-header" style={{ marginTop: '1.5rem', marginBottom: '0.25rem' }}>
+                    Define Details
+                  </Title>
 
-                <FormGroup label="Name" isRequired fieldId="autorag-name" style={{ marginTop: '0.25rem' }}>
-                  <TextInput
-                    isRequired
-                    type="text"
-                    id="autorag-name"
-                    name="autorag-name"
-                    value={name}
-                    onChange={(_event, value) => {
-                      setName(value);
-                      if (errors.name) {
-                        setErrors({ ...errors, name: '' });
-                      }
-                    }}
-                    validated={errors.name ? 'error' : 'default'}
-                  />
-                  {errors.name && (
+                  <FormGroup label="Name" isRequired fieldId="autorag-name" style={{ marginTop: '0.25rem' }}>
+                    <TextInput
+                      isRequired
+                      type="text"
+                      id="autorag-name"
+                      name="autorag-name"
+                      value={name}
+                      onChange={(_event, value) => {
+                        setName(value);
+                        if (errors.name) {
+                          setErrors({ ...errors, name: '' });
+                        }
+                      }}
+                      validated={errors.name ? 'error' : 'default'}
+                    />
+                    {errors.name && (
+                      <FormHelperText>
+                        <HelperText>
+                          <HelperTextItem variant="error">{errors.name}</HelperTextItem>
+                        </HelperText>
+                      </FormHelperText>
+                    )}
+                  </FormGroup>
+
+                  <FormGroup label="Description" fieldId="autorag-description" style={{ marginTop: '1rem' }}>
+                    <TextArea
+                      type="text"
+                      id="autorag-description"
+                      name="autorag-description"
+                      value={description}
+                      onChange={(_event, value) => setDescription(value)}
+                      rows={3}
+                    />
+                  </FormGroup>
+
+                  <FormGroup label="Tags" fieldId="autorag-tags" style={{ marginTop: '1rem' }}>
+                    <InputGroup>
+                      <InputGroupItem isFill>
+                        <TextInput
+                          type="text"
+                          id="autorag-tags-input"
+                          name="autorag-tags-input"
+                          value={tagInput}
+                          onChange={handleTagInputChange}
+                          onKeyDown={handleTagInputKeyDown}
+                          placeholder="Enter tags separated by commas"
+                        />
+                      </InputGroupItem>
+                      <InputGroupItem>
+                        <Button
+                          variant="control"
+                          onClick={handleAddTag}
+                          isDisabled={!tagInput.trim()}
+                          id="autorag-add-tag-button"
+                          aria-label="Add tag"
+                        >
+                          <PlusIcon />
+                        </Button>
+                      </InputGroupItem>
+                    </InputGroup>
                     <FormHelperText>
                       <HelperText>
-                        <HelperTextItem variant="error">{errors.name}</HelperTextItem>
+                        <HelperTextItem>Add tags to make assets easier to find</HelperTextItem>
                       </HelperText>
                     </FormHelperText>
-                  )}
-                </FormGroup>
+                    {tags.length > 0 && (
+                      <div style={{ marginTop: '0.5rem' }}>
+                        <LabelGroup id="autorag-tags-group">
+                          {tags.map((tag) => (
+                            <Label
+                              key={tag}
+                              variant="outline"
+                              onClose={() => handleRemoveTag(tag)}
+                              id={`autorag-tag-${tag}`}
+                            >
+                              {tag}
+                            </Label>
+                          ))}
+                        </LabelGroup>
+                      </div>
+                    )}
+                  </FormGroup>
+                </Form>
+              </div>
 
-                <FormGroup label="Description" fieldId="autorag-description" style={{ marginTop: '1rem' }}>
-                  <TextArea
-                    type="text"
-                    id="autorag-description"
-                    name="autorag-description"
-                    value={description}
-                    onChange={(_event, value) => setDescription(value)}
-                    rows={3}
-                  />
-                </FormGroup>
-
-                <FormGroup label="Tags" fieldId="autorag-tags" style={{ marginTop: '1rem' }}>
-                  <InputGroup>
-                    <InputGroupItem isFill>
-                      <TextInput
-                        type="text"
-                        id="autorag-tags-input"
-                        name="autorag-tags-input"
-                        value={tagInput}
-                        onChange={handleTagInputChange}
-                        onKeyDown={handleTagInputKeyDown}
-                        placeholder="Enter tags separated by commas"
-                      />
-                    </InputGroupItem>
-                    <InputGroupItem>
-                      <Button
-                        variant="control"
-                        onClick={handleAddTag}
-                        isDisabled={!tagInput.trim()}
-                        id="autorag-add-tag-button"
-                        aria-label="Add tag"
-                      >
-                        <PlusIcon />
-                      </Button>
-                    </InputGroupItem>
-                  </InputGroup>
-                  <FormHelperText>
-                    <HelperText>
-                      <HelperTextItem>Add tags to make assets easier to find</HelperTextItem>
-                    </HelperText>
-                  </FormHelperText>
-                  {tags.length > 0 && (
-                    <div style={{ marginTop: '0.5rem' }}>
-                      <LabelGroup id="autorag-tags-group">
-                        {tags.map((tag) => (
-                          <Label
-                            key={tag}
-                            variant="outline"
-                            onClose={() => handleRemoveTag(tag)}
-                            id={`autorag-tag-${tag}`}
-                          >
-                            {tag}
-                          </Label>
-                        ))}
-                      </LabelGroup>
-                    </div>
-                  )}
-                </FormGroup>
-              </Form>
-
-              <div style={{ marginTop: 'auto', paddingTop: '2rem' }}>
-                <Divider style={{ marginBottom: '1.5rem' }} />
-                <Flex style={{ gap: '1rem', justifyContent: 'flex-end' }}>
+              {/* Sticky Footer */}
+              <div style={{ 
+                position: 'fixed',
+                bottom: 0,
+                left: 0,
+                right: 0,
+                backgroundColor: '#ffffff',
+                borderTop: '1px solid var(--pf-v5-global--BorderColor--100)',
+                boxShadow: '0 -2px 4px rgba(0,0,0,0.1)',
+                padding: '1rem 1.5rem',
+                zIndex: 100
+              }}>
+                <Flex justifyContent={{ default: 'justifyContentFlexEnd' }} spaceItems={{ default: 'spaceItemsSm' }}>
                   <FlexItem>
                     <Button variant="secondary" onClick={handleCancel} id="autorag-cancel-button">
                       Cancel
