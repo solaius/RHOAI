@@ -587,6 +587,7 @@ const AppLayout: React.FunctionComponent<IAppLayout> = ({ children }) => {
         sidebar={sidebarOpen && Sidebar}
         skipToContent={PageSkipToContent}
         style={{ flex: 1, minHeight: 0 }}
+        isContentFilled
       >
         {children}
       </Page>

@@ -1,6 +1,10 @@
 import * as React from 'react';
 import {
   Button,
+  ClipboardCopyButton,
+  CodeBlock,
+  CodeBlockAction,
+  CodeBlockCode,
   Flex,
   FlexItem,
   Grid,
@@ -19,86 +23,92 @@ interface DiffSegment {
   text: string;
 }
 
-// Simple diff algorithm for comparing two texts
-const generateDiff = (text1: string, text2: string): { left: DiffSegment[]; right: DiffSegment[] } => {
-  const words1 = text1.split(/(\s+)/);
-  const words2 = text2.split(/(\s+)/);
+// Line-by-line diff algorithm
+const generateLineDiff = (text1: string, text2: string) => {
+  const lines1 = text1.split('\n');
+  const lines2 = text2.split('\n');
   
-  const leftDiff: DiffSegment[] = [];
-  const rightDiff: DiffSegment[] = [];
+  const leftLines: Array<{ type: 'addition' | 'deletion' | 'unchanged'; text: string }> = [];
+  const rightLines: Array<{ type: 'addition' | 'deletion' | 'unchanged'; text: string }> = [];
   
-  let i = 0;
-  let j = 0;
+  const maxLines = Math.max(lines1.length, lines2.length);
   
-  while (i < words1.length || j < words2.length) {
-    if (i >= words1.length) {
-      // Only words2 left, these are additions
-      rightDiff.push({ type: 'addition', text: words2[j] });
-      leftDiff.push({ type: 'unchanged', text: '' });
-      j++;
-    } else if (j >= words2.length) {
-      // Only words1 left, these are deletions
-      leftDiff.push({ type: 'deletion', text: words1[i] });
-      rightDiff.push({ type: 'unchanged', text: '' });
-      i++;
-    } else if (words1[i] === words2[j]) {
-      // Words match
-      leftDiff.push({ type: 'unchanged', text: words1[i] });
-      rightDiff.push({ type: 'unchanged', text: words2[j] });
-      i++;
-      j++;
+  for (let i = 0; i < maxLines; i++) {
+    const line1 = lines1[i];
+    const line2 = lines2[i];
+    
+    if (line1 === undefined) {
+      // Only line2 exists - addition
+      leftLines.push({ type: 'unchanged', text: '' });
+      rightLines.push({ type: 'addition', text: line2 });
+    } else if (line2 === undefined) {
+      // Only line1 exists - deletion
+      leftLines.push({ type: 'deletion', text: line1 });
+      rightLines.push({ type: 'unchanged', text: '' });
+    } else if (line1 === line2) {
+      // Lines match
+      leftLines.push({ type: 'unchanged', text: line1 });
+      rightLines.push({ type: 'unchanged', text: line2 });
     } else {
-      // Words don't match - simple approach: mark as different
-      leftDiff.push({ type: 'deletion', text: words1[i] });
-      rightDiff.push({ type: 'addition', text: words2[j] });
-      i++;
-      j++;
+      // Lines differ
+      leftLines.push({ type: 'deletion', text: line1 });
+      rightLines.push({ type: 'addition', text: line2 });
     }
   }
   
-  return { left: leftDiff, right: rightDiff };
+  return { left: leftLines, right: rightLines };
 };
 
-const DiffText: React.FC<{ segments: DiffSegment[] }> = ({ segments }) => {
+const DiffText: React.FC<{ lines: Array<{ type: 'addition' | 'deletion' | 'unchanged'; text: string }>; versionLabel: string; textContent: string }> = ({ lines, versionLabel, textContent }) => {
   return (
-    <div style={{ 
-      fontFamily: 'var(--pf-v5-global--FontFamily--monospace)',
-      fontSize: 'var(--pf-v5-global--FontSize--sm)',
-      lineHeight: '1.6',
-      whiteSpace: 'pre-wrap',
-      wordBreak: 'break-word',
-      padding: 'var(--pf-v5-global--spacer--md)',
-      backgroundColor: 'var(--pf-v5-global--BackgroundColor--100)',
-      border: '1px solid var(--pf-v5-global--BorderColor--100)',
-      borderRadius: 'var(--pf-v5-global--BorderRadius--sm)',
-      minHeight: '300px',
-    }}>
-      {segments.map((segment, index) => {
-        let backgroundColor = 'transparent';
-        let color = 'inherit';
-        
-        if (segment.type === 'addition') {
-          backgroundColor = 'var(--pf-v5-global--success-color--100)';
-          color = 'var(--pf-v5-global--Color--light-100)';
-        } else if (segment.type === 'deletion') {
-          backgroundColor = 'var(--pf-v5-global--danger-color--100)';
-          color: 'var(--pf-v5-global--Color--light-100)';
-        }
-        
-        return (
-          <span
-            key={index}
-            style={{
-              backgroundColor,
-              color,
-              padding: segment.type !== 'unchanged' ? '2px 0' : '0',
+    <CodeBlock
+      actions={
+        <CodeBlockAction>
+          <ClipboardCopyButton
+            id={`copy-${versionLabel}-button`}
+            textId={`${versionLabel}-code-content`}
+            aria-label={`Copy ${versionLabel} to clipboard`}
+            onClick={(e) => {
+              navigator.clipboard.writeText(textContent);
             }}
+            variant="plain"
           >
-            {segment.text}
-          </span>
-        );
-      })}
-    </div>
+            Copy to clipboard
+          </ClipboardCopyButton>
+        </CodeBlockAction>
+      }
+    >
+      <CodeBlockCode id={`${versionLabel}-code-content`}>
+        <div style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+          {lines.map((line, index) => {
+            let backgroundColor = 'transparent';
+            let color = 'inherit';
+            
+            if (line.type === 'addition') {
+              backgroundColor = 'var(--pf-v5-global--success-color--100)';
+              color = 'var(--pf-v5-global--Color--light-100)';
+            } else if (line.type === 'deletion') {
+              backgroundColor = 'var(--pf-v5-global--danger-color--100)';
+              color = 'var(--pf-v5-global--Color--light-100)';
+            }
+            
+            return (
+              <div
+                key={index}
+                style={{
+                  backgroundColor,
+                  color,
+                  padding: line.type !== 'unchanged' ? '2px 4px' : '2px 0',
+                  minHeight: '1.5em',
+                }}
+              >
+                {line.text || '\u00A0'}
+              </div>
+            );
+          })}
+        </div>
+      </CodeBlockCode>
+    </CodeBlock>
   );
 };
 
@@ -107,7 +117,7 @@ export const PromptCompareView: React.FunctionComponent<PromptCompareViewProps> 
   version2,
 }) => {
   const diff = React.useMemo(() => {
-    return generateDiff(version1.promptText, version2.promptText);
+    return generateLineDiff(version1.promptText, version2.promptText);
   }, [version1.promptText, version2.promptText]);
 
   const formatDate = (date: Date): string => {
@@ -233,10 +243,18 @@ export const PromptCompareView: React.FunctionComponent<PromptCompareViewProps> 
       <div style={{ marginTop: 'var(--pf-v5-global--spacer--lg)' }}>
         <Grid hasGutter>
           <GridItem span={6}>
-            <DiffText segments={diff.left} />
+            <DiffText 
+              lines={diff.left} 
+              versionLabel={`version-${version1.versionNumber}`}
+              textContent={version1.promptText}
+            />
           </GridItem>
           <GridItem span={6}>
-            <DiffText segments={diff.right} />
+            <DiffText 
+              lines={diff.right} 
+              versionLabel={`version-${version2.versionNumber}`}
+              textContent={version2.promptText}
+            />
           </GridItem>
         </Grid>
       </div>
