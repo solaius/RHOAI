@@ -1593,11 +1593,6 @@ const AutoRAG: React.FunctionComponent = () => {
               }}>
                 <Flex justifyContent={{ default: 'justifyContentFlexEnd' }} spaceItems={{ default: 'spaceItemsSm' }}>
                   <FlexItem>
-                    <Button variant="secondary" onClick={handleBack} id="config-back-button">
-                      Back to experiments
-                    </Button>
-                  </FlexItem>
-                  <FlexItem>
                     <Button 
                       variant="primary" 
                       onClick={handleRunExperiment} 
