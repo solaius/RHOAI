@@ -72,6 +72,7 @@ import {
   LockIcon,
   OutlinedFolderIcon,
   OutlinedQuestionCircleIcon,
+  PencilAltIcon,
   PlusCircleIcon,
   PlusIcon,
   RedoIcon,
@@ -104,7 +105,9 @@ const Playground: React.FunctionComponent = () => {
   // State management
   const [isProjectSelectOpen, setIsProjectSelectOpen] = useState(false);
   const [systemPrompt, setSystemPrompt] = useState('');
+  const [originalPrompt, setOriginalPrompt] = useState('');
   const [isSystemPromptReadOnly, setIsSystemPromptReadOnly] = useState(false);
+  const [isPromptEdited, setIsPromptEdited] = useState(false);
   const [isRagEnabled, setIsRagEnabled] = useState(true);
   const [selectedModel, setSelectedModel] = useState('llama-3.1-8b-instruct');
   const [isModelSelectOpen, setIsModelSelectOpen] = useState(false);
@@ -172,6 +175,16 @@ const Playground: React.FunctionComponent = () => {
   const [isSaveConfigModalOpen, setIsSaveConfigModalOpen] = useState(false);
   const [configName, setConfigName] = useState('');
   const [configDescription, setConfigDescription] = useState('');
+  
+  // Edit prompt confirmation modal state
+  const [isEditPromptModalOpen, setIsEditPromptModalOpen] = useState(false);
+  const [promptVersion, setPromptVersion] = useState('');
+  const [promptAlias, setPromptAlias] = useState('');
+  
+  // Save prompt modal state
+  const [isSavePromptModalOpen, setIsSavePromptModalOpen] = useState(false);
+  const [savePromptName, setSavePromptName] = useState('');
+  const [savePromptAlias, setSavePromptAlias] = useState('');
 
   // Calculate guardrails count
   const guardrailsCount = React.useMemo(() => {
@@ -214,9 +227,19 @@ const Playground: React.FunctionComponent = () => {
           borderBottom: '1px solid var(--pf-v6-global--BorderColor--100)',
           padding: '1rem 1rem 0 1rem'
         }}>
-          <Title headingLevel="h2" size="lg">
-            Build
-          </Title>
+          <Flex alignItems={{ default: 'alignItemsCenter' }} spaceItems={{ default: 'spaceItemsSm' }}>
+            <FlexItem>
+              <div 
+                style={{ width: '24px', height: '24px', display: 'flex', alignItems: 'center' }}
+                dangerouslySetInnerHTML={{ __html: AIIcon }}
+              />
+            </FlexItem>
+            <FlexItem>
+              <Title headingLevel="h2" size="lg">
+                Configuration builder
+              </Title>
+            </FlexItem>
+          </Flex>
         </div>
 
         <div style={{ padding: '1rem', borderBottom: '1px solid var(--pf-v6-global--BorderColor--100)' }}>
@@ -429,29 +452,77 @@ const Playground: React.FunctionComponent = () => {
                 <TextArea
                   id="system-instructions"
                   value={systemPrompt}
-                  onChange={(_event, value) => setSystemPrompt(value)}
+                  onChange={(_event, value) => {
+                    setSystemPrompt(value);
+                    if (!isSystemPromptReadOnly) {
+                      setIsPromptEdited(true);
+                    }
+                  }}
                   placeholder="This will display the default system prompt"
                   rows={15}
-                  readOnly={isSystemPromptReadOnly}
-                  style={{
-                    backgroundColor: isSystemPromptReadOnly ? 'var(--pf-v6-global--BackgroundColor--200)' : 'white'
-                  }}
+                  readOnlyVariant={isSystemPromptReadOnly ? 'default' : undefined}
+                  resizeOrientation="vertical"
                 />
               </FormGroup>
               {isSystemPromptReadOnly && systemPrompt && (
                 <Flex style={{ marginTop: '1rem' }} gap={{ default: 'gapSm' }}>
                   <FlexItem>
                     <Button
-                      variant="link"
-                      onClick={() => {
-                        if (window.confirm('Editing will create a new version of this prompt. Do you want to continue?')) {
-                          setIsSystemPromptReadOnly(false);
-                        }
-                      }}
+                      variant="primary"
+                      size="sm"
+                      icon={<PencilAltIcon />}
+                      onClick={() => setIsEditPromptModalOpen(true)}
                     >
                       Edit prompt
                     </Button>
                   </FlexItem>
+                  <FlexItem>
+                    <Button
+                      variant="link"
+                      size="sm"
+                      onClick={() => {
+                        setSystemPrompt('');
+                        setOriginalPrompt('');
+                        setIsSystemPromptReadOnly(false);
+                        setIsPromptEdited(false);
+                      }}
+                    >
+                      Clear
+                    </Button>
+                  </FlexItem>
+                </Flex>
+              )}
+              {!isSystemPromptReadOnly && (
+                <Flex style={{ marginTop: '1rem' }} gap={{ default: 'gapSm' }}>
+                  <FlexItem>
+                    <Button
+                      variant="primary"
+                      size="sm"
+                      icon={<SaveIcon />}
+                      onClick={() => setIsSavePromptModalOpen(true)}
+                      isDisabled={!isPromptEdited}
+                    >
+                      Save prompt
+                    </Button>
+                  </FlexItem>
+                  {isPromptEdited && (
+                    <FlexItem>
+                      <Button
+                        variant="link"
+                        size="sm"
+                        onClick={() => {
+                          // Revert to original prompt
+                          setSystemPrompt(originalPrompt);
+                          setIsPromptEdited(false);
+                          if (originalPrompt) {
+                            setIsSystemPromptReadOnly(true);
+                          }
+                        }}
+                      >
+                        Revert
+                      </Button>
+                    </FlexItem>
+                  )}
                 </Flex>
               )}
             </>
@@ -1212,7 +1283,9 @@ const Playground: React.FunctionComponent = () => {
         onClose={() => setIsLoadPromptModalOpen(false)}
         onLoadPrompt={(prompt, isReadOnly) => {
           setSystemPrompt(prompt);
+          setOriginalPrompt(prompt);
           setIsSystemPromptReadOnly(isReadOnly);
+          setIsPromptEdited(false);
         }}
       />
 
@@ -1283,6 +1356,154 @@ const Playground: React.FunctionComponent = () => {
               setIsSaveConfigModalOpen(false);
               setConfigName('');
               setConfigDescription('');
+            }}
+          >
+            Cancel
+          </Button>
+        </ModalFooter>
+      </Modal>
+
+      {/* Edit Prompt Confirmation Modal */}
+      <Modal
+        variant={ModalVariant.small}
+        isOpen={isEditPromptModalOpen}
+        onClose={() => {
+          setIsEditPromptModalOpen(false);
+          setPromptVersion('');
+          setPromptAlias('');
+        }}
+      >
+        <ModalHeader
+          title="Create new version"
+          labelId="edit-prompt-modal-title"
+          description="Editing will create a new version of this prompt. Please provide version details."
+        />
+        <ModalBody>
+          <FormGroup 
+            label="Version number"
+            isRequired
+            fieldId="prompt-version"
+          >
+            <TextInput
+              id="prompt-version"
+              value={promptVersion}
+              onChange={(_event, value) => setPromptVersion(value)}
+              placeholder="e.g., v2.0"
+              isRequired
+            />
+          </FormGroup>
+
+          <FormGroup 
+            label="Alias"
+            fieldId="prompt-alias"
+            style={{ marginTop: '1rem' }}
+          >
+            <TextInput
+              id="prompt-alias"
+              value={promptAlias}
+              onChange={(_event, value) => setPromptAlias(value)}
+              placeholder="e.g., latest"
+            />
+          </FormGroup>
+        </ModalBody>
+        <ModalFooter>
+          <Button
+            variant="primary"
+            onClick={() => {
+              // Save current prompt as original before making editable
+              setOriginalPrompt(systemPrompt);
+              setIsSystemPromptReadOnly(false);
+              setIsPromptEdited(false);
+              setIsEditPromptModalOpen(false);
+              setPromptVersion('');
+              setPromptAlias('');
+            }}
+            isDisabled={!promptVersion.trim()}
+          >
+            Confirm
+          </Button>
+          <Button
+            variant="link"
+            onClick={() => {
+              setIsEditPromptModalOpen(false);
+              setPromptVersion('');
+              setPromptAlias('');
+            }}
+          >
+            Cancel
+          </Button>
+        </ModalFooter>
+      </Modal>
+
+      {/* Save Prompt Modal */}
+      <Modal
+        variant={ModalVariant.small}
+        isOpen={isSavePromptModalOpen}
+        onClose={() => {
+          setIsSavePromptModalOpen(false);
+          setSavePromptName('');
+          setSavePromptAlias('');
+        }}
+      >
+        <ModalHeader
+          title="Save prompt"
+          description="Save your prompt to the registry with a name and alias"
+        />
+        <ModalBody>
+          <FormGroup 
+            label="Name"
+            isRequired
+            fieldId="save-prompt-name"
+          >
+            <TextInput
+              id="save-prompt-name"
+              value={savePromptName}
+              onChange={(_event, value) => setSavePromptName(value)}
+              placeholder="e.g., Customer support assistant"
+              isRequired
+            />
+          </FormGroup>
+
+          <FormGroup 
+            label="Alias"
+            fieldId="save-prompt-alias"
+            style={{ marginTop: '1rem' }}
+          >
+            <TextInput
+              id="save-prompt-alias"
+              value={savePromptAlias}
+              onChange={(_event, value) => setSavePromptAlias(value)}
+              placeholder="e.g., latest"
+            />
+          </FormGroup>
+        </ModalBody>
+        <ModalFooter>
+          <Button
+            variant="primary"
+            onClick={() => {
+              // Save the prompt to registry
+              console.log('Saving prompt to registry:', { 
+                name: savePromptName, 
+                alias: savePromptAlias,
+                content: systemPrompt 
+              });
+              setOriginalPrompt(systemPrompt);
+              setIsPromptEdited(false);
+              setIsSystemPromptReadOnly(true);
+              setIsSavePromptModalOpen(false);
+              setSavePromptName('');
+              setSavePromptAlias('');
+            }}
+            isDisabled={!savePromptName.trim()}
+          >
+            Save
+          </Button>
+          <Button
+            variant="link"
+            onClick={() => {
+              setIsSavePromptModalOpen(false);
+              setSavePromptName('');
+              setSavePromptAlias('');
             }}
           >
             Cancel
