@@ -386,7 +386,7 @@ const PromptLab: React.FunctionComponent = () => {
       {/* Title Section */}
       <PageSection id="prompt-lab-header">
         <Flex alignItems={{ default: 'alignItemsCenter' }} spaceItems={{ default: 'spaceItemsSm' }}>
-          <FlexItem>
+          <FlexItem spacer={{ default: 'spacerSm' }}>
             <div style={{ width: '40px', height: '40px', display: 'flex', alignItems: 'center' }}>
               <PromptLabIcon withBackground size={32} />
             </div>
