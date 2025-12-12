@@ -26,3 +26,15 @@ body.fidelity-low * {
   background-color: var(--pf-v6-global--BackgroundColor--200);
   color: var(--pf-v6-global--Color--100);
 }
+
+/* Custom icon background colors */
+:root {
+  --ai-setup--BackgroundColor: #ffe8cc; /* used for setting up things, like projects and connections */
+  --ai-development--BackgroundColor: #daf2f2; /* used for development resources like workbenches, pipelines, playground, catalog */
+  --ai-deployment--BackgroundColor: #ece6ff; /* used for deployments and use cases that follow, like observe and monitor, registry */
+}
+
+/* AutoRAG specific styles */
+#documents-file-upload .pf-v6-c-multiple-file-upload__main {
+  box-sizing: content-box;
+}

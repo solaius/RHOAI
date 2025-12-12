@@ -40,6 +40,7 @@ import {
   MultipleFileUploadStatus,
   MultipleFileUploadStatusItem,
   PageSection,
+  Radio,
   Select,
   SelectList,
   SelectOption,
@@ -66,15 +67,16 @@ import {
   CogIcon,
   FolderOpenIcon,
   OutlinedFolderIcon,
+  PencilAltIcon,
   PlusCircleIcon,
   PlusIcon,
   DownloadIcon,
   CopyIcon,
   CheckCircleIcon,
   SyncIcon,
-  StarIcon,
 } from '@patternfly/react-icons';
 import { useFeatureFlags } from '@app/utils/FeatureFlagsContext';
+import PipelineVisualization from '@app/assets/Gemini_Generated_Image_w6e0x1w6e0x1w6e0.png';
 
 interface Document {
   id: string;
@@ -141,11 +143,11 @@ const AutoRAG: React.FunctionComponent = () => {
   const [hasAddedDocuments, setHasAddedDocuments] = React.useState(false);
   const [isConfiguring, setIsConfiguring] = React.useState(false);
   const [vectorDatabase, setVectorDatabase] = React.useState('Milvus (in line)');
-  const [selectedFoundationModels, setSelectedFoundationModels] = React.useState<Set<string>>(new Set());
-  const [selectedEmbeddingModels, setSelectedEmbeddingModels] = React.useState<Set<string>>(new Set());
+  const [selectedFoundationModels, setSelectedFoundationModels] = React.useState<Set<string>>(new Set(['1', '2', '3']));
+  const [selectedEmbeddingModels, setSelectedEmbeddingModels] = React.useState<Set<string>>(new Set(['1']));
   const [selectAllFoundation, setSelectAllFoundation] = React.useState(false);
   const [selectAllEmbedding, setSelectAllEmbedding] = React.useState(false);
-  const [criteria, setCriteria] = React.useState<Set<string>>(new Set());
+  const [criteria, setCriteria] = React.useState<string>('answer faithfulness');
   const [isVectorDbOpen, setIsVectorDbOpen] = React.useState(false);
   const [experimentRunning, setExperimentRunning] = React.useState(false);
   const [experimentCompleted, setExperimentCompleted] = React.useState(false);
@@ -154,6 +156,9 @@ const AutoRAG: React.FunctionComponent = () => {
   const [sortDirection, setSortDirection] = React.useState<'asc' | 'desc'>('asc');
   const [activeModelTabKey, setActiveModelTabKey] = React.useState<string | number>(0);
   const [isEvaluationSettingsModalOpen, setIsEvaluationSettingsModalOpen] = React.useState(false);
+  const [initialFoundationModels, setInitialFoundationModels] = React.useState<Set<string>>(new Set(['1', '2', '3']));
+  const [initialEmbeddingModels, setInitialEmbeddingModels] = React.useState<Set<string>>(new Set(['1']));
+  const [initialCriteria, setInitialCriteria] = React.useState<string>('answer faithfulness');
   const [evaluationSources, setEvaluationSources] = React.useState<Document[]>([]);
   const [activeSourcesTabKey, setActiveSourcesTabKey] = React.useState<string | number>(0);
   const [isEvaluationSourceModalOpen, setIsEvaluationSourceModalOpen] = React.useState(false);
@@ -174,8 +179,9 @@ const AutoRAG: React.FunctionComponent = () => {
 
   // Mock data for models
   const foundationModels: Model[] = [
-    { id: '1', name: 'Llama 3.1 8B', description: 'Large language model for general purpose tasks', tag: 'LLM' },
-    { id: '2', name: 'Mistral 7B', description: 'Efficient language model for text generation', tag: 'LLM' },
+    { id: '1', name: 'gpt-oss-120b', description: 'Large language model for general purpose tasks', tag: 'LLM' },
+    { id: '2', name: 'llama-4-ma', description: 'Efficient language model for text generation', tag: 'LLM' },
+    { id: '3', name: 'llama-3-3-70b', description: 'Fast and efficient conversational AI model', tag: 'LLM' },
   ];
 
   const embeddingModels: Model[] = [
@@ -209,9 +215,9 @@ const AutoRAG: React.FunctionComponent = () => {
     setEvaluationSourceFile(null);
     setEvaluationSourceFilename('');
     setVectorDatabase('Milvus (in line)');
-    setSelectedFoundationModels(new Set());
-    setSelectedEmbeddingModels(new Set());
-    setCriteria(new Set());
+    setSelectedFoundationModels(new Set(['1']));
+    setSelectedEmbeddingModels(new Set(['1']));
+    setCriteria('answer faithfulness');
     setPatternResults([]);
   };
 
@@ -397,7 +403,7 @@ const AutoRAG: React.FunctionComponent = () => {
       evaluationSourceFile: evaluationSourceFile?.name || null,
       foundationModels: Array.from(selectedFoundationModels),
       embeddingModels: Array.from(selectedEmbeddingModels),
-      criteria: Array.from(criteria),
+      criteria: criteria,
     });
     
     // Update experiment status to Processing
@@ -420,7 +426,7 @@ const AutoRAG: React.FunctionComponent = () => {
         id: '1',
         rank: 1,
         patternName: 'Pattern 1',
-        modelName: 'Foundation Model 1',
+        modelName: 'llama-4-ma',
         answerFaithfulness: 0.95,
         chunkMethod: 'Semantic',
         chunkSize: 512,
@@ -430,7 +436,7 @@ const AutoRAG: React.FunctionComponent = () => {
         id: '2',
         rank: 2,
         patternName: 'Pattern 2',
-        modelName: 'Foundation Model 1',
+        modelName: 'gpt-oss-120b',
         answerFaithfulness: 0.92,
         chunkMethod: 'Fixed',
         chunkSize: 256,
@@ -440,7 +446,7 @@ const AutoRAG: React.FunctionComponent = () => {
         id: '3',
         rank: 3,
         patternName: 'Pattern 3',
-        modelName: 'Foundation Model 2',
+        modelName: 'gpt-oss-120b',
         answerFaithfulness: 0.89,
         chunkMethod: 'Semantic',
         chunkSize: 1024,
@@ -450,7 +456,7 @@ const AutoRAG: React.FunctionComponent = () => {
         id: '4',
         rank: 4,
         patternName: 'Pattern 4',
-        modelName: 'Foundation Model 2',
+        modelName: 'llama-4-ma',
         answerFaithfulness: 0,
         chunkMethod: 'Fixed',
         chunkSize: 512,
@@ -460,7 +466,7 @@ const AutoRAG: React.FunctionComponent = () => {
         id: '5',
         rank: 5,
         patternName: 'Pattern 5',
-        modelName: 'Foundation Model 3',
+        modelName: 'llama-3-3-70b',
         answerFaithfulness: 0,
         chunkMethod: 'Semantic',
         chunkSize: 256,
@@ -470,7 +476,7 @@ const AutoRAG: React.FunctionComponent = () => {
         id: '6',
         rank: 6,
         patternName: 'Pattern 6',
-        modelName: 'Foundation Model 3',
+        modelName: 'llama-3-3-70b',
         answerFaithfulness: 0,
         chunkMethod: 'Fixed',
         chunkSize: 1024,
@@ -606,7 +612,7 @@ const AutoRAG: React.FunctionComponent = () => {
             status = 'Processing';
           } else if (experimentCompleted) {
             status = 'completed';
-          } else if (documents.length > 0 && evaluationSourceFile && vectorDatabase && criteria.size > 0 && (selectedFoundationModels.size > 0 || selectedEmbeddingModels.size > 0)) {
+          } else if (documents.length > 0 && evaluationSourceFile && vectorDatabase && criteria && (selectedFoundationModels.size > 0 || selectedEmbeddingModels.size > 0)) {
             status = 'incomplete'; // Still incomplete until run
           } else if (documents.length === 0 && !evaluationSourceFile) {
             status = 'incomplete';
@@ -624,7 +630,7 @@ const AutoRAG: React.FunctionComponent = () => {
         return exp;
       }));
     }
-  }, [documents.length, evaluationSourceFile, vectorDatabase, criteria.size, selectedFoundationModels.size, selectedEmbeddingModels.size, experimentRunning, experimentCompleted, selectedExperimentId]);
+  }, [documents.length, evaluationSourceFile, vectorDatabase, criteria, selectedFoundationModels.size, selectedEmbeddingModels.size, experimentRunning, experimentCompleted, selectedExperimentId]);
 
   // Handle clicking on experiment name to navigate
   const handleExperimentClick = (experiment: Experiment) => {
@@ -688,14 +694,61 @@ const AutoRAG: React.FunctionComponent = () => {
     }
   };
 
-  const handleCriteriaToggle = (criterion: string) => {
-    const newSet = new Set(criteria);
-    if (newSet.has(criterion)) {
-      newSet.delete(criterion);
-    } else {
-      newSet.add(criterion);
+  const handleCriteriaChange = (criterion: string) => {
+    setCriteria(criterion);
+  };
+
+  const handleOpenEvaluationSettingsModal = () => {
+    // Store initial values when modal opens
+    setInitialFoundationModels(new Set(selectedFoundationModels));
+    setInitialEmbeddingModels(new Set(selectedEmbeddingModels));
+    setInitialCriteria(criteria);
+    setIsEvaluationSettingsModalOpen(true);
+  };
+
+  const handleSaveEvaluationSettings = () => {
+    // Update initial values to current values after save
+    setInitialFoundationModels(new Set(selectedFoundationModels));
+    setInitialEmbeddingModels(new Set(selectedEmbeddingModels));
+    setInitialCriteria(criteria);
+    setIsEvaluationSettingsModalOpen(false);
+  };
+
+  const handleCancelEvaluationSettings = () => {
+    // Revert to initial values
+    setSelectedFoundationModels(new Set(initialFoundationModels));
+    setSelectedEmbeddingModels(new Set(initialEmbeddingModels));
+    setCriteria(initialCriteria);
+    setIsEvaluationSettingsModalOpen(false);
+  };
+
+  const hasEvaluationSettingsChanged = () => {
+    // Check if foundation models changed
+    if (selectedFoundationModels.size !== initialFoundationModels.size) {
+      return true;
     }
-    setCriteria(newSet);
+    for (const model of selectedFoundationModels) {
+      if (!initialFoundationModels.has(model)) {
+        return true;
+      }
+    }
+    
+    // Check if embedding models changed
+    if (selectedEmbeddingModels.size !== initialEmbeddingModels.size) {
+      return true;
+    }
+    for (const model of selectedEmbeddingModels) {
+      if (!initialEmbeddingModels.has(model)) {
+        return true;
+      }
+    }
+    
+    // Check if criteria changed
+    if (criteria !== initialCriteria) {
+      return true;
+    }
+    
+    return false;
   };
 
 
@@ -773,21 +826,9 @@ const AutoRAG: React.FunctionComponent = () => {
   return (
     <>
       {/* Breadcrumb Navigation */}
-      {flags.showProjectWorkspaceDropdowns && (isCreating || experimentCreated) && (
+      {flags.showProjectWorkspaceDropdowns && experimentCreated && (
         <PageSection style={{ paddingTop: '0.5rem', paddingBottom: '0.25rem' }} id="autorag-breadcrumb">
           <Breadcrumb id="autorag-breadcrumb-nav">
-            {/* State 1: Creating new experiment */}
-            {isCreating && (
-              <BreadcrumbItem to="#" id="breadcrumb-project">
-                AutoRAG: {selectedProject}
-              </BreadcrumbItem>
-            )}
-            {isCreating && (
-              <BreadcrumbItem isActive id="breadcrumb-new-experiment">
-                New experiment
-              </BreadcrumbItem>
-            )}
-
             {/* State 2: Experiment created - on configuration page */}
             {!isCreating && experimentCreated && isConfiguring && !experimentCompleted && (
               <BreadcrumbItem
@@ -802,20 +843,8 @@ const AutoRAG: React.FunctionComponent = () => {
               </BreadcrumbItem>
             )}
             {!isCreating && experimentCreated && isConfiguring && !experimentCompleted && (
-              <BreadcrumbItem
-                to="#"
-                onClick={(e) => {
-                  e.preventDefault();
-                  handleBreadcrumbNavigation('experiment');
-                }}
-                id="breadcrumb-experiment-name"
-              >
+              <BreadcrumbItem isActive id="breadcrumb-experiment-name">
                 {experimentName}
-              </BreadcrumbItem>
-            )}
-            {!isCreating && experimentCreated && isConfiguring && !experimentCompleted && (
-              <BreadcrumbItem isActive id="breadcrumb-configurations">
-                Configurations
               </BreadcrumbItem>
             )}
 
@@ -846,7 +875,7 @@ const AutoRAG: React.FunctionComponent = () => {
             )}
             {!isCreating && experimentCreated && experimentCompleted && (
               <BreadcrumbItem isActive id="breadcrumb-results">
-                Experiment results
+                {experimentName} experiment results
               </BreadcrumbItem>
             )}
           </Breadcrumb>
@@ -858,17 +887,45 @@ const AutoRAG: React.FunctionComponent = () => {
         <Flex alignItems={{ default: 'alignItemsCenter' }} spaceItems={{ default: 'spaceItemsSm' }}>
           <FlexItem>
             <Title headingLevel="h2" size="xl" id="autorag-title">
-              AutoRAG
+              {isCreating
+                ? 'Create AutoRAG experiment'
+                : experimentCompleted 
+                ? `${experimentName} experiment results`
+                : experimentCreated 
+                ? experimentName 
+                : 'AutoRAG'}
             </Title>
           </FlexItem>
         </Flex>
-        <div style={{ color: 'var(--pf-v5-global--Color--200)', marginTop: '0.5rem' }}>
-          {isCreating
-            ? 'Automatically prepare and optimize a RAG pattern based on your document collections'
-            : experimentCreated
-            ? 'Automatically prepare and optimize a RAG pattern based on your document collections'
-            : 'Automatically configure and optimize your Retrieval-Augmented Generation workflows.'}
-        </div>
+        {!experimentCreated && (
+          <div style={{ color: 'var(--pf-v5-global--Color--200)', marginTop: '0.5rem' }}>
+            Automatically configure and optimize your Retrieval-Augmented Generation workflows.
+          </div>
+        )}
+        {experimentCompleted && (
+          <Flex spaceItems={{ default: 'spaceItemsSm' }} style={{ marginTop: '0.5rem' }}>
+            <FlexItem>
+              <Button
+                variant="link"
+                isInline
+                onClick={handleViewExperimentDetails}
+                id="header-view-details-link"
+              >
+                View details
+              </Button>
+            </FlexItem>
+            <FlexItem>
+              <Button
+                variant="link"
+                isInline
+                onClick={handleViewExperimentCode}
+                id="header-view-code-link"
+              >
+                View code
+              </Button>
+            </FlexItem>
+          </Flex>
+        )}
   </PageSection>
 
       {/* Project Selector - Only show on empty state page */}
@@ -922,142 +979,53 @@ const AutoRAG: React.FunctionComponent = () => {
       )}
 
       {/* Content: Empty State, Form, Experiment View, or Results */}
-      <PageSection style={{ paddingTop: '0.5rem' }} id="autorag-content">
+      <PageSection 
+        style={{ 
+          paddingTop: '0.5rem',
+          display: 'flex',
+          flexDirection: 'column',
+          minHeight: 'calc(100vh - 200px)',
+          flex: 1
+        }} 
+        id="autorag-content"
+      >
         {experimentCompleted ? (
-          <>
-            {/* Results Screen Header */}
-            <Flex justifyContent={{ default: 'justifyContentSpaceBetween' }} alignItems={{ default: 'alignItemsCenter' }} style={{ marginBottom: '2rem' }}>
-              <FlexItem>
-                <Title headingLevel="h1" size="lg" id="autorag-results-title">
-                  Experiment results
-                </Title>
-              </FlexItem>
-              <FlexItem>
-                <Flex spaceItems={{ default: 'spaceItemsMd' }} alignItems={{ default: 'alignItemsCenter' }}>
-                  <FlexItem>
-                    <Button variant="secondary" onClick={handleViewExperimentDetails} id="view-experiment-details-button">
-                      View experiment details
-                    </Button>
-                  </FlexItem>
-                  <FlexItem>
-                    <Button variant="primary" onClick={handleViewExperimentCode} id="view-experiment-code-button">
-                      View experiment code
-                    </Button>
-                  </FlexItem>
-                </Flex>
-              </FlexItem>
-            </Flex>
-
+          <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: '400px' }}>
             {/* Pipeline Visualization */}
-            <Title headingLevel="h2" size="lg" id="pipeline-section-title" style={{ marginBottom: '1rem' }}>
-              Experiment Pipeline
-            </Title>
-            <Card style={{ marginBottom: '2rem' }} id="pipeline-visualization-card">
+            <Card id="pipeline-visualization-card">
+              <CardHeader>
+                <CardTitle>
+                  <Title headingLevel="h2" size="lg" id="pipeline-section-title">
+                    Experiment Pipeline
+                  </Title>
+                </CardTitle>
+              </CardHeader>
               <CardBody>
                 <div style={{ 
-                  padding: '2.5rem', 
+                  padding: '2rem', 
                   backgroundColor: 'var(--pf-v5-global--BackgroundColor--200)', 
                   borderRadius: '4px',
-                  border: '1px solid var(--pf-v5-global--BorderColor--100)'
+                  border: '1px solid var(--pf-v5-global--BorderColor--100)',
+                  display: 'flex',
+                  justifyContent: 'center',
+                  alignItems: 'center'
                 }}>
-              <Flex alignItems={{ default: 'alignItemsCenter' }} spaceItems={{ default: 'spaceItemsLg' }} wrap="wrap">
-                {/* Step 1 */}
-                <FlexItem>
-                  <Label color="blue" style={{ padding: '0.75rem 1rem', fontSize: 'var(--pf-v5-global--FontSize--md)', minWidth: '100px', textAlign: 'center' }} id="pipeline-step-1">
-                    Step 1
-                  </Label>
-                </FlexItem>
-                <FlexItem>
-                  <div style={{ fontSize: '1.5rem' }}>→</div>
-                </FlexItem>
-                
-                {/* Step 2 */}
-                <FlexItem>
-                  <Label color="blue" style={{ padding: '0.75rem 1rem', fontSize: 'var(--pf-v5-global--FontSize--md)', minWidth: '100px', textAlign: 'center' }} id="pipeline-step-2">
-                    Step 2
-                  </Label>
-                </FlexItem>
-                <FlexItem>
-                  <div style={{ fontSize: '1.5rem' }}>→</div>
-                </FlexItem>
-                
-                {/* Step 3 */}
-                <FlexItem>
-                  <Label color="blue" style={{ padding: '0.75rem 1rem', fontSize: 'var(--pf-v5-global--FontSize--md)', minWidth: '100px', textAlign: 'center' }} id="pipeline-step-3">
-                    Step 3
-                  </Label>
-                </FlexItem>
-                <FlexItem>
-                  <div style={{ fontSize: '1.5rem' }}>→</div>
-                </FlexItem>
-                
-                {/* Foundation Models Branch */}
-                <FlexItem>
-                  <Flex direction={{ default: 'column' }} spaceItems={{ default: 'spaceItemsSm' }} alignItems={{ default: 'alignItemsCenter' }}>
-                    <Label color="blue" style={{ padding: '0.75rem 1rem', fontSize: 'var(--pf-v5-global--FontSize--md)', minWidth: '120px', textAlign: 'center' }} id="pipeline-foundation-model-1">
-                      Foundation Model 1
-                    </Label>
-                    <div style={{ fontSize: '1.5rem' }}>↓</div>
-                    <Flex spaceItems={{ default: 'spaceItemsSm' }} alignItems={{ default: 'alignItemsCenter' }}>
-                      <StarIcon style={{ color: '#f0ab00', fontSize: 'var(--pf-v5-global--FontSize--md)' }} id="pipeline-star-icon" />
-                      <Label color="green" style={{ padding: '0.5rem 0.75rem', fontSize: 'var(--pf-v5-global--FontSize--sm)' }} id="pipeline-pattern-1">
-                        Pattern 1
-                      </Label>
-                      <Label color="green" style={{ padding: '0.5rem 0.75rem', fontSize: 'var(--pf-v5-global--FontSize--sm)' }} id="pipeline-pattern-2">
-                        Pattern 2
-                      </Label>
-                    </Flex>
-                  </Flex>
-                </FlexItem>
-                
-                <FlexItem>
-                  <div style={{ fontSize: '1.5rem' }}>→</div>
-                </FlexItem>
-                
-                <FlexItem>
-                  <Flex direction={{ default: 'column' }} spaceItems={{ default: 'spaceItemsSm' }} alignItems={{ default: 'alignItemsCenter' }}>
-                    <Label color="blue" style={{ padding: '0.75rem 1rem', fontSize: 'var(--pf-v5-global--FontSize--md)', minWidth: '120px', textAlign: 'center' }} id="pipeline-foundation-model-2">
-                      Foundation Model 2
-                    </Label>
-                    <div style={{ fontSize: '1.5rem' }}>↓</div>
-                    <Flex spaceItems={{ default: 'spaceItemsSm' }}>
-                      <Label color="green" style={{ padding: '0.5rem 0.75rem', fontSize: 'var(--pf-v5-global--FontSize--sm)' }} id="pipeline-pattern-3">
-                        Pattern 3
-                      </Label>
-                      <Label color="green" style={{ padding: '0.5rem 0.75rem', fontSize: 'var(--pf-v5-global--FontSize--sm)' }} id="pipeline-pattern-4">
-                        Pattern 4
-                      </Label>
-                    </Flex>
-                  </Flex>
-                </FlexItem>
-                
-                <FlexItem>
-                  <div style={{ fontSize: '1.5rem' }}>→</div>
-                </FlexItem>
-                
-                <FlexItem>
-                  <Flex direction={{ default: 'column' }} spaceItems={{ default: 'spaceItemsSm' }} alignItems={{ default: 'alignItemsCenter' }}>
-                    <Label color="blue" style={{ padding: '0.75rem 1rem', fontSize: 'var(--pf-v5-global--FontSize--md)', minWidth: '120px', textAlign: 'center' }} id="pipeline-foundation-model-3">
-                      Foundation Model 3
-                    </Label>
-                    <div style={{ fontSize: '1.5rem' }}>↓</div>
-                    <Flex spaceItems={{ default: 'spaceItemsSm' }}>
-                      <Label color="green" style={{ padding: '0.5rem 0.75rem', fontSize: 'var(--pf-v5-global--FontSize--sm)' }} id="pipeline-pattern-5">
-                        Pattern 5
-                      </Label>
-                      <Label color="green" style={{ padding: '0.5rem 0.75rem', fontSize: 'var(--pf-v5-global--FontSize--sm)' }} id="pipeline-pattern-6">
-                        Pattern 6
-                      </Label>
-                    </Flex>
-                  </Flex>
-                </FlexItem>
-              </Flex>
+                  <img 
+                    src={PipelineVisualization} 
+                    alt="AutoRAG Pipeline Visualization showing the experiment flow from document collection through evaluation with multiple models" 
+                    style={{ 
+                      maxWidth: '100%', 
+                      height: 'auto',
+                      display: 'block'
+                    }}
+                    id="pipeline-visualization-image"
+                  />
                 </div>
               </CardBody>
             </Card>
 
             {/* Results Table */}
-            <Card style={{ marginTop: '2rem' }} id="results-table-card">
+            <Card id="results-table-card" style={{ marginTop: '20px' }}>
               <CardHeader>
                 <CardTitle>
                   <Title headingLevel="h2" size="lg" id="autorag-results-table-title">
@@ -1141,7 +1109,8 @@ const AutoRAG: React.FunctionComponent = () => {
                   const baseBackgroundColor = index % 2 === 0 
                     ? 'var(--pf-v5-global--BackgroundColor--200)' 
                     : 'transparent';
-                  const rankOneBackgroundColor = '#e8f5e9';
+                  const rankOneBackgroundColor = '#fffaec';
+                  const isLinkEnabled = index < 3; // Enable links for rows 1-3, disable for rows 4-6
                   
                   return (
                   <Tr 
@@ -1149,11 +1118,11 @@ const AutoRAG: React.FunctionComponent = () => {
                     id={`result-row-${result.id}`}
                     style={{
                       backgroundColor: isRankOne ? rankOneBackgroundColor : baseBackgroundColor,
-                      borderLeft: isRankOne ? '4px solid #3e8635' : '4px solid transparent',
+                      borderLeft: isRankOne ? '4px solid #f0ab00' : '4px solid transparent',
                     }}
                     onMouseEnter={(e) => {
                       e.currentTarget.style.backgroundColor = isRankOne 
-                        ? '#d4edda' 
+                        ? '#fef0cd' 
                         : 'var(--pf-v5-global--BackgroundColor--200)';
                     }}
                     onMouseLeave={(e) => {
@@ -1166,8 +1135,8 @@ const AutoRAG: React.FunctionComponent = () => {
                       {isRankOne ? (
                         <Badge 
                           style={{ 
-                            backgroundColor: '#3e8635',
-                            color: '#ffffff',
+                            backgroundColor: '#f0ab00',
+                            color: '#151515',
                             fontWeight: 'bold',
                             padding: '0.25rem 0.5rem',
                             borderRadius: '4px'
@@ -1188,7 +1157,7 @@ const AutoRAG: React.FunctionComponent = () => {
                     <Td dataLabel="Model name">{result.modelName}</Td>
                     <Td 
                       dataLabel="Answer faithfulness"
-                      style={isRankOne ? { fontWeight: 'bold', color: '#3e8635' } : {}}
+                      style={isRankOne ? { fontWeight: 'bold', color: '#f0ab00' } : {}}
                     >
                       {result.status === 'In Progress' ? '-' : result.answerFaithfulness.toFixed(2)}
                     </Td>
@@ -1208,34 +1177,58 @@ const AutoRAG: React.FunctionComponent = () => {
                     <Td dataLabel="Actions">
                       <Flex spaceItems={{ default: 'spaceItemsSm' }}>
                         <FlexItem>
-                          <Button
-                            variant="link"
-                            onClick={() => handleViewDetails(result.id)}
+                          <a
+                            href="#"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              if (isLinkEnabled) handleViewDetails(result.id);
+                            }}
                             id={`view-details-${result.id}`}
-                            isDisabled={result.status === 'In Progress'}
+                            style={{
+                              color: isLinkEnabled ? '#0066cc' : '#6a6e73',
+                              textDecoration: 'none',
+                              cursor: isLinkEnabled ? 'pointer' : 'not-allowed',
+                              pointerEvents: isLinkEnabled ? 'auto' : 'none'
+                            }}
                           >
                             View details
-                          </Button>
+                          </a>
                         </FlexItem>
                         <FlexItem>
-                          <Button
-                            variant="link"
-                            onClick={() => handleTestInPlayground(result.id)}
+                          <a
+                            href="#"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              if (isLinkEnabled) handleTestInPlayground(result.id);
+                            }}
                             id={`test-playground-${result.id}`}
-                            isDisabled={result.status === 'In Progress'}
+                            style={{
+                              color: isLinkEnabled ? '#0066cc' : '#6a6e73',
+                              textDecoration: 'none',
+                              cursor: isLinkEnabled ? 'pointer' : 'not-allowed',
+                              pointerEvents: isLinkEnabled ? 'auto' : 'none'
+                            }}
                           >
                             Test in playground
-                          </Button>
+                          </a>
                         </FlexItem>
                         <FlexItem>
-                          <Button
-                            variant="link"
-                            onClick={() => handleViewCode(result.id)}
+                          <a
+                            href="#"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              if (isLinkEnabled) handleViewCode(result.id);
+                            }}
                             id={`view-code-${result.id}`}
-                            isDisabled={result.status === 'In Progress'}
+                            style={{
+                              color: isLinkEnabled ? '#0066cc' : '#6a6e73',
+                              textDecoration: 'none',
+                              cursor: isLinkEnabled ? 'pointer' : 'not-allowed',
+                              pointerEvents: isLinkEnabled ? 'auto' : 'none'
+                            }}
                           >
                             View code
-                          </Button>
+                          </a>
                         </FlexItem>
                       </Flex>
                     </Td>
@@ -1246,28 +1239,20 @@ const AutoRAG: React.FunctionComponent = () => {
             </Table>
               </CardBody>
             </Card>
-          </>
+          </div>
         ) : experimentCreated ? (
           <>
-            {/* Experiment Header */}
-            <Flex alignItems={{ default: 'alignItemsBaseline' }} spaceItems={{ default: 'spaceItemsMd' }} style={{ marginBottom: '2rem' }}>
-              <FlexItem>
-                <Title headingLevel="h1" size="lg" id="autorag-experiment-name">
-                  {experimentName}
-                </Title>
-              </FlexItem>
-              <FlexItem>
-                <div style={{ color: 'var(--pf-v5-global--Color--200)', fontSize: 'var(--pf-v5-global--FontSize--sm)' }}>
-                  Last saved: {experimentLastSaved ? formatLastSaved(experimentLastSaved) : ''}
-                </div>
-              </FlexItem>
-            </Flex>
-
             {/* Configuration Screen */}
-            <div style={{ display: 'flex', flexDirection: 'column', minHeight: 'calc(100vh - 400px)' }}>
-            <Grid hasGutter>
-              {/* Column 1: Documents */}
-              <GridItem span={3} style={{ display: 'flex' }}>
+            <div style={{ 
+              display: 'flex', 
+              flexDirection: 'column', 
+              flex: 1, 
+              minHeight: '400px'
+            }}>
+            <div style={{ flex: 1, overflowY: 'auto', paddingBottom: '100px' }}>
+              <Grid hasGutter>
+                {/* Column 1: Documents */}
+                <GridItem span={4} style={{ display: 'flex' }}>
                 <Card id="autorag-documents-card" style={{ display: 'flex', flexDirection: 'column', flex: 1, width: '100%' }}>
                   <CardHeader>
                     <CardTitle>
@@ -1278,12 +1263,12 @@ const AutoRAG: React.FunctionComponent = () => {
                   </CardHeader>
                   <CardBody style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
                     {/* Body Copy */}
-                    <div style={{ color: 'var(--pf-v5-global--Color--200)', fontSize: 'var(--pf-v5-global--FontSize--sm)', marginBottom: '1rem' }}>
+                    <div style={{ color: 'var(--pf-v5-global--Color--200)', fontSize: 'var(--pf-v5-global--FontSize--sm)', marginBottom: '20px' }}>
                         Drag and drop or browse existing document files from your local computer or add a connection.
                     </div>
 
                     {/* Multiple File Upload */}
-                    <div style={{ marginBottom: '1rem' }}>
+                    <div style={{ marginBottom: 'var(--pf-v5-global--spacer--md)' }}>
                       <MultipleFileUpload
                         onFileDrop={handleFileDrop}
                         dropzoneProps={{
@@ -1302,6 +1287,7 @@ const AutoRAG: React.FunctionComponent = () => {
                           titleText="Drag and drop files here"
                           titleTextSeparator="or"
                           infoText="Accepted file types: PDF, TXT, JSON, DOCX, DOC"
+                          style={{ boxSizing: 'content-box' }}
                         />
                         {uploadingFiles.length > 0 && (
                           <MultipleFileUploadStatus>
@@ -1320,7 +1306,7 @@ const AutoRAG: React.FunctionComponent = () => {
                     </div>
 
                     {/* Add Connection Button */}
-                    <Flex justifyContent={{ default: 'justifyContentFlexStart' }} style={{ marginBottom: '1.5rem' }}>
+                    <Flex justifyContent={{ default: 'justifyContentFlexStart' }} style={{ boxSizing: 'content-box', paddingTop: '20px' }}>
                       <Button variant="secondary" onClick={handleAddConnection} id="add-connection-button">
                         Add connection
                       </Button>
@@ -1329,7 +1315,7 @@ const AutoRAG: React.FunctionComponent = () => {
                     {/* Documents and Connections List */}
                     {documents.length > 0 && (
                       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0, overflow: 'hidden' }}>
-                        <Title headingLevel="h3" size="md" id="documents-list-title" style={{ marginBottom: '1rem' }}>
+                        <Title headingLevel="h3" size="md" id="documents-list-title" style={{ boxSizing: 'content-box', marginTop: '20px' }}>
                           Sources
                         </Title>
                         <div style={{ flex: 1, overflow: 'auto' }}>
@@ -1337,22 +1323,20 @@ const AutoRAG: React.FunctionComponent = () => {
                             <Thead>
                               <Tr>
                                 <Th>Name</Th>
-                                <Th>Type</Th>
                                 <Th>Source</Th>
-                                <Th width={10}>Actions</Th>
+                                <Th modifier="fitContent">Actions</Th>
                               </Tr>
                             </Thead>
                             <Tbody>
                               {documents.map((doc) => (
                                 <Tr key={doc.id} id={`document-row-${doc.id}`}>
                                   <Td dataLabel="Name">{doc.name}</Td>
-                                  <Td dataLabel="Type">{doc.type}</Td>
                                   <Td dataLabel="Source">
                                     <Label color={doc.sourceType === 'connection' ? 'blue' : 'grey'}>
                                       {doc.sourceType === 'connection' ? 'Connection' : 'Document'}
                                     </Label>
                                   </Td>
-                                  <Td dataLabel="Actions">
+                                  <Td dataLabel="Actions" modifier="fitContent">
                                     <Button
                                       variant="plain"
                                       onClick={() => handleFileRemove(doc.id)}
@@ -1374,7 +1358,7 @@ const AutoRAG: React.FunctionComponent = () => {
               </GridItem>
 
               {/* Column 2: Configure Details */}
-              <GridItem span={9} style={{ display: 'flex' }}>
+              <GridItem span={8} style={{ display: 'flex' }}>
                     <Card id="autorag-configure-card" style={{ 
                       display: 'flex', 
                       flexDirection: 'column', 
@@ -1411,7 +1395,6 @@ const AutoRAG: React.FunctionComponent = () => {
                           <FormGroup
                             label="Where would you like to index your documents?"
                             fieldId="vector-database"
-                            style={{ marginBottom: '1.5rem' }}
                           >
                             <Select
                               isOpen={isVectorDbOpen}
@@ -1449,8 +1432,8 @@ const AutoRAG: React.FunctionComponent = () => {
                           {/* Evaluation Source */}
                           <FormGroup
                             label="Add the data source you would like to use for evaluation."
+                            isRequired
                             fieldId="evaluation-source"
-                            style={{ marginBottom: '1.5rem' }}
                           >
                             <FileUpload
                               id="evaluation-source-file-upload"
@@ -1483,14 +1466,13 @@ const AutoRAG: React.FunctionComponent = () => {
                             />
                             <FormHelperText>
                               <HelperText>
-                                <HelperTextItem>Optionally supply a JSON or YAML file with test questions and answers to evaluate the quality of Q&A responses. If none are selected, evaluation data will be automatically generated with an LLM.</HelperTextItem>
                                 <HelperTextItem>
+                                  Supply a JSON or YAML file with test questions and answers to evaluate the quality of Q&A responses.{' '}
                                   <Button
                                     variant="link"
                                     isInline
                                     onClick={() => setIsEvaluationSourceModalOpen(true)}
                                     id="what-is-evaluation-source-link"
-                                    style={{ paddingLeft: 0 }}
                                   >
                                     What is an evaluation source?
                                   </Button>
@@ -1501,29 +1483,33 @@ const AutoRAG: React.FunctionComponent = () => {
 
 
                           {/* Selected Settings Display */}
-                          <Grid hasGutter style={{ marginTop: '1rem', marginBottom: '1.5rem' }}>
+                          <Grid hasGutter style={{ marginTop: '2rem' }}>
                             <GridItem span={6}>
                               <div id="optimization-metric-column">
                                 <div style={{ fontSize: 'var(--pf-v5-global--FontSize--sm)', color: 'var(--pf-v5-global--Color--200)', marginBottom: '0.5rem', fontWeight: 'bold' }}>
-                                  Optimization metric
+                                  Optimization metric <span style={{ color: '#c9190b' }}>*</span>
                                 </div>
-                                <div style={{ fontSize: '1.5rem', marginBottom: '0.5rem' }} id="optimization-metric-link">
-                                  {criteria.size > 0 ? Array.from(criteria).join(', ') : 'None selected'}
-                                </div>
-                                <Button
-                                  variant="secondary"
-                                  onClick={() => setIsEvaluationSettingsModalOpen(true)}
-                                  id="optimization-metric-select-button"
-                                  size="sm"
-                                >
-                                  Select
-                                </Button>
+                                <Flex alignItems={{ default: 'alignItemsCenter' }} spaceItems={{ default: 'spaceItemsSm' }}>
+                                  <FlexItem style={{ fontSize: '1.5rem' }} id="optimization-metric-link">
+                                    {criteria || 'None selected'}
+                                  </FlexItem>
+                                  <FlexItem>
+                                    <Button
+                                      variant="plain"
+                                      onClick={handleOpenEvaluationSettingsModal}
+                                      id="optimization-metric-edit-button"
+                                      aria-label="Edit optimization metric"
+                                    >
+                                      <PencilAltIcon />
+                                    </Button>
+                                  </FlexItem>
+                                </Flex>
                               </div>
                             </GridItem>
                             <GridItem span={6}>
                               <div id="models-to-consider-column">
                                 <div style={{ fontSize: 'var(--pf-v5-global--FontSize--sm)', color: 'var(--pf-v5-global--Color--200)', marginBottom: '0.5rem', fontWeight: 'bold' }}>
-                                  Models to consider
+                                  Models to consider <span style={{ color: '#c9190b' }}>*</span>
                                 </div>
                                 {!hasAddedDocuments ? (
                                   <div style={{ 
@@ -1535,21 +1521,23 @@ const AutoRAG: React.FunctionComponent = () => {
                                     Upload one or more document in the Documents column to get started.
                                   </div>
                                 ) : (
-                                  <>
-                                    <div style={{ fontSize: '1.5rem', marginBottom: '0.5rem' }} id="models-to-consider-link">
+                                  <Flex alignItems={{ default: 'alignItemsCenter' }} spaceItems={{ default: 'spaceItemsSm' }}>
+                                    <FlexItem style={{ fontSize: '1.5rem' }} id="models-to-consider-link">
                                       {selectedFoundationModels.size > 0 || selectedEmbeddingModels.size > 0
-                                        ? `${selectedFoundationModels.size} foundation${selectedFoundationModels.size !== 1 ? 's' : ''}, ${selectedEmbeddingModels.size} embedding${selectedEmbeddingModels.size !== 1 ? 's' : ''}`
+                                        ? `${selectedFoundationModels.size} foundation, ${selectedEmbeddingModels.size} embedding${selectedEmbeddingModels.size !== 1 ? 's' : ''}`
                                         : 'None selected'}
-                                    </div>
-                                    <Button
-                                      variant="secondary"
-                                      onClick={() => setIsEvaluationSettingsModalOpen(true)}
-                                      id="models-to-consider-select-button"
-                                      size="sm"
-                                    >
-                                      Select
-                                    </Button>
-                                  </>
+                                    </FlexItem>
+                                    <FlexItem>
+                                      <Button
+                                        variant="plain"
+                                        onClick={handleOpenEvaluationSettingsModal}
+                                        id="models-to-consider-edit-button"
+                                        aria-label="Edit models to consider"
+                                      >
+                                        <PencilAltIcon />
+                                      </Button>
+                                    </FlexItem>
+                                  </Flex>
                                 )}
                               </div>
                             </GridItem>
@@ -1560,42 +1548,44 @@ const AutoRAG: React.FunctionComponent = () => {
                     </Card>
               </GridItem>
             </Grid>
-
-                <div style={{ marginTop: 'auto', paddingTop: '2rem' }}>
-                  <Divider style={{ marginBottom: '1.5rem' }} />
-                  {/* Bottom Action Bar */}
-                  <div style={{ 
-                    padding: '1rem 1.5rem', 
-                    backgroundColor: 'var(--pf-v5-global--BackgroundColor--200)', 
-                    borderTop: '1px solid var(--pf-v5-global--BorderColor--200)',
-                    display: 'flex',
-                    justifyContent: 'flex-end',
-                    gap: '1rem'
-                  }}>
-                  <Button variant="secondary" onClick={handleBack} id="config-back-button">
-                    Back to experiments
-                  </Button>
-                  <Button 
-                    variant="primary" 
-                    onClick={handleRunExperiment} 
-                    id="run-experiment-button"
-                    isDisabled={
-                      documents.length === 0 ||
-                      evaluationSourceFile === null ||
-                      vectorDatabase === '' ||
-                      criteria.size === 0 ||
-                      (selectedFoundationModels.size === 0 && selectedEmbeddingModels.size === 0)
-                    }
-                  >
-                    Run experiment
-                  </Button>
-                  </div>
-                </div>
             </div>
-              </>
-            ) : !isCreating ? (
+
+              {/* Sticky Footer */}
+              <div style={{ 
+                position: 'fixed',
+                bottom: 0,
+                left: 0,
+                right: 0,
+                backgroundColor: '#ffffff',
+                borderTop: '1px solid var(--pf-v5-global--BorderColor--100)',
+                boxShadow: '0 -2px 4px rgba(0,0,0,0.1)',
+                padding: '1rem 1.5rem',
+                zIndex: 100
+              }}>
+                <Flex justifyContent={{ default: 'justifyContentFlexEnd' }} spaceItems={{ default: 'spaceItemsSm' }}>
+                  <FlexItem>
+                    <Button 
+                      variant="primary" 
+                      onClick={handleRunExperiment} 
+                      id="run-experiment-button"
+                      isDisabled={
+                        documents.length === 0 ||
+                        evaluationSourceFile === null ||
+                        vectorDatabase === '' ||
+                        !criteria ||
+                        (selectedFoundationModels.size === 0 && selectedEmbeddingModels.size === 0)
+                      }
+                    >
+                      Run experiment
+                    </Button>
+                  </FlexItem>
+                </Flex>
+              </div>
+            </div>
+          </>
+        ) : !isCreating ? (
           experiments.length > 0 ? (
-            <>
+            <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: '400px' }}>
               {/* Experiments Table View */}
               <Flex justifyContent={{ default: 'justifyContentFlexEnd' }} style={{ marginBottom: '1.5rem' }}>
                 <Button variant="primary" onClick={handleCreateExperiment} id="create-new-experiment-button">
@@ -1665,116 +1655,145 @@ const AutoRAG: React.FunctionComponent = () => {
                   ))}
                 </Tbody>
               </Table>
-            </>
+            </div>
           ) : (
-            <EmptyState headingLevel="h2" titleText="AutoRAG Experiment" icon={PlusCircleIcon} id="autorag-empty-state">
-              <EmptyStateBody>
-                Automatically prepare and optimize RAG patterns based on your document collection.
-              </EmptyStateBody>
-              <EmptyStateFooter>
-                <EmptyStateActions>
-                  <Button variant="primary" onClick={handleCreateExperiment} id="create-autorag-experiment-button">
-                    Create AutoRAG Experiment
-                  </Button>
-                </EmptyStateActions>
-              </EmptyStateFooter>
-            </EmptyState>
+            <div style={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              justifyContent: 'center',
+              flex: 1,
+              minHeight: '400px'
+            }}>
+              <EmptyState headingLevel="h2" titleText="AutoRAG Experiment" icon={PlusCircleIcon} id="autorag-empty-state">
+                <EmptyStateBody>
+                  Automatically configure and optimize your Retrieval-Augmented Generation workflows.
+                </EmptyStateBody>
+                <EmptyStateFooter>
+                  <EmptyStateActions>
+                    <Button variant="primary" onClick={handleCreateExperiment} id="create-autorag-experiment-button">
+                      Create AutoRAG Experiment
+                    </Button>
+                  </EmptyStateActions>
+                </EmptyStateFooter>
+              </EmptyState>
+            </div>
           )
         ) : (
           <>
-            <div style={{ display: 'flex', flexDirection: 'column', minHeight: 'calc(100vh - 300px)' }}>
-              <Form id="autorag-experiment-form" isWidthLimited>
-                <Title headingLevel="h2" size="md" id="autorag-details-header" style={{ marginTop: '1.5rem', marginBottom: '0.25rem' }}>
-                  Define Details
-                </Title>
+            <div style={{ 
+              display: 'flex', 
+              flexDirection: 'column', 
+              flex: 1, 
+              minHeight: '400px'
+            }}>
+              <div style={{ 
+                flex: 1, 
+                overflowY: 'auto',
+                paddingBottom: '100px'
+              }}>
+                <Form id="autorag-experiment-form" isWidthLimited>
+                  <Title headingLevel="h2" size="md" id="autorag-details-header" style={{ marginTop: '1.5rem', marginBottom: '0.25rem' }}>
+                    Define Details
+                  </Title>
 
-                <FormGroup label="Name" isRequired fieldId="autorag-name" style={{ marginTop: '0.25rem' }}>
-                  <TextInput
-                    isRequired
-                    type="text"
-                    id="autorag-name"
-                    name="autorag-name"
-                    value={name}
-                    onChange={(_event, value) => {
-                      setName(value);
-                      if (errors.name) {
-                        setErrors({ ...errors, name: '' });
-                      }
-                    }}
-                    validated={errors.name ? 'error' : 'default'}
-                  />
-                  {errors.name && (
+                  <FormGroup label="Name" isRequired fieldId="autorag-name" style={{ marginTop: '0.25rem' }}>
+                    <TextInput
+                      isRequired
+                      type="text"
+                      id="autorag-name"
+                      name="autorag-name"
+                      value={name}
+                      onChange={(_event, value) => {
+                        setName(value);
+                        if (errors.name) {
+                          setErrors({ ...errors, name: '' });
+                        }
+                      }}
+                      validated={errors.name ? 'error' : 'default'}
+                    />
+                    {errors.name && (
+                      <FormHelperText>
+                        <HelperText>
+                          <HelperTextItem variant="error">{errors.name}</HelperTextItem>
+                        </HelperText>
+                      </FormHelperText>
+                    )}
+                  </FormGroup>
+
+                  <FormGroup label="Description" fieldId="autorag-description" style={{ marginTop: '1rem' }}>
+                    <TextArea
+                      type="text"
+                      id="autorag-description"
+                      name="autorag-description"
+                      value={description}
+                      onChange={(_event, value) => setDescription(value)}
+                      rows={3}
+                    />
+                  </FormGroup>
+
+                  <FormGroup label="Tags" fieldId="autorag-tags" style={{ marginTop: '1rem' }}>
+                    <InputGroup>
+                      <InputGroupItem isFill>
+                        <TextInput
+                          type="text"
+                          id="autorag-tags-input"
+                          name="autorag-tags-input"
+                          value={tagInput}
+                          onChange={handleTagInputChange}
+                          onKeyDown={handleTagInputKeyDown}
+                          placeholder="Enter tags separated by commas"
+                        />
+                      </InputGroupItem>
+                      <InputGroupItem>
+                        <Button
+                          variant="control"
+                          onClick={handleAddTag}
+                          isDisabled={!tagInput.trim()}
+                          id="autorag-add-tag-button"
+                          aria-label="Add tag"
+                        >
+                          <PlusIcon />
+                        </Button>
+                      </InputGroupItem>
+                    </InputGroup>
                     <FormHelperText>
                       <HelperText>
-                        <HelperTextItem variant="error">{errors.name}</HelperTextItem>
+                        <HelperTextItem>Add tags to make assets easier to find</HelperTextItem>
                       </HelperText>
                     </FormHelperText>
-                  )}
-                </FormGroup>
+                    {tags.length > 0 && (
+                      <div style={{ marginTop: '0.5rem' }}>
+                        <LabelGroup id="autorag-tags-group">
+                          {tags.map((tag) => (
+                            <Label
+                              key={tag}
+                              variant="outline"
+                              onClose={() => handleRemoveTag(tag)}
+                              id={`autorag-tag-${tag}`}
+                            >
+                              {tag}
+                            </Label>
+                          ))}
+                        </LabelGroup>
+                      </div>
+                    )}
+                  </FormGroup>
+                </Form>
+              </div>
 
-                <FormGroup label="Description" fieldId="autorag-description" style={{ marginTop: '1rem' }}>
-                  <TextArea
-                    type="text"
-                    id="autorag-description"
-                    name="autorag-description"
-                    value={description}
-                    onChange={(_event, value) => setDescription(value)}
-                    rows={3}
-                  />
-                </FormGroup>
-
-                <FormGroup label="Tags" fieldId="autorag-tags" style={{ marginTop: '1rem' }}>
-                  <InputGroup>
-                    <InputGroupItem isFill>
-                      <TextInput
-                        type="text"
-                        id="autorag-tags-input"
-                        name="autorag-tags-input"
-                        value={tagInput}
-                        onChange={handleTagInputChange}
-                        onKeyDown={handleTagInputKeyDown}
-                        placeholder="Enter tags separated by commas"
-                      />
-                    </InputGroupItem>
-                    <InputGroupItem>
-                      <Button
-                        variant="control"
-                        onClick={handleAddTag}
-                        isDisabled={!tagInput.trim()}
-                        id="autorag-add-tag-button"
-                        aria-label="Add tag"
-                      >
-                        <PlusIcon />
-                      </Button>
-                    </InputGroupItem>
-                  </InputGroup>
-                  <FormHelperText>
-                    <HelperText>
-                      <HelperTextItem>Add tags to make assets easier to find</HelperTextItem>
-                    </HelperText>
-                  </FormHelperText>
-                  {tags.length > 0 && (
-                    <div style={{ marginTop: '0.5rem' }}>
-                      <LabelGroup id="autorag-tags-group">
-                        {tags.map((tag) => (
-                          <Label
-                            key={tag}
-                            variant="outline"
-                            onClose={() => handleRemoveTag(tag)}
-                            id={`autorag-tag-${tag}`}
-                          >
-                            {tag}
-                          </Label>
-                        ))}
-                      </LabelGroup>
-                    </div>
-                  )}
-                </FormGroup>
-              </Form>
-
-              <div style={{ marginTop: 'auto', paddingTop: '2rem' }}>
-                <Divider style={{ marginBottom: '1.5rem' }} />
-                <Flex style={{ gap: '1rem', justifyContent: 'flex-end' }}>
+              {/* Sticky Footer */}
+              <div style={{ 
+                position: 'fixed',
+                bottom: 0,
+                left: 0,
+                right: 0,
+                backgroundColor: '#ffffff',
+                borderTop: '1px solid var(--pf-v5-global--BorderColor--100)',
+                boxShadow: '0 -2px 4px rgba(0,0,0,0.1)',
+                padding: '1rem 1.5rem',
+                zIndex: 100
+              }}>
+                <Flex justifyContent={{ default: 'justifyContentFlexEnd' }} spaceItems={{ default: 'spaceItemsSm' }}>
                   <FlexItem>
                     <Button variant="secondary" onClick={handleCancel} id="autorag-cancel-button">
                       Cancel
@@ -1785,7 +1804,7 @@ const AutoRAG: React.FunctionComponent = () => {
                       variant="primary" 
                       onClick={handleSubmit} 
                       id="autorag-create-button"
-                      isDisabled={!name.trim()}
+                      isDisabled={!name.trim() || !criteria || (selectedFoundationModels.size === 0 && selectedEmbeddingModels.size === 0)}
                     >
                       Create
                     </Button>
@@ -1801,12 +1820,12 @@ const AutoRAG: React.FunctionComponent = () => {
       <Modal
         variant={ModalVariant.large}
         isOpen={isEvaluationSettingsModalOpen}
-        onClose={() => setIsEvaluationSettingsModalOpen(false)}
+        onClose={handleCancelEvaluationSettings}
         id="evaluation-settings-modal"
       >
         <ModalHeader>
           <Title headingLevel="h2" size="xl" id="evaluation-settings-modal-title">
-            Evaluation source settings
+            Experiment settings
           </Title>
         </ModalHeader>
         <ModalBody>
@@ -1814,6 +1833,7 @@ const AutoRAG: React.FunctionComponent = () => {
             {/* Models to Test - Tabbed Layout */}
             <FormGroup
               label="Models to test"
+              isRequired
               fieldId="models-to-test"
               style={{ marginBottom: '1.5rem' }}
             >
@@ -1844,7 +1864,6 @@ const AutoRAG: React.FunctionComponent = () => {
                           <Th width={10}></Th>
                           <Th>Name</Th>
                           <Th>Description</Th>
-                          <Th>Tag</Th>
                         </Tr>
                       </Thead>
                       <Tbody>
@@ -1859,9 +1878,6 @@ const AutoRAG: React.FunctionComponent = () => {
                             </Td>
                             <Td dataLabel="Name">{model.name}</Td>
                             <Td dataLabel="Description">{model.description}</Td>
-                            <Td dataLabel="Tag">
-                              <Label>{model.tag}</Label>
-                            </Td>
                           </Tr>
                         ))}
                       </Tbody>
@@ -1890,7 +1906,6 @@ const AutoRAG: React.FunctionComponent = () => {
                           <Th width={10}></Th>
                           <Th>Name</Th>
                           <Th>Description</Th>
-                          <Th>Tag</Th>
                         </Tr>
                       </Thead>
                       <Tbody>
@@ -1905,9 +1920,6 @@ const AutoRAG: React.FunctionComponent = () => {
                             </Td>
                             <Td dataLabel="Name">{model.name}</Td>
                             <Td dataLabel="Description">{model.description}</Td>
-                            <Td dataLabel="Tag">
-                              <Label>{model.tag}</Label>
-                            </Td>
                           </Tr>
                         ))}
                       </Tbody>
@@ -1920,31 +1932,35 @@ const AutoRAG: React.FunctionComponent = () => {
             {/* Criteria to Test */}
             <FormGroup
               label="Criteria to test"
+              isRequired
               fieldId="criteria"
               style={{ marginBottom: '1.5rem' }}
             >
               <Flex direction={{ default: 'column' }} spaceItems={{ default: 'spaceItemsSm' }}>
                 <FlexItem>
-                  <Checkbox
+                  <Radio
                     id="criteria-faithfulness"
-                    isChecked={criteria.has('answer faithfulness')}
-                    onChange={() => handleCriteriaToggle('answer faithfulness')}
+                    name="criteria"
+                    isChecked={criteria === 'answer faithfulness'}
+                    onChange={() => handleCriteriaChange('answer faithfulness')}
                     label="Answer faithfulness"
                   />
                 </FlexItem>
                 <FlexItem>
-                  <Checkbox
+                  <Radio
                     id="criteria-correctness"
-                    isChecked={criteria.has('answer correctness')}
-                    onChange={() => handleCriteriaToggle('answer correctness')}
+                    name="criteria"
+                    isChecked={criteria === 'answer correctness'}
+                    onChange={() => handleCriteriaChange('answer correctness')}
                     label="Answer correctness"
                   />
                 </FlexItem>
                 <FlexItem>
-                  <Checkbox
+                  <Radio
                     id="criteria-context"
-                    isChecked={criteria.has('context correctness')}
-                    onChange={() => handleCriteriaToggle('context correctness')}
+                    name="criteria"
+                    isChecked={criteria === 'context correctness'}
+                    onChange={() => handleCriteriaChange('context correctness')}
                     label="Context correctness"
                   />
                 </FlexItem>
@@ -1953,8 +1969,16 @@ const AutoRAG: React.FunctionComponent = () => {
           </Form>
         </ModalBody>
         <ModalFooter>
-          <Button variant="primary" onClick={() => setIsEvaluationSettingsModalOpen(false)} id="evaluation-settings-close-button">
-            Close
+          <Button 
+            variant="primary" 
+            onClick={handleSaveEvaluationSettings} 
+            id="evaluation-settings-save-button"
+            isDisabled={!hasEvaluationSettingsChanged()}
+          >
+            Save
+          </Button>
+          <Button variant="link" onClick={handleCancelEvaluationSettings} id="evaluation-settings-cancel-button">
+            Cancel
           </Button>
         </ModalFooter>
       </Modal>
@@ -1968,18 +1992,11 @@ const AutoRAG: React.FunctionComponent = () => {
       >
         <ModalHeader>
           <Title headingLevel="h2" size="xl" id="evaluation-source-modal-title">
-            What is an evaluation source?
+            Evaluation data template
           </Title>
         </ModalHeader>
         <ModalBody>
           <div style={{ marginBottom: '1.5rem' }}>
-            <Title headingLevel="h3" size="lg" style={{ marginBottom: '1rem' }}>
-              Evaluation data template
-            </Title>
-            <p style={{ marginBottom: '1.5rem', fontSize: 'var(--pf-v5-global--FontSize--md)' }}>
-              Data should have examples that represent the user input and model output.
-            </p>
-            
             <div style={{ 
               backgroundColor: 'var(--pf-v5-global--BackgroundColor--200)',
               border: '1px solid var(--pf-v5-global--BorderColor--200)',
