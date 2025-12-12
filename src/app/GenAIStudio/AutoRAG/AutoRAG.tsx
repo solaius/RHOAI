@@ -826,21 +826,9 @@ const AutoRAG: React.FunctionComponent = () => {
   return (
     <>
       {/* Breadcrumb Navigation */}
-      {flags.showProjectWorkspaceDropdowns && (isCreating || experimentCreated) && (
+      {flags.showProjectWorkspaceDropdowns && experimentCreated && (
         <PageSection style={{ paddingTop: '0.5rem', paddingBottom: '0.25rem' }} id="autorag-breadcrumb">
           <Breadcrumb id="autorag-breadcrumb-nav">
-            {/* State 1: Creating new experiment */}
-            {isCreating && (
-              <BreadcrumbItem to="#" id="breadcrumb-project">
-                AutoRAG: {selectedProject}
-              </BreadcrumbItem>
-            )}
-            {isCreating && (
-              <BreadcrumbItem isActive id="breadcrumb-new-experiment">
-                New experiment
-              </BreadcrumbItem>
-            )}
-
             {/* State 2: Experiment created - on configuration page */}
             {!isCreating && experimentCreated && isConfiguring && !experimentCompleted && (
               <BreadcrumbItem
@@ -855,20 +843,8 @@ const AutoRAG: React.FunctionComponent = () => {
               </BreadcrumbItem>
             )}
             {!isCreating && experimentCreated && isConfiguring && !experimentCompleted && (
-              <BreadcrumbItem
-                to="#"
-                onClick={(e) => {
-                  e.preventDefault();
-                  handleBreadcrumbNavigation('experiment');
-                }}
-                id="breadcrumb-experiment-name"
-              >
+              <BreadcrumbItem isActive id="breadcrumb-experiment-name">
                 {experimentName}
-              </BreadcrumbItem>
-            )}
-            {!isCreating && experimentCreated && isConfiguring && !experimentCompleted && (
-              <BreadcrumbItem isActive id="breadcrumb-configurations">
-                Configurations
               </BreadcrumbItem>
             )}
 
@@ -899,7 +875,7 @@ const AutoRAG: React.FunctionComponent = () => {
             )}
             {!isCreating && experimentCreated && experimentCompleted && (
               <BreadcrumbItem isActive id="breadcrumb-results">
-                Experiment results
+                {experimentName} experiment results
               </BreadcrumbItem>
             )}
           </Breadcrumb>
@@ -911,13 +887,45 @@ const AutoRAG: React.FunctionComponent = () => {
         <Flex alignItems={{ default: 'alignItemsCenter' }} spaceItems={{ default: 'spaceItemsSm' }}>
           <FlexItem>
             <Title headingLevel="h2" size="xl" id="autorag-title">
-              AutoRAG
+              {isCreating
+                ? 'Create AutoRAG experiment'
+                : experimentCompleted 
+                ? `${experimentName} experiment results`
+                : experimentCreated 
+                ? experimentName 
+                : 'AutoRAG'}
             </Title>
           </FlexItem>
         </Flex>
-        <div style={{ color: 'var(--pf-v5-global--Color--200)', marginTop: '0.5rem' }}>
-          Automatically configure and optimize your Retrieval-Augmented Generation workflows.
-        </div>
+        {!experimentCreated && (
+          <div style={{ color: 'var(--pf-v5-global--Color--200)', marginTop: '0.5rem' }}>
+            Automatically configure and optimize your Retrieval-Augmented Generation workflows.
+          </div>
+        )}
+        {experimentCompleted && (
+          <Flex spaceItems={{ default: 'spaceItemsSm' }} style={{ marginTop: '0.5rem' }}>
+            <FlexItem>
+              <Button
+                variant="link"
+                isInline
+                onClick={handleViewExperimentDetails}
+                id="header-view-details-link"
+              >
+                View details
+              </Button>
+            </FlexItem>
+            <FlexItem>
+              <Button
+                variant="link"
+                isInline
+                onClick={handleViewExperimentCode}
+                id="header-view-code-link"
+              >
+                View code
+              </Button>
+            </FlexItem>
+          </Flex>
+        )}
   </PageSection>
 
       {/* Project Selector - Only show on empty state page */}
@@ -983,29 +991,6 @@ const AutoRAG: React.FunctionComponent = () => {
       >
         {experimentCompleted ? (
           <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: '400px' }}>
-            {/* Results Screen Header */}
-            <Flex justifyContent={{ default: 'justifyContentSpaceBetween' }} alignItems={{ default: 'alignItemsCenter' }} style={{ marginBottom: '2rem' }}>
-              <FlexItem>
-                <Title headingLevel="h1" size="lg" id="autorag-results-title">
-                  Experiment results
-                </Title>
-              </FlexItem>
-              <FlexItem>
-                <Flex spaceItems={{ default: 'spaceItemsMd' }} alignItems={{ default: 'alignItemsCenter' }}>
-                  <FlexItem>
-                    <Button variant="secondary" onClick={handleViewExperimentDetails} id="view-experiment-details-button">
-                      View experiment details
-                    </Button>
-                  </FlexItem>
-                  <FlexItem>
-                    <Button variant="primary" onClick={handleViewExperimentCode} id="view-experiment-code-button">
-                      View experiment code
-                    </Button>
-                  </FlexItem>
-                </Flex>
-              </FlexItem>
-            </Flex>
-
             {/* Pipeline Visualization */}
             <Card id="pipeline-visualization-card">
               <CardHeader>
@@ -1257,20 +1242,6 @@ const AutoRAG: React.FunctionComponent = () => {
           </div>
         ) : experimentCreated ? (
           <>
-            {/* Experiment Header */}
-            <Flex alignItems={{ default: 'alignItemsBaseline' }} spaceItems={{ default: 'spaceItemsMd' }} style={{ marginBottom: '2rem' }}>
-              <FlexItem>
-                <Title headingLevel="h1" size="lg" id="autorag-experiment-name">
-                  {experimentName}
-                </Title>
-              </FlexItem>
-              <FlexItem>
-                <div style={{ color: 'var(--pf-v5-global--Color--200)', fontSize: 'var(--pf-v5-global--FontSize--sm)' }}>
-                  Last saved: {experimentLastSaved ? formatLastSaved(experimentLastSaved) : ''}
-                </div>
-              </FlexItem>
-            </Flex>
-
             {/* Configuration Screen */}
             <div style={{ 
               display: 'flex', 
