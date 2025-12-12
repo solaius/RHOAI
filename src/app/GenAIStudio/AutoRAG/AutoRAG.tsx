@@ -1,15 +1,20 @@
 import * as React from 'react';
 import {
+  Badge,
+  Breadcrumb,
+  BreadcrumbItem,
   Button,
   Card,
   CardBody,
   CardHeader,
   CardTitle,
   Checkbox,
+  Divider,
   EmptyState,
   EmptyStateActions,
   EmptyStateBody,
   EmptyStateFooter,
+  FileUpload,
   Flex,
   FlexItem,
   Form,
@@ -24,6 +29,7 @@ import {
   Label,
   LabelGroup,
   MenuToggle,
+  MenuToggleElement,
   Modal,
   ModalBody,
   ModalFooter,
@@ -62,6 +68,11 @@ import {
   OutlinedFolderIcon,
   PlusCircleIcon,
   PlusIcon,
+  DownloadIcon,
+  CopyIcon,
+  CheckCircleIcon,
+  SyncIcon,
+  StarIcon,
 } from '@patternfly/react-icons';
 import { useFeatureFlags } from '@app/utils/FeatureFlagsContext';
 
@@ -70,6 +81,17 @@ interface Document {
   name: string;
   type: string;
   uploaded: Date;
+  sourceType: 'document' | 'connection';
+}
+
+interface Connection {
+  id: string;
+  name: string;
+  type: string; // e.g., 'S3 Bucket', 'COS', etc.
+  bucketName?: string;
+  endpoint?: string;
+  region?: string;
+  createdAt: Date;
 }
 
 interface Model {
@@ -87,6 +109,20 @@ interface PatternResult {
   answerFaithfulness: number;
   chunkMethod: string;
   chunkSize: number;
+  status: 'Complete' | 'In Progress';
+}
+
+interface Experiment {
+  id: string;
+  name: string;
+  description: string;
+  tags: string[];
+  status: 'incomplete' | 'completed' | 'Processing' | 'failed';
+  createdAt: Date;
+  lastSaved: Date;
+  hasDocuments: boolean;
+  hasConfigurations: boolean;
+  isRunning: boolean;
 }
 
 const AutoRAG: React.FunctionComponent = () => {
@@ -104,22 +140,37 @@ const AutoRAG: React.FunctionComponent = () => {
   const [documents, setDocuments] = React.useState<Document[]>([]);
   const [hasAddedDocuments, setHasAddedDocuments] = React.useState(false);
   const [isConfiguring, setIsConfiguring] = React.useState(false);
-  const [vectorDatabase, setVectorDatabase] = React.useState('');
-  const [evaluationSource, setEvaluationSource] = React.useState('');
+  const [vectorDatabase, setVectorDatabase] = React.useState('Milvus (in line)');
   const [selectedFoundationModels, setSelectedFoundationModels] = React.useState<Set<string>>(new Set());
   const [selectedEmbeddingModels, setSelectedEmbeddingModels] = React.useState<Set<string>>(new Set());
   const [selectAllFoundation, setSelectAllFoundation] = React.useState(false);
   const [selectAllEmbedding, setSelectAllEmbedding] = React.useState(false);
   const [criteria, setCriteria] = React.useState<Set<string>>(new Set());
   const [isVectorDbOpen, setIsVectorDbOpen] = React.useState(false);
-  const [isEvaluationSourceOpen, setIsEvaluationSourceOpen] = React.useState(false);
   const [experimentRunning, setExperimentRunning] = React.useState(false);
   const [experimentCompleted, setExperimentCompleted] = React.useState(false);
   const [patternResults, setPatternResults] = React.useState<PatternResult[]>([]);
+  const [sortBy, setSortBy] = React.useState<string>('rank');
+  const [sortDirection, setSortDirection] = React.useState<'asc' | 'desc'>('asc');
   const [activeModelTabKey, setActiveModelTabKey] = React.useState<string | number>(0);
   const [isEvaluationSettingsModalOpen, setIsEvaluationSettingsModalOpen] = React.useState(false);
-  const [isAddDocumentsModalOpen, setIsAddDocumentsModalOpen] = React.useState(false);
-  const [uploadedFiles, setUploadedFiles] = React.useState<File[]>([]);
+  const [evaluationSources, setEvaluationSources] = React.useState<Document[]>([]);
+  const [activeSourcesTabKey, setActiveSourcesTabKey] = React.useState<string | number>(0);
+  const [isEvaluationSourceModalOpen, setIsEvaluationSourceModalOpen] = React.useState(false);
+  const [evaluationSourceFile, setEvaluationSourceFile] = React.useState<File | null>(null);
+  const [evaluationSourceFilename, setEvaluationSourceFilename] = React.useState('');
+  const [isEvaluationSourceUploading, setIsEvaluationSourceUploading] = React.useState(false);
+  const [experiments, setExperiments] = React.useState<Experiment[]>([]);
+  const [selectedExperimentId, setSelectedExperimentId] = React.useState<string | null>(null);
+  const [connections, setConnections] = React.useState<Connection[]>([]);
+  const [isAddConnectionModalOpen, setIsAddConnectionModalOpen] = React.useState(false);
+  const [connectionName, setConnectionName] = React.useState('');
+  const [connectionType, setConnectionType] = React.useState('');
+  const [isConnectionTypeOpen, setIsConnectionTypeOpen] = React.useState(false);
+  const [bucketName, setBucketName] = React.useState('');
+  const [endpoint, setEndpoint] = React.useState('');
+  const [region, setRegion] = React.useState('');
+  const [uploadingFiles, setUploadingFiles] = React.useState<File[]>([]);
 
   // Mock data for models
   const foundationModels: Model[] = [
@@ -145,6 +196,9 @@ const AutoRAG: React.FunctionComponent = () => {
     setIsCreating(false);
     setExperimentCreated(false);
     setIsConfiguring(false);
+    setExperimentCompleted(false);
+    setExperimentRunning(false);
+    setSelectedExperimentId(null);
     setName('');
     setDescription('');
     setTagInput('');
@@ -152,6 +206,13 @@ const AutoRAG: React.FunctionComponent = () => {
     setErrors({});
     setDocuments([]);
     setHasAddedDocuments(false);
+    setEvaluationSourceFile(null);
+    setEvaluationSourceFilename('');
+    setVectorDatabase('Milvus (in line)');
+    setSelectedFoundationModels(new Set());
+    setSelectedEmbeddingModels(new Set());
+    setCriteria(new Set());
+    setPatternResults([]);
   };
 
   const handleAddTag = () => {
@@ -196,6 +257,23 @@ const AutoRAG: React.FunctionComponent = () => {
     if (Object.keys(newErrors).length === 0) {
       // Create experiment and move directly to configuration screen
       const now = new Date();
+      const experimentId = Date.now().toString();
+      const newExperiment: Experiment = {
+        id: experimentId,
+        name: name.trim(),
+        description: description.trim(),
+        tags: tags,
+        status: 'incomplete',
+        createdAt: now,
+        lastSaved: now,
+        hasDocuments: false,
+        hasConfigurations: false,
+        isRunning: false,
+      };
+      
+      // Save experiment to list
+      setExperiments([...experiments, newExperiment]);
+      setSelectedExperimentId(experimentId);
       setExperimentName(name.trim());
       setExperimentLastSaved(now);
       setExperimentCreated(true);
@@ -219,35 +297,86 @@ const AutoRAG: React.FunctionComponent = () => {
     return date.toLocaleString('en-US', options);
   };
 
-  const handleChooseDocuments = () => {
-    setIsAddDocumentsModalOpen(true);
+  const handleFileRemove = (fileId: string) => {
+    setDocuments(documents.filter(doc => doc.id !== fileId));
+    // Also remove from connections if it's a connection
+    setConnections(connections.filter(conn => conn.id !== fileId));
+    if (documents.length === 1) {
+      setHasAddedDocuments(false);
+    }
   };
 
   const handleFileDrop = (_event: unknown, droppedFiles: File[]) => {
-    setUploadedFiles([...uploadedFiles, ...droppedFiles]);
+    // Add files to uploading state
+    setUploadingFiles([...uploadingFiles, ...droppedFiles]);
+    
+    // Simulate upload process, then add to documents
+    droppedFiles.forEach((file) => {
+      setTimeout(() => {
+        const newDocument: Document = {
+          id: Date.now().toString() + Math.random().toString(36).substr(2, 9) + file.name,
+          name: file.name,
+          type: file.type || file.name.split('.').pop()?.toUpperCase() || 'Unknown',
+          uploaded: new Date(),
+          sourceType: 'document' as const,
+        };
+        setDocuments(prevDocs => [...prevDocs, newDocument]);
+        setUploadingFiles(prevFiles => prevFiles.filter(f => f !== file));
+        setHasAddedDocuments(true);
+      }, 500);
+    });
   };
 
-  const handleFileRemove = (file: File) => {
-    setUploadedFiles(uploadedFiles.filter(f => f !== file));
+  const handleAddConnection = () => {
+    setIsAddConnectionModalOpen(true);
   };
 
-  const handleAddDocumentsConfirm = () => {
-    // Convert uploaded files to Document format
-    const newDocuments: Document[] = uploadedFiles.map(file => ({
-      id: Date.now().toString() + file.name,
-      name: file.name,
-      type: file.type || file.name.split('.').pop()?.toUpperCase() || 'Unknown',
-      uploaded: new Date(),
-    }));
-    setDocuments([...documents, ...newDocuments]);
-    setHasAddedDocuments(true);
-    setUploadedFiles([]);
-    setIsAddDocumentsModalOpen(false);
+  const handleConnectionSubmit = () => {
+    if (connectionName.trim() && connectionType.trim()) {
+      const newConnection: Connection = {
+        id: Date.now().toString(),
+        name: connectionName.trim(),
+        type: connectionType.trim(),
+        bucketName: bucketName.trim() || undefined,
+        endpoint: endpoint.trim() || undefined,
+        region: region.trim() || undefined,
+        createdAt: new Date(),
+      };
+      setConnections([...connections, newConnection]);
+      
+      // Also add to documents list for display
+      const connectionDocument: Document = {
+        id: newConnection.id,
+        name: newConnection.name,
+        type: newConnection.type,
+        uploaded: newConnection.createdAt,
+        sourceType: 'connection' as const,
+      };
+      setDocuments([...documents, connectionDocument]);
+      setHasAddedDocuments(true);
+      
+      // Reset form
+      setConnectionName('');
+      setConnectionType('');
+      setBucketName('');
+      setEndpoint('');
+      setRegion('');
+      setIsAddConnectionModalOpen(false);
+    }
   };
 
-  const handleAddDocumentsModalClose = () => {
-    setUploadedFiles([]);
-    setIsAddDocumentsModalOpen(false);
+  const handleConnectionModalClose = () => {
+    setConnectionName('');
+    setConnectionType('');
+    setIsConnectionTypeOpen(false);
+    setBucketName('');
+    setEndpoint('');
+    setRegion('');
+    setIsAddConnectionModalOpen(false);
+  };
+
+  const handleDeleteEvaluationSource = (sourceId: string) => {
+    setEvaluationSources(evaluationSources.filter(source => source.id !== sourceId));
   };
 
   const handleUploadDocument = () => {
@@ -255,10 +384,6 @@ const AutoRAG: React.FunctionComponent = () => {
     console.log('Upload document clicked');
   };
 
-  const handleAddConnection = () => {
-    // TODO: Implement add connection
-    console.log('Add connection clicked');
-  };
 
   const handleAddDocuments = () => {
     // Move to configuration screen
@@ -269,11 +394,21 @@ const AutoRAG: React.FunctionComponent = () => {
     // TODO: Implement experiment run
     console.log('Run experiment clicked', {
       vectorDatabase,
-      evaluationSource,
+      evaluationSourceFile: evaluationSourceFile?.name || null,
       foundationModels: Array.from(selectedFoundationModels),
       embeddingModels: Array.from(selectedEmbeddingModels),
       criteria: Array.from(criteria),
     });
+    
+    // Update experiment status to Processing
+    if (selectedExperimentId) {
+      setExperiments(prevExperiments => prevExperiments.map(exp => {
+        if (exp.id === selectedExperimentId) {
+          return { ...exp, status: 'Processing', isRunning: true };
+        }
+        return exp;
+      }));
+    }
     
     // Simulate experiment running and completion
     setExperimentRunning(true);
@@ -289,6 +424,7 @@ const AutoRAG: React.FunctionComponent = () => {
         answerFaithfulness: 0.95,
         chunkMethod: 'Semantic',
         chunkSize: 512,
+        status: 'Complete',
       },
       {
         id: '2',
@@ -298,6 +434,7 @@ const AutoRAG: React.FunctionComponent = () => {
         answerFaithfulness: 0.92,
         chunkMethod: 'Fixed',
         chunkSize: 256,
+        status: 'Complete',
       },
       {
         id: '3',
@@ -307,6 +444,37 @@ const AutoRAG: React.FunctionComponent = () => {
         answerFaithfulness: 0.89,
         chunkMethod: 'Semantic',
         chunkSize: 1024,
+        status: 'Complete',
+      },
+      {
+        id: '4',
+        rank: 4,
+        patternName: 'Pattern 4',
+        modelName: 'Foundation Model 2',
+        answerFaithfulness: 0,
+        chunkMethod: 'Fixed',
+        chunkSize: 512,
+        status: 'In Progress',
+      },
+      {
+        id: '5',
+        rank: 5,
+        patternName: 'Pattern 5',
+        modelName: 'Foundation Model 3',
+        answerFaithfulness: 0,
+        chunkMethod: 'Semantic',
+        chunkSize: 256,
+        status: 'In Progress',
+      },
+      {
+        id: '6',
+        rank: 6,
+        patternName: 'Pattern 6',
+        modelName: 'Foundation Model 3',
+        answerFaithfulness: 0,
+        chunkMethod: 'Fixed',
+        chunkSize: 1024,
+        status: 'In Progress',
       },
     ];
     
@@ -315,6 +483,16 @@ const AutoRAG: React.FunctionComponent = () => {
       setPatternResults(mockResults);
       setExperimentRunning(false);
       setExperimentCompleted(true);
+      
+      // Update experiment status to completed
+      if (selectedExperimentId) {
+        setExperiments(prevExperiments => prevExperiments.map(exp => {
+          if (exp.id === selectedExperimentId) {
+            return { ...exp, status: 'completed', isRunning: false };
+          }
+          return exp;
+        }));
+      }
     }, 1000);
   };
 
@@ -333,6 +511,51 @@ const AutoRAG: React.FunctionComponent = () => {
     console.log('View code for pattern:', patternId);
   };
 
+  const handleSort = (columnName: string) => {
+    if (sortBy === columnName) {
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortBy(columnName);
+      setSortDirection('asc');
+    }
+  };
+
+  const getSortedResults = (): PatternResult[] => {
+    const sorted = [...patternResults].sort((a, b) => {
+      let comparison = 0;
+      
+      switch (sortBy) {
+        case 'rank':
+          comparison = a.rank - b.rank;
+          break;
+        case 'patternName':
+          comparison = a.patternName.localeCompare(b.patternName);
+          break;
+        case 'modelName':
+          comparison = a.modelName.localeCompare(b.modelName);
+          break;
+        case 'answerFaithfulness':
+          comparison = a.answerFaithfulness - b.answerFaithfulness;
+          break;
+        case 'chunkMethod':
+          comparison = a.chunkMethod.localeCompare(b.chunkMethod);
+          break;
+        case 'chunkSize':
+          comparison = a.chunkSize - b.chunkSize;
+          break;
+        case 'status':
+          comparison = a.status.localeCompare(b.status);
+          break;
+        default:
+          return 0;
+      }
+      
+      return sortDirection === 'asc' ? comparison : -comparison;
+    });
+    
+    return sorted;
+  };
+
   const handleViewExperimentDetails = () => {
     // TODO: Implement view experiment details
     console.log('View experiment details');
@@ -341,6 +564,83 @@ const AutoRAG: React.FunctionComponent = () => {
   const handleViewExperimentCode = () => {
     // TODO: Implement view experiment code
     console.log('View experiment code');
+  };
+
+  const handleViewAllExperiments = () => {
+    console.log('View all experiments');
+    // TODO: Navigate to experiments list page
+  };
+
+  const handleNewExperiment = () => {
+    console.log('New experiment');
+    handleCreateExperiment();
+  };
+
+  const handleBreadcrumbNavigation = (target: string) => {
+    switch (target) {
+      case 'project':
+        // Navigate back to experiments list
+        handleCancel();
+        break;
+      case 'experiment':
+        // Navigate back to configuration from results page
+        if (experimentCompleted) {
+          setExperimentCompleted(false);
+          setExperimentRunning(false);
+          setPatternResults([]);
+          setIsConfiguring(true);
+        }
+        break;
+      default:
+        break;
+    }
+  };
+
+  // Update experiment status based on current state
+  React.useEffect(() => {
+    if (selectedExperimentId) {
+      setExperiments(prevExperiments => prevExperiments.map(exp => {
+        if (exp.id === selectedExperimentId) {
+          let status: Experiment['status'] = 'incomplete';
+          if (experimentRunning) {
+            status = 'Processing';
+          } else if (experimentCompleted) {
+            status = 'completed';
+          } else if (documents.length > 0 && evaluationSourceFile && vectorDatabase && criteria.size > 0 && (selectedFoundationModels.size > 0 || selectedEmbeddingModels.size > 0)) {
+            status = 'incomplete'; // Still incomplete until run
+          } else if (documents.length === 0 && !evaluationSourceFile) {
+            status = 'incomplete';
+          }
+          
+          return {
+            ...exp,
+            status,
+            hasDocuments: documents.length > 0,
+            hasConfigurations: documents.length > 0 && evaluationSourceFile !== null && vectorDatabase !== '',
+            isRunning: experimentRunning,
+            lastSaved: new Date(),
+          };
+        }
+        return exp;
+      }));
+    }
+  }, [documents.length, evaluationSourceFile, vectorDatabase, criteria.size, selectedFoundationModels.size, selectedEmbeddingModels.size, experimentRunning, experimentCompleted, selectedExperimentId]);
+
+  // Handle clicking on experiment name to navigate
+  const handleExperimentClick = (experiment: Experiment) => {
+    setSelectedExperimentId(experiment.id);
+    setExperimentName(experiment.name);
+    setName(experiment.name);
+    setDescription(experiment.description);
+    setTags(experiment.tags);
+    setExperimentCreated(true);
+    
+    // Navigate to configurations page (last completed page for incomplete experiments)
+    setIsConfiguring(true);
+    setIsCreating(false);
+    
+    // If experiment has documents/configurations, load them
+    // TODO: Load experiment data from storage/API
   };
 
 
@@ -398,18 +698,11 @@ const AutoRAG: React.FunctionComponent = () => {
     setCriteria(newSet);
   };
 
-  const handleDeleteDocument = (docId: string) => {
-    setDocuments(documents.filter(doc => doc.id !== docId));
-  };
 
   const handleBack = () => {
     if (isConfiguring) {
-      // Go back from configuration to form
-      setIsConfiguring(false);
-      setIsCreating(true);
-      setExperimentCreated(false);
-      setDocuments([]);
-      setHasAddedDocuments(false);
+      // Go back from configuration to experiments table view
+      handleCancel();
     } else if (experimentCompleted) {
       // Go back from results to configuration
       setExperimentCompleted(false);
@@ -427,8 +720,139 @@ const AutoRAG: React.FunctionComponent = () => {
     });
   };
 
+  const evaluationDataTemplate = [
+    {
+      question: "<text>",
+      correct_answer: "<text>",
+      correct_answer_document_ids: [
+        "<file>",
+        "<file>"
+      ]
+    },
+    {
+      question: "<text>",
+      correct_answer: "<text>",
+      correct_answer_document_ids: [
+        "<file>",
+        "<file>"
+      ]
+    },
+    {
+      question: "<text>",
+      correct_answer: "<text>",
+      correct_answer_document_ids: [
+        "<file>",
+        "<file>"
+      ]
+    }
+  ];
+
+  const handleDownloadTemplate = () => {
+    const dataStr = JSON.stringify(evaluationDataTemplate, null, 2);
+    const dataBlob = new Blob([dataStr], { type: 'application/json' });
+    const url = URL.createObjectURL(dataBlob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'evaluation-data-template.json';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
+  const handleCopyCode = () => {
+    const codeText = JSON.stringify(evaluationDataTemplate, null, 2);
+    navigator.clipboard.writeText(codeText).then(() => {
+      // Could add a toast notification here if needed
+      console.log('Code copied to clipboard');
+    }).catch(err => {
+      console.error('Failed to copy code:', err);
+    });
+  };
+
   return (
     <>
+      {/* Breadcrumb Navigation */}
+      {flags.showProjectWorkspaceDropdowns && (isCreating || experimentCreated) && (
+        <PageSection style={{ paddingTop: '0.5rem', paddingBottom: '0.25rem' }} id="autorag-breadcrumb">
+          <Breadcrumb id="autorag-breadcrumb-nav">
+            {/* State 1: Creating new experiment */}
+            {isCreating && (
+              <BreadcrumbItem to="#" id="breadcrumb-project">
+                AutoRAG: {selectedProject}
+              </BreadcrumbItem>
+            )}
+            {isCreating && (
+              <BreadcrumbItem isActive id="breadcrumb-new-experiment">
+                New experiment
+              </BreadcrumbItem>
+            )}
+
+            {/* State 2: Experiment created - on configuration page */}
+            {!isCreating && experimentCreated && isConfiguring && !experimentCompleted && (
+              <BreadcrumbItem
+                to="#"
+                onClick={(e) => {
+                  e.preventDefault();
+                  handleBreadcrumbNavigation('project');
+                }}
+                id="breadcrumb-project"
+              >
+                AutoRAG: {selectedProject}
+              </BreadcrumbItem>
+            )}
+            {!isCreating && experimentCreated && isConfiguring && !experimentCompleted && (
+              <BreadcrumbItem
+                to="#"
+                onClick={(e) => {
+                  e.preventDefault();
+                  handleBreadcrumbNavigation('experiment');
+                }}
+                id="breadcrumb-experiment-name"
+              >
+                {experimentName}
+              </BreadcrumbItem>
+            )}
+            {!isCreating && experimentCreated && isConfiguring && !experimentCompleted && (
+              <BreadcrumbItem isActive id="breadcrumb-configurations">
+                Configurations
+              </BreadcrumbItem>
+            )}
+
+            {/* State 3: Experiment completed - on results page */}
+            {!isCreating && experimentCreated && experimentCompleted && (
+              <BreadcrumbItem
+                to="#"
+                onClick={(e) => {
+                  e.preventDefault();
+                  handleBreadcrumbNavigation('project');
+                }}
+                id="breadcrumb-project"
+              >
+                AutoRAG: {selectedProject}
+              </BreadcrumbItem>
+            )}
+            {!isCreating && experimentCreated && experimentCompleted && (
+              <BreadcrumbItem
+                to="#"
+                onClick={(e) => {
+                  e.preventDefault();
+                  handleBreadcrumbNavigation('experiment');
+                }}
+                id="breadcrumb-experiment-name"
+              >
+                {experimentName}
+              </BreadcrumbItem>
+            )}
+            {!isCreating && experimentCreated && experimentCompleted && (
+              <BreadcrumbItem isActive id="breadcrumb-results">
+                Experiment results
+              </BreadcrumbItem>
+            )}
+          </Breadcrumb>
+        </PageSection>
+      )}
+
       {/* Title Section */}
       <PageSection id="autorag-header">
         <Flex alignItems={{ default: 'alignItemsCenter' }} spaceItems={{ default: 'spaceItemsSm' }}>
@@ -445,10 +869,10 @@ const AutoRAG: React.FunctionComponent = () => {
             ? 'Automatically prepare and optimize a RAG pattern based on your document collections'
             : 'Automatically configure and optimize your Retrieval-Augmented Generation workflows.'}
         </div>
-      </PageSection>
+  </PageSection>
 
-      {/* Project Selector */}
-      {flags.showProjectWorkspaceDropdowns && (
+      {/* Project Selector - Only show on empty state page */}
+      {flags.showProjectWorkspaceDropdowns && !isCreating && !experimentCreated && (
         <PageSection style={{ paddingTop: '0.5rem', paddingBottom: '0.25rem' }} id="autorag-project-selector">
           <Toolbar>
             <ToolbarContent>
@@ -505,18 +929,18 @@ const AutoRAG: React.FunctionComponent = () => {
             <Flex justifyContent={{ default: 'justifyContentSpaceBetween' }} alignItems={{ default: 'alignItemsCenter' }} style={{ marginBottom: '2rem' }}>
               <FlexItem>
                 <Title headingLevel="h1" size="lg" id="autorag-results-title">
-                  Pipeline view of my system
+                  Experiment results
                 </Title>
               </FlexItem>
               <FlexItem>
-                <Flex spaceItems={{ default: 'spaceItemsMd' }}>
+                <Flex spaceItems={{ default: 'spaceItemsMd' }} alignItems={{ default: 'alignItemsCenter' }}>
                   <FlexItem>
                     <Button variant="secondary" onClick={handleViewExperimentDetails} id="view-experiment-details-button">
                       View experiment details
                     </Button>
                   </FlexItem>
                   <FlexItem>
-                    <Button variant="secondary" onClick={handleViewExperimentCode} id="view-experiment-code-button">
+                    <Button variant="primary" onClick={handleViewExperimentCode} id="view-experiment-code-button">
                       View experiment code
                     </Button>
                   </FlexItem>
@@ -525,7 +949,17 @@ const AutoRAG: React.FunctionComponent = () => {
             </Flex>
 
             {/* Pipeline Visualization */}
-            <div style={{ marginBottom: '3rem', padding: '2rem', backgroundColor: 'var(--pf-v5-global--BackgroundColor--100)', borderRadius: '4px', border: '1px solid var(--pf-v5-global--BorderColor--200)' }}>
+            <Title headingLevel="h2" size="lg" id="pipeline-section-title" style={{ marginBottom: '1rem' }}>
+              Experiment Pipeline
+            </Title>
+            <Card style={{ marginBottom: '2rem' }} id="pipeline-visualization-card">
+              <CardBody>
+                <div style={{ 
+                  padding: '2.5rem', 
+                  backgroundColor: 'var(--pf-v5-global--BackgroundColor--200)', 
+                  borderRadius: '4px',
+                  border: '1px solid var(--pf-v5-global--BorderColor--100)'
+                }}>
               <Flex alignItems={{ default: 'alignItemsCenter' }} spaceItems={{ default: 'spaceItemsLg' }} wrap="wrap">
                 {/* Step 1 */}
                 <FlexItem>
@@ -564,7 +998,8 @@ const AutoRAG: React.FunctionComponent = () => {
                       Foundation Model 1
                     </Label>
                     <div style={{ fontSize: '1.5rem' }}>↓</div>
-                    <Flex spaceItems={{ default: 'spaceItemsSm' }}>
+                    <Flex spaceItems={{ default: 'spaceItemsSm' }} alignItems={{ default: 'alignItemsCenter' }}>
+                      <StarIcon style={{ color: '#f0ab00', fontSize: 'var(--pf-v5-global--FontSize--md)' }} id="pipeline-star-icon" />
                       <Label color="green" style={{ padding: '0.5rem 0.75rem', fontSize: 'var(--pf-v5-global--FontSize--sm)' }} id="pipeline-pattern-1">
                         Pattern 1
                       </Label>
@@ -617,33 +1052,159 @@ const AutoRAG: React.FunctionComponent = () => {
                   </Flex>
                 </FlexItem>
               </Flex>
-            </div>
+                </div>
+              </CardBody>
+            </Card>
 
             {/* Results Table */}
-            <Title headingLevel="h2" size="md" id="autorag-results-table-title" style={{ marginBottom: '1rem' }}>
-              Results
-            </Title>
-            <Table aria-label="Pattern results table" variant="compact" id="autorag-results-table">
+            <Card style={{ marginTop: '2rem' }} id="results-table-card">
+              <CardHeader>
+                <CardTitle>
+                  <Title headingLevel="h2" size="lg" id="autorag-results-table-title">
+                    Results
+                  </Title>
+                </CardTitle>
+              </CardHeader>
+              <CardBody>
+                <Table aria-label="Pattern results table" variant="compact" id="autorag-results-table">
               <Thead>
                 <Tr>
-                  <Th>Rank</Th>
-                  <Th>Pattern name</Th>
-                  <Th>Model name</Th>
-                  <Th>Answer faithfulness</Th>
-                  <Th>Chunk method</Th>
-                  <Th>Chunk size</Th>
+                  <Th
+                    sort={{
+                      sortBy: { index: 0, direction: sortBy === 'rank' ? sortDirection : undefined },
+                      onSort: () => handleSort('rank'),
+                      columnIndex: 0,
+                    }}
+                  >
+                    Rank
+                  </Th>
+                  <Th
+                    sort={{
+                      sortBy: { index: 1, direction: sortBy === 'patternName' ? sortDirection : undefined },
+                      onSort: () => handleSort('patternName'),
+                      columnIndex: 1,
+                    }}
+                  >
+                    Pattern name
+                  </Th>
+                  <Th
+                    sort={{
+                      sortBy: { index: 2, direction: sortBy === 'modelName' ? sortDirection : undefined },
+                      onSort: () => handleSort('modelName'),
+                      columnIndex: 2,
+                    }}
+                  >
+                    Model name
+                  </Th>
+                  <Th
+                    sort={{
+                      sortBy: { index: 3, direction: sortBy === 'answerFaithfulness' ? sortDirection : undefined },
+                      onSort: () => handleSort('answerFaithfulness'),
+                      columnIndex: 3,
+                    }}
+                  >
+                    Answer faithfulness
+                  </Th>
+                  <Th
+                    sort={{
+                      sortBy: { index: 4, direction: sortBy === 'chunkMethod' ? sortDirection : undefined },
+                      onSort: () => handleSort('chunkMethod'),
+                      columnIndex: 4,
+                    }}
+                  >
+                    Chunk method
+                  </Th>
+                  <Th
+                    sort={{
+                      sortBy: { index: 5, direction: sortBy === 'chunkSize' ? sortDirection : undefined },
+                      onSort: () => handleSort('chunkSize'),
+                      columnIndex: 5,
+                    }}
+                  >
+                    Chunk size
+                  </Th>
+                  <Th
+                    sort={{
+                      sortBy: { index: 6, direction: sortBy === 'status' ? sortDirection : undefined },
+                      onSort: () => handleSort('status'),
+                      columnIndex: 6,
+                    }}
+                  >
+                    Status
+                  </Th>
                   <Th width={30}>Actions</Th>
                 </Tr>
               </Thead>
               <Tbody>
-                {patternResults.map((result) => (
-                  <Tr key={result.id} id={`result-row-${result.id}`}>
-                    <Td dataLabel="Rank">{result.rank}</Td>
-                    <Td dataLabel="Pattern name">{result.patternName}</Td>
+                {getSortedResults().map((result, index) => {
+                  const isRankOne = result.rank === 1;
+                  const baseBackgroundColor = index % 2 === 0 
+                    ? 'var(--pf-v5-global--BackgroundColor--200)' 
+                    : 'transparent';
+                  const rankOneBackgroundColor = '#e8f5e9';
+                  
+                  return (
+                  <Tr 
+                    key={result.id} 
+                    id={`result-row-${result.id}`}
+                    style={{
+                      backgroundColor: isRankOne ? rankOneBackgroundColor : baseBackgroundColor,
+                      borderLeft: isRankOne ? '4px solid #3e8635' : '4px solid transparent',
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.backgroundColor = isRankOne 
+                        ? '#d4edda' 
+                        : 'var(--pf-v5-global--BackgroundColor--200)';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.backgroundColor = isRankOne 
+                        ? rankOneBackgroundColor 
+                        : baseBackgroundColor;
+                    }}
+                  >
+                    <Td dataLabel="Rank">
+                      {isRankOne ? (
+                        <Badge 
+                          style={{ 
+                            backgroundColor: '#3e8635',
+                            color: '#ffffff',
+                            fontWeight: 'bold',
+                            padding: '0.25rem 0.5rem',
+                            borderRadius: '4px'
+                          }}
+                        >
+                          {result.rank}
+                        </Badge>
+                      ) : (
+                        result.rank
+                      )}
+                    </Td>
+                    <Td 
+                      dataLabel="Pattern name"
+                      style={isRankOne ? { fontWeight: 'bold' } : {}}
+                    >
+                      {result.patternName}
+                    </Td>
                     <Td dataLabel="Model name">{result.modelName}</Td>
-                    <Td dataLabel="Answer faithfulness">{result.answerFaithfulness.toFixed(2)}</Td>
+                    <Td 
+                      dataLabel="Answer faithfulness"
+                      style={isRankOne ? { fontWeight: 'bold', color: '#3e8635' } : {}}
+                    >
+                      {result.status === 'In Progress' ? '-' : result.answerFaithfulness.toFixed(2)}
+                    </Td>
                     <Td dataLabel="Chunk method">{result.chunkMethod}</Td>
                     <Td dataLabel="Chunk size">{result.chunkSize}</Td>
+                    <Td dataLabel="Status">
+                      {result.status === 'Complete' ? (
+                        <Label color="green" icon={<CheckCircleIcon />}>
+                          Complete
+                        </Label>
+                      ) : (
+                        <Label color="blue" icon={<SyncIcon />}>
+                          In Progress
+                        </Label>
+                      )}
+                    </Td>
                     <Td dataLabel="Actions">
                       <Flex spaceItems={{ default: 'spaceItemsSm' }}>
                         <FlexItem>
@@ -651,6 +1212,7 @@ const AutoRAG: React.FunctionComponent = () => {
                             variant="link"
                             onClick={() => handleViewDetails(result.id)}
                             id={`view-details-${result.id}`}
+                            isDisabled={result.status === 'In Progress'}
                           >
                             View details
                           </Button>
@@ -660,6 +1222,7 @@ const AutoRAG: React.FunctionComponent = () => {
                             variant="link"
                             onClick={() => handleTestInPlayground(result.id)}
                             id={`test-playground-${result.id}`}
+                            isDisabled={result.status === 'In Progress'}
                           >
                             Test in playground
                           </Button>
@@ -669,6 +1232,7 @@ const AutoRAG: React.FunctionComponent = () => {
                             variant="link"
                             onClick={() => handleViewCode(result.id)}
                             id={`view-code-${result.id}`}
+                            isDisabled={result.status === 'In Progress'}
                           >
                             View code
                           </Button>
@@ -676,9 +1240,12 @@ const AutoRAG: React.FunctionComponent = () => {
                       </Flex>
                     </Td>
                   </Tr>
-                ))}
+                  );
+                })}
               </Tbody>
             </Table>
+              </CardBody>
+            </Card>
           </>
         ) : experimentCreated ? (
           <>
@@ -697,83 +1264,122 @@ const AutoRAG: React.FunctionComponent = () => {
             </Flex>
 
             {/* Configuration Screen */}
+            <div style={{ display: 'flex', flexDirection: 'column', minHeight: 'calc(100vh - 400px)' }}>
             <Grid hasGutter>
-              {/* Column 1: Sources */}
-              <GridItem span={4}>
-                <Card id="autorag-sources-card">
+              {/* Column 1: Documents */}
+              <GridItem span={3} style={{ display: 'flex' }}>
+                <Card id="autorag-documents-card" style={{ display: 'flex', flexDirection: 'column', flex: 1, width: '100%' }}>
                   <CardHeader>
                     <CardTitle>
-                      <Title headingLevel="h2" size="md" id="autorag-sources-title" style={{ color: 'var(--pf-v5-global--primary-color--100)' }}>
-                        Sources
+                      <Title headingLevel="h2" size="md" id="autorag-documents-title" style={{ color: 'var(--pf-v5-global--primary-color--100)' }}>
+                        Documents
                       </Title>
                     </CardTitle>
                   </CardHeader>
-                  <CardBody>
-                    {/* Upload Area */}
-                    <div style={{ marginBottom: '2rem', padding: '1.5rem', border: '1px dashed var(--pf-v5-global--BorderColor--200)', borderRadius: '4px' }}>
-                      <Flex alignItems={{ default: 'alignItemsFlexStart' }} spaceItems={{ default: 'spaceItemsMd' }}>
-                        <FlexItem>
-                          <div style={{ fontSize: '2rem', color: 'var(--pf-v5-global--Color--200)' }}>
-                            <FolderOpenIcon />
-                          </div>
-                        </FlexItem>
-                        <FlexItem grow={{ default: 'grow' }}>
-                          <Title headingLevel="h3" size="md" id="autorag-upload-title" style={{ marginBottom: '0.5rem' }}>
-                            Add document and evaluation sources
-                          </Title>
-                          <div style={{ color: 'var(--pf-v5-global--Color--200)', fontSize: 'var(--pf-v5-global--FontSize--sm)', marginBottom: '1rem' }}>
-                            Drag and drop or browse existing collection and evaluation files from your local computer, this project or a connection.
-                            <br />
-                            <br />
-                            <strong>Tip:</strong> To upload more than 20 document files, add the files to a COS bucket folder, then select the folder.
-                          </div>
-                          <Button variant="secondary" onClick={handleChooseDocuments} id="add-documents-config-button">
-                            Add documents
-                          </Button>
-                        </FlexItem>
-                      </Flex>
+                  <CardBody style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+                    {/* Body Copy */}
+                    <div style={{ color: 'var(--pf-v5-global--Color--200)', fontSize: 'var(--pf-v5-global--FontSize--sm)', marginBottom: '1rem' }}>
+                        Drag and drop or browse existing document files from your local computer or add a connection.
                     </div>
 
-                    {/* Document Table */}
+                    {/* Multiple File Upload */}
+                    <div style={{ marginBottom: '1rem' }}>
+                      <MultipleFileUpload
+                        onFileDrop={handleFileDrop}
+                        dropzoneProps={{
+                          accept: {
+                            'application/pdf': ['.pdf'],
+                            'text/plain': ['.txt'],
+                            'application/json': ['.json'],
+                            'application/vnd.openxmlformats-officedocument.wordprocessingml.document': ['.docx'],
+                            'application/msword': ['.doc'],
+                          }
+                        }}
+                        id="documents-file-upload"
+                      >
+                        <MultipleFileUploadMain
+                          titleIcon={<FolderOpenIcon />}
+                          titleText="Drag and drop files here"
+                          titleTextSeparator="or"
+                          infoText="Accepted file types: PDF, TXT, JSON, DOCX, DOC"
+                        />
+                        {uploadingFiles.length > 0 && (
+                          <MultipleFileUploadStatus>
+                            {uploadingFiles.map((file, index) => (
+                              <MultipleFileUploadStatusItem
+                                key={index}
+                                file={file}
+                                onClearClick={() => {
+                                  setUploadingFiles(uploadingFiles.filter(f => f !== file));
+                                }}
+                              />
+                            ))}
+                          </MultipleFileUploadStatus>
+                        )}
+                      </MultipleFileUpload>
+                    </div>
+
+                    {/* Add Connection Button */}
+                    <Flex justifyContent={{ default: 'justifyContentFlexStart' }} style={{ marginBottom: '1.5rem' }}>
+                      <Button variant="secondary" onClick={handleAddConnection} id="add-connection-button">
+                        Add connection
+                      </Button>
+                    </Flex>
+
+                    {/* Documents and Connections List */}
                     {documents.length > 0 && (
-                      <Table aria-label="Documents table" variant="compact" id="autorag-sources-documents-table">
-                        <Thead>
-                          <Tr>
-                            <Th>Name</Th>
-                            <Th>Type</Th>
-                            <Th width={10}>Actions</Th>
-                          </Tr>
-                        </Thead>
-                        <Tbody>
-                          {documents.map((doc) => (
-                            <Tr key={doc.id} id={`source-document-row-${doc.id}`}>
-                              <Td dataLabel="Name">{doc.name}</Td>
-                              <Td dataLabel="Type">{doc.type}</Td>
-                              <Td dataLabel="Actions">
-                                <Button
-                                  variant="plain"
-                                  onClick={() => handleDeleteDocument(doc.id)}
-                                  id={`delete-document-${doc.id}`}
-                                  aria-label={`Delete ${doc.name}`}
-                                >
-                                  ×
-                                </Button>
-                              </Td>
-                            </Tr>
-                          ))}
-                        </Tbody>
-                      </Table>
+                      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0, overflow: 'hidden' }}>
+                        <Title headingLevel="h3" size="md" id="documents-list-title" style={{ marginBottom: '1rem' }}>
+                          Sources
+                        </Title>
+                        <div style={{ flex: 1, overflow: 'auto' }}>
+                          <Table aria-label="Documents table" variant="compact" id="autorag-documents-table">
+                            <Thead>
+                              <Tr>
+                                <Th>Name</Th>
+                                <Th>Type</Th>
+                                <Th>Source</Th>
+                                <Th width={10}>Actions</Th>
+                              </Tr>
+                            </Thead>
+                            <Tbody>
+                              {documents.map((doc) => (
+                                <Tr key={doc.id} id={`document-row-${doc.id}`}>
+                                  <Td dataLabel="Name">{doc.name}</Td>
+                                  <Td dataLabel="Type">{doc.type}</Td>
+                                  <Td dataLabel="Source">
+                                    <Label color={doc.sourceType === 'connection' ? 'blue' : 'grey'}>
+                                      {doc.sourceType === 'connection' ? 'Connection' : 'Document'}
+                                    </Label>
+                                  </Td>
+                                  <Td dataLabel="Actions">
+                                    <Button
+                                      variant="plain"
+                                      onClick={() => handleFileRemove(doc.id)}
+                                      id={`delete-document-${doc.id}`}
+                                      aria-label={`Delete ${doc.name}`}
+                                    >
+                                      ×
+                                    </Button>
+                                  </Td>
+                                </Tr>
+                              ))}
+                            </Tbody>
+                          </Table>
+                        </div>
+                      </div>
                     )}
                   </CardBody>
                 </Card>
               </GridItem>
 
-                  {/* Column 2: Configure Details */}
-                  <GridItem span={8}>
+              {/* Column 2: Configure Details */}
+              <GridItem span={9} style={{ display: 'flex' }}>
                     <Card id="autorag-configure-card" style={{ 
                       display: 'flex', 
                       flexDirection: 'column', 
-                      maxHeight: 'calc(100vh - 300px)', 
+                      flex: 1,
+                      width: '100%',
                       opacity: hasAddedDocuments ? 1 : 0.6,
                       pointerEvents: hasAddedDocuments ? 'auto' : 'none'
                     }}>
@@ -793,9 +1399,9 @@ const AutoRAG: React.FunctionComponent = () => {
                             minHeight: '300px',
                             pointerEvents: 'auto'
                           }}>
-                            <EmptyState headingLevel="h3" titleText="Upload some documents first to get started" id="configure-details-empty-state">
+                            <EmptyState headingLevel="h3" titleText="Upload a document to configure details" id="configure-details-empty-state">
                               <EmptyStateBody>
-                                Add documents in the Sources column to begin configuring your experiment.
+                                In order to configure details and run an experiment, add a document or connection in the widget on the left.
                               </EmptyStateBody>
                             </EmptyState>
                           </div>
@@ -842,76 +1448,81 @@ const AutoRAG: React.FunctionComponent = () => {
 
                           {/* Evaluation Source */}
                           <FormGroup
-                            label="Which data source would you like to use for evaluation?"
+                            label="Add the data source you would like to use for evaluation."
                             fieldId="evaluation-source"
                             style={{ marginBottom: '1.5rem' }}
                           >
-                            <Select
-                              isOpen={isEvaluationSourceOpen}
-                              selected={evaluationSource}
-                              onSelect={(_event, value) => {
-                                setEvaluationSource(value as string);
-                                setIsEvaluationSourceOpen(false);
+                            <FileUpload
+                              id="evaluation-source-file-upload"
+                              value={evaluationSourceFilename}
+                              filename={evaluationSourceFilename}
+                              filenamePlaceholder="Drag and drop a file here or upload"
+                              onFileInputChange={(_event, file: File) => {
+                                setEvaluationSourceFilename(file.name);
+                                setIsEvaluationSourceUploading(true);
+                                // Simulate file upload
+                                setTimeout(() => {
+                                  setEvaluationSourceFile(file);
+                                  setIsEvaluationSourceUploading(false);
+                                }, 500);
                               }}
-                              onOpenChange={(isOpen) => setIsEvaluationSourceOpen(isOpen)}
-                              toggle={(toggleRef) => (
-                                <MenuToggle
-                                  ref={toggleRef}
-                                  onClick={() => setIsEvaluationSourceOpen(!isEvaluationSourceOpen)}
-                                  isExpanded={isEvaluationSourceOpen}
-                                  id="evaluation-source-toggle"
-                                >
-                                  {evaluationSource || 'Evaluation source'}
-                                </MenuToggle>
-                              )}
-                              id="evaluation-source-select"
-                            >
-                              <SelectList>
-                                <SelectOption value="evaluation source a">evaluation source a</SelectOption>
-                                <SelectOption value="evaluation source b">evaluation source b</SelectOption>
-                                <SelectOption value="evaluation source c">evaluation source c</SelectOption>
-                              </SelectList>
-                            </Select>
+                              onClearClick={() => {
+                                setEvaluationSourceFilename('');
+                                setEvaluationSourceFile(null);
+                              }}
+                              browseButtonText="Upload"
+                              isLoading={isEvaluationSourceUploading}
+                              dropzoneProps={{
+                                accept: {
+                                  'application/json': ['.json'],
+                                  'application/x-yaml': ['.yaml', '.yml'],
+                                  'text/yaml': ['.yaml', '.yml'],
+                                  'text/x-yaml': ['.yaml', '.yml'],
+                                }
+                              }}
+                            />
                             <FormHelperText>
                               <HelperText>
-                                <HelperTextItem>Optionally supply a JSON file with test questions and answers to evaluate the quality of Q&A responses. If none are selected, evaluation data will be automatically generated with an LLM.</HelperTextItem>
+                                <HelperTextItem>Optionally supply a JSON or YAML file with test questions and answers to evaluate the quality of Q&A responses. If none are selected, evaluation data will be automatically generated with an LLM.</HelperTextItem>
+                                <HelperTextItem>
+                                  <Button
+                                    variant="link"
+                                    isInline
+                                    onClick={() => setIsEvaluationSourceModalOpen(true)}
+                                    id="what-is-evaluation-source-link"
+                                    style={{ paddingLeft: 0 }}
+                                  >
+                                    What is an evaluation source?
+                                  </Button>
+                                </HelperTextItem>
                               </HelperText>
                             </FormHelperText>
                           </FormGroup>
 
-                          {/* Evaluation Source Settings Button */}
-                          <div style={{ marginTop: '1rem', marginBottom: '1rem' }}>
-                            <Button
-                              variant="secondary"
-                              icon={<CogIcon />}
-                              onClick={() => setIsEvaluationSettingsModalOpen(true)}
-                              id="evaluation-source-settings-button"
-                            >
-                              Evaluation source settings
-                            </Button>
-                          </div>
 
                           {/* Selected Settings Display */}
                           <Grid hasGutter style={{ marginTop: '1rem', marginBottom: '1.5rem' }}>
                             <GridItem span={6}>
                               <div id="optimization-metric-column">
-                                <div style={{ fontSize: 'var(--pf-v5-global--FontSize--sm)', color: 'var(--pf-v5-global--Color--200)', marginBottom: '0.5rem' }}>
+                                <div style={{ fontSize: 'var(--pf-v5-global--FontSize--sm)', color: 'var(--pf-v5-global--Color--200)', marginBottom: '0.5rem', fontWeight: 'bold' }}>
                                   Optimization metric
                                 </div>
-                                <Button
-                                  variant="link"
-                                  isInline
-                                  onClick={() => setIsEvaluationSettingsModalOpen(true)}
-                                  style={{ fontSize: '1.5rem', padding: 0, fontWeight: 'var(--pf-v5-global--FontWeight--normal)' }}
-                                  id="optimization-metric-link"
-                                >
+                                <div style={{ fontSize: '1.5rem', marginBottom: '0.5rem' }} id="optimization-metric-link">
                                   {criteria.size > 0 ? Array.from(criteria).join(', ') : 'None selected'}
+                                </div>
+                                <Button
+                                  variant="secondary"
+                                  onClick={() => setIsEvaluationSettingsModalOpen(true)}
+                                  id="optimization-metric-select-button"
+                                  size="sm"
+                                >
+                                  Select
                                 </Button>
                               </div>
                             </GridItem>
                             <GridItem span={6}>
                               <div id="models-to-consider-column">
-                                <div style={{ fontSize: 'var(--pf-v5-global--FontSize--sm)', color: 'var(--pf-v5-global--Color--200)', marginBottom: '0.5rem' }}>
+                                <div style={{ fontSize: 'var(--pf-v5-global--FontSize--sm)', color: 'var(--pf-v5-global--Color--200)', marginBottom: '0.5rem', fontWeight: 'bold' }}>
                                   Models to consider
                                 </div>
                                 {!hasAddedDocuments ? (
@@ -921,20 +1532,24 @@ const AutoRAG: React.FunctionComponent = () => {
                                     fontStyle: 'italic',
                                     paddingTop: '0.25rem'
                                   }}>
-                                    Upload one or more document in the column to the left to get started.
+                                    Upload one or more document in the Documents column to get started.
                                   </div>
                                 ) : (
-                                  <Button
-                                    variant="link"
-                                    isInline
-                                    onClick={() => setIsEvaluationSettingsModalOpen(true)}
-                                    style={{ fontSize: '1.5rem', padding: 0, fontWeight: 'var(--pf-v5-global--FontWeight--normal)' }}
-                                    id="models-to-consider-link"
-                                  >
-                                    {selectedFoundationModels.size > 0 || selectedEmbeddingModels.size > 0
-                                      ? `${selectedFoundationModels.size} foundation${selectedFoundationModels.size !== 1 ? 's' : ''}, ${selectedEmbeddingModels.size} embedding${selectedEmbeddingModels.size !== 1 ? 's' : ''}`
-                                      : 'None selected'}
-                                  </Button>
+                                  <>
+                                    <div style={{ fontSize: '1.5rem', marginBottom: '0.5rem' }} id="models-to-consider-link">
+                                      {selectedFoundationModels.size > 0 || selectedEmbeddingModels.size > 0
+                                        ? `${selectedFoundationModels.size} foundation${selectedFoundationModels.size !== 1 ? 's' : ''}, ${selectedEmbeddingModels.size} embedding${selectedEmbeddingModels.size !== 1 ? 's' : ''}`
+                                        : 'None selected'}
+                                    </div>
+                                    <Button
+                                      variant="secondary"
+                                      onClick={() => setIsEvaluationSettingsModalOpen(true)}
+                                      id="models-to-consider-select-button"
+                                      size="sm"
+                                    >
+                                      Select
+                                    </Button>
+                                  </>
                                 )}
                               </div>
                             </GridItem>
@@ -943,145 +1558,241 @@ const AutoRAG: React.FunctionComponent = () => {
                         )}
                       </CardBody>
                     </Card>
-                  </GridItem>
-                </Grid>
+              </GridItem>
+            </Grid>
 
-                {/* Bottom Action Bar */}
-                <div style={{ 
-                  marginTop: '1.5rem', 
-                  padding: '1rem 1.5rem', 
-                  backgroundColor: 'var(--pf-v5-global--BackgroundColor--200)', 
-                  borderTop: '1px solid var(--pf-v5-global--BorderColor--200)',
-                  display: 'flex',
-                  justifyContent: 'flex-end',
-                  gap: '1rem'
-                }}>
+                <div style={{ marginTop: 'auto', paddingTop: '2rem' }}>
+                  <Divider style={{ marginBottom: '1.5rem' }} />
+                  {/* Bottom Action Bar */}
+                  <div style={{ 
+                    padding: '1rem 1.5rem', 
+                    backgroundColor: 'var(--pf-v5-global--BackgroundColor--200)', 
+                    borderTop: '1px solid var(--pf-v5-global--BorderColor--200)',
+                    display: 'flex',
+                    justifyContent: 'flex-end',
+                    gap: '1rem'
+                  }}>
                   <Button variant="secondary" onClick={handleBack} id="config-back-button">
-                    Back
+                    Back to experiments
                   </Button>
-                  <Button variant="primary" onClick={handleRunExperiment} id="run-experiment-button">
+                  <Button 
+                    variant="primary" 
+                    onClick={handleRunExperiment} 
+                    id="run-experiment-button"
+                    isDisabled={
+                      documents.length === 0 ||
+                      evaluationSourceFile === null ||
+                      vectorDatabase === '' ||
+                      criteria.size === 0 ||
+                      (selectedFoundationModels.size === 0 && selectedEmbeddingModels.size === 0)
+                    }
+                  >
                     Run experiment
                   </Button>
+                  </div>
                 </div>
+            </div>
               </>
             ) : !isCreating ? (
-          <EmptyState headingLevel="h2" titleText="AutoRAG Experiment" icon={PlusCircleIcon} id="autorag-empty-state">
-            <EmptyStateBody>
-              Automatically prepare and optimize RAG patterns based on your document collection.
-            </EmptyStateBody>
-            <EmptyStateFooter>
-              <EmptyStateActions>
-                <Button variant="primary" onClick={handleCreateExperiment} id="create-autorag-experiment-button">
-                  Create AutoRAG Experiment
+          experiments.length > 0 ? (
+            <>
+              {/* Experiments Table View */}
+              <Flex justifyContent={{ default: 'justifyContentFlexEnd' }} style={{ marginBottom: '1.5rem' }}>
+                <Button variant="primary" onClick={handleCreateExperiment} id="create-new-experiment-button">
+                  Create new experiment
                 </Button>
-              </EmptyStateActions>
-            </EmptyStateFooter>
-          </EmptyState>
+              </Flex>
+              <Table aria-label="Experiments table" id="autorag-experiments-table">
+                <Thead>
+                  <Tr>
+                    <Th>Name</Th>
+                    <Th>Description</Th>
+                    <Th>Tags</Th>
+                    <Th>Status</Th>
+                  </Tr>
+                </Thead>
+                <Tbody>
+                  {experiments.map((experiment) => (
+                    <Tr key={experiment.id} id={`experiment-row-${experiment.id}`}>
+                      <Td dataLabel="Name">
+                        <Button
+                          variant="link"
+                          isInline
+                          onClick={() => handleExperimentClick(experiment)}
+                          id={`experiment-name-${experiment.id}`}
+                          style={{ paddingLeft: 0, fontWeight: 'bold' }}
+                        >
+                          {experiment.name}
+                        </Button>
+                      </Td>
+                      <Td dataLabel="Description">{experiment.description || '-'}</Td>
+                      <Td dataLabel="Tags">
+                        {experiment.tags.length > 0 ? (
+                          <LabelGroup numLabels={3}>
+                            {experiment.tags.map((tag, index) => (
+                              <Label key={index} id={`experiment-tag-${experiment.id}-${index}`}>
+                                {tag}
+                              </Label>
+                            ))}
+                          </LabelGroup>
+                        ) : (
+                          '-'
+                        )}
+                      </Td>
+                      <Td dataLabel="Status">
+                        {experiment.status === 'completed' && (
+                          <Label color="green" icon={<CheckCircleIcon />}>
+                            Completed
+                          </Label>
+                        )}
+                        {experiment.status === 'Processing' && (
+                          <Label color="blue" icon={<SyncIcon />}>
+                            Processing
+                          </Label>
+                        )}
+                        {experiment.status === 'failed' && (
+                          <Label color="red">
+                            Failed
+                          </Label>
+                        )}
+                        {experiment.status === 'incomplete' && (
+                          <Label color="orange">
+                            Incomplete
+                          </Label>
+                        )}
+                      </Td>
+                    </Tr>
+                  ))}
+                </Tbody>
+              </Table>
+            </>
+          ) : (
+            <EmptyState headingLevel="h2" titleText="AutoRAG Experiment" icon={PlusCircleIcon} id="autorag-empty-state">
+              <EmptyStateBody>
+                Automatically prepare and optimize RAG patterns based on your document collection.
+              </EmptyStateBody>
+              <EmptyStateFooter>
+                <EmptyStateActions>
+                  <Button variant="primary" onClick={handleCreateExperiment} id="create-autorag-experiment-button">
+                    Create AutoRAG Experiment
+                  </Button>
+                </EmptyStateActions>
+              </EmptyStateFooter>
+            </EmptyState>
+          )
         ) : (
           <>
-            
+            <div style={{ display: 'flex', flexDirection: 'column', minHeight: 'calc(100vh - 300px)' }}>
+              <Form id="autorag-experiment-form" isWidthLimited>
+                <Title headingLevel="h2" size="md" id="autorag-details-header" style={{ marginTop: '1.5rem', marginBottom: '0.25rem' }}>
+                  Define Details
+                </Title>
 
-            <Form id="autorag-experiment-form" isWidthLimited>
-              <Title headingLevel="h2" size="md" id="autorag-details-header" style={{ marginTop: '1.5rem', marginBottom: '1rem' }}>
-                Define Details
-              </Title>
+                <FormGroup label="Name" isRequired fieldId="autorag-name" style={{ marginTop: '0.25rem' }}>
+                  <TextInput
+                    isRequired
+                    type="text"
+                    id="autorag-name"
+                    name="autorag-name"
+                    value={name}
+                    onChange={(_event, value) => {
+                      setName(value);
+                      if (errors.name) {
+                        setErrors({ ...errors, name: '' });
+                      }
+                    }}
+                    validated={errors.name ? 'error' : 'default'}
+                  />
+                  {errors.name && (
+                    <FormHelperText>
+                      <HelperText>
+                        <HelperTextItem variant="error">{errors.name}</HelperTextItem>
+                      </HelperText>
+                    </FormHelperText>
+                  )}
+                </FormGroup>
 
-              <FormGroup label="Name" isRequired fieldId="autorag-name" style={{ marginTop: '1rem' }}>
-                <TextInput
-                  isRequired
-                  type="text"
-                  id="autorag-name"
-                  name="autorag-name"
-                  value={name}
-                  onChange={(_event, value) => {
-                    setName(value);
-                    if (errors.name) {
-                      setErrors({ ...errors, name: '' });
-                    }
-                  }}
-                  validated={errors.name ? 'error' : 'default'}
-                />
-                {errors.name && (
+                <FormGroup label="Description" fieldId="autorag-description" style={{ marginTop: '1rem' }}>
+                  <TextArea
+                    type="text"
+                    id="autorag-description"
+                    name="autorag-description"
+                    value={description}
+                    onChange={(_event, value) => setDescription(value)}
+                    rows={3}
+                  />
+                </FormGroup>
+
+                <FormGroup label="Tags" fieldId="autorag-tags" style={{ marginTop: '1rem' }}>
+                  <InputGroup>
+                    <InputGroupItem isFill>
+                      <TextInput
+                        type="text"
+                        id="autorag-tags-input"
+                        name="autorag-tags-input"
+                        value={tagInput}
+                        onChange={handleTagInputChange}
+                        onKeyDown={handleTagInputKeyDown}
+                        placeholder="Enter tags separated by commas"
+                      />
+                    </InputGroupItem>
+                    <InputGroupItem>
+                      <Button
+                        variant="control"
+                        onClick={handleAddTag}
+                        isDisabled={!tagInput.trim()}
+                        id="autorag-add-tag-button"
+                        aria-label="Add tag"
+                      >
+                        <PlusIcon />
+                      </Button>
+                    </InputGroupItem>
+                  </InputGroup>
                   <FormHelperText>
                     <HelperText>
-                      <HelperTextItem variant="error">{errors.name}</HelperTextItem>
+                      <HelperTextItem>Add tags to make assets easier to find</HelperTextItem>
                     </HelperText>
                   </FormHelperText>
-                )}
-              </FormGroup>
+                  {tags.length > 0 && (
+                    <div style={{ marginTop: '0.5rem' }}>
+                      <LabelGroup id="autorag-tags-group">
+                        {tags.map((tag) => (
+                          <Label
+                            key={tag}
+                            variant="outline"
+                            onClose={() => handleRemoveTag(tag)}
+                            id={`autorag-tag-${tag}`}
+                          >
+                            {tag}
+                          </Label>
+                        ))}
+                      </LabelGroup>
+                    </div>
+                  )}
+                </FormGroup>
+              </Form>
 
-              <FormGroup label="Description" fieldId="autorag-description" style={{ marginTop: '1rem' }}>
-                <TextArea
-                  type="text"
-                  id="autorag-description"
-                  name="autorag-description"
-                  value={description}
-                  onChange={(_event, value) => setDescription(value)}
-                  rows={3}
-                />
-              </FormGroup>
-
-              <FormGroup label="Tags" fieldId="autorag-tags" style={{ marginTop: '1rem' }}>
-                <InputGroup>
-                  <InputGroupItem isFill>
-                    <TextInput
-                      type="text"
-                      id="autorag-tags-input"
-                      name="autorag-tags-input"
-                      value={tagInput}
-                      onChange={handleTagInputChange}
-                      onKeyDown={handleTagInputKeyDown}
-                      placeholder="Enter tags separated by commas"
-                    />
-                  </InputGroupItem>
-                  <InputGroupItem>
-                    <Button
-                      variant="control"
-                      onClick={handleAddTag}
-                      isDisabled={!tagInput.trim()}
-                      id="autorag-add-tag-button"
-                      aria-label="Add tag"
-                    >
-                      <PlusIcon />
+              <div style={{ marginTop: 'auto', paddingTop: '2rem' }}>
+                <Divider style={{ marginBottom: '1.5rem' }} />
+                <Flex style={{ gap: '1rem', justifyContent: 'flex-end' }}>
+                  <FlexItem>
+                    <Button variant="secondary" onClick={handleCancel} id="autorag-cancel-button">
+                      Cancel
                     </Button>
-                  </InputGroupItem>
-                </InputGroup>
-                <FormHelperText>
-                  <HelperText>
-                    <HelperTextItem>Add tags to make assets easier to find</HelperTextItem>
-                  </HelperText>
-                </FormHelperText>
-                {tags.length > 0 && (
-                  <div style={{ marginTop: '0.5rem' }}>
-                    <LabelGroup id="autorag-tags-group">
-                      {tags.map((tag) => (
-                        <Label
-                          key={tag}
-                          variant="outline"
-                          onClose={() => handleRemoveTag(tag)}
-                          id={`autorag-tag-${tag}`}
-                        >
-                          {tag}
-                        </Label>
-                      ))}
-                    </LabelGroup>
-                  </div>
-                )}
-              </FormGroup>
-
-              <Flex style={{ marginTop: '2rem', gap: '1rem' }}>
-                <FlexItem>
-                  <Button variant="primary" onClick={handleSubmit} id="autorag-create-button">
-                    Create
-                  </Button>
-                </FlexItem>
-                <FlexItem>
-                  <Button variant="secondary" onClick={handleCancel} id="autorag-cancel-button">
-                    Cancel
-                  </Button>
-                </FlexItem>
-              </Flex>
-            </Form>
+                  </FlexItem>
+                  <FlexItem>
+                    <Button 
+                      variant="primary" 
+                      onClick={handleSubmit} 
+                      id="autorag-create-button"
+                      isDisabled={!name.trim()}
+                    >
+                      Create
+                    </Button>
+                  </FlexItem>
+                </Flex>
+              </div>
+            </div>
           </>
         )}
   </PageSection>
@@ -1212,13 +1923,13 @@ const AutoRAG: React.FunctionComponent = () => {
               fieldId="criteria"
               style={{ marginBottom: '1.5rem' }}
             >
-              <Flex spaceItems={{ default: 'spaceItemsLg' }}>
+              <Flex direction={{ default: 'column' }} spaceItems={{ default: 'spaceItemsSm' }}>
                 <FlexItem>
                   <Checkbox
                     id="criteria-faithfulness"
                     isChecked={criteria.has('answer faithfulness')}
                     onChange={() => handleCriteriaToggle('answer faithfulness')}
-                    label="answer faithfulness"
+                    label="Answer faithfulness"
                   />
                 </FlexItem>
                 <FlexItem>
@@ -1226,7 +1937,7 @@ const AutoRAG: React.FunctionComponent = () => {
                     id="criteria-correctness"
                     isChecked={criteria.has('answer correctness')}
                     onChange={() => handleCriteriaToggle('answer correctness')}
-                    label="answer correctness"
+                    label="Answer correctness"
                   />
                 </FlexItem>
                 <FlexItem>
@@ -1234,7 +1945,7 @@ const AutoRAG: React.FunctionComponent = () => {
                     id="criteria-context"
                     isChecked={criteria.has('context correctness')}
                     onChange={() => handleCriteriaToggle('context correctness')}
-                    label="context correctness"
+                    label="Context correctness"
                   />
                 </FlexItem>
               </Flex>
@@ -1248,74 +1959,183 @@ const AutoRAG: React.FunctionComponent = () => {
         </ModalFooter>
       </Modal>
 
-      {/* Add Documents Modal */}
+      {/* Evaluation Source Modal */}
       <Modal
         variant={ModalVariant.large}
-        isOpen={isAddDocumentsModalOpen}
-        onClose={handleAddDocumentsModalClose}
-        id="add-documents-modal"
+        isOpen={isEvaluationSourceModalOpen}
+        onClose={() => setIsEvaluationSourceModalOpen(false)}
+        id="evaluation-source-modal"
       >
         <ModalHeader>
-          <Flex justifyContent={{ default: 'justifyContentSpaceBetween' }} alignItems={{ default: 'alignItemsCenter' }}>
-            <FlexItem>
-              <Title headingLevel="h2" size="xl" id="add-documents-modal-title">
-                Add documents
-              </Title>
-            </FlexItem>
-            <FlexItem>
-              <Button variant="secondary" onClick={handleAddConnection} id="add-connection-modal-button">
-                Add connection
-              </Button>
-            </FlexItem>
-          </Flex>
+          <Title headingLevel="h2" size="xl" id="evaluation-source-modal-title">
+            What is an evaluation source?
+          </Title>
         </ModalHeader>
         <ModalBody>
-          <MultipleFileUpload
-            onFileDrop={handleFileDrop}
-            dropzoneProps={{
-              accept: {
-                'application/pdf': ['.pdf'],
-                'text/plain': ['.txt'],
-                'application/json': ['.json'],
-                'application/vnd.openxmlformats-officedocument.wordprocessingml.document': ['.docx'],
-                'application/msword': ['.doc'],
-              }
-            }}
-            id="add-documents-file-upload"
-          >
-            <MultipleFileUploadMain
-              titleIcon={<FolderOpenIcon />}
-              titleText="Drag and drop files here"
-              titleTextSeparator="or"
-              infoText="Accepted file types: PDF, TXT, JSON, DOCX, DOC"
-            />
-            {uploadedFiles.length > 0 && (
-              <MultipleFileUploadStatus>
-                {uploadedFiles.map((file, index) => (
-                  <MultipleFileUploadStatusItem
-                    key={index}
-                    file={file}
-                    onClearClick={() => handleFileRemove(file)}
-                  />
-                ))}
-              </MultipleFileUploadStatus>
-            )}
-          </MultipleFileUpload>
+          <div style={{ marginBottom: '1.5rem' }}>
+            <Title headingLevel="h3" size="lg" style={{ marginBottom: '1rem' }}>
+              Evaluation data template
+            </Title>
+            <p style={{ marginBottom: '1.5rem', fontSize: 'var(--pf-v5-global--FontSize--md)' }}>
+              Data should have examples that represent the user input and model output.
+            </p>
+            
+            <div style={{ 
+              backgroundColor: 'var(--pf-v5-global--BackgroundColor--200)',
+              border: '1px solid var(--pf-v5-global--BorderColor--200)',
+              borderRadius: '4px',
+              padding: '1rem',
+              position: 'relative'
+            }}>
+              {/* Download button at top */}
+              <div style={{ marginBottom: '0.75rem', display: 'flex', justifyContent: 'flex-end' }}>
+                <Button
+                  variant="secondary"
+                  icon={<DownloadIcon />}
+                  onClick={handleDownloadTemplate}
+                  id="download-template-button"
+                  size="sm"
+                >
+                  Download template
+                </Button>
+              </div>
+              
+              {/* Code block with copy icon */}
+              <div style={{ position: 'relative' }}>
+                <Button
+                  variant="plain"
+                  icon={<CopyIcon />}
+                  onClick={handleCopyCode}
+                  aria-label="Copy code"
+                  style={{
+                    position: 'absolute',
+                    top: '0.5rem',
+                    right: '0.5rem',
+                    zIndex: 10
+                  }}
+                  id="copy-code-button"
+                />
+                <pre style={{
+                  backgroundColor: '#f8f9fa',
+                  padding: '1rem',
+                  borderRadius: '4px',
+                  overflow: 'auto',
+                  fontSize: 'var(--pf-v5-global--FontSize--sm)',
+                  border: '1px solid var(--pf-v5-global--BorderColor--100)',
+                  margin: 0,
+                  paddingRight: '3rem',
+                  fontFamily: 'monospace',
+                  lineHeight: '1.5'
+                }}>
+                  {JSON.stringify(evaluationDataTemplate, null, 2)}
+                </pre>
+              </div>
+            </div>
+          </div>
+        </ModalBody>
+        <ModalFooter>
+          <Button variant="primary" onClick={() => setIsEvaluationSourceModalOpen(false)} id="evaluation-source-modal-close-button">
+            Close
+          </Button>
+        </ModalFooter>
+      </Modal>
+
+      {/* Add Connection Modal */}
+      <Modal
+        variant={ModalVariant.medium}
+        isOpen={isAddConnectionModalOpen}
+        onClose={handleConnectionModalClose}
+        id="add-connection-modal"
+      >
+        <ModalHeader>
+          <Title headingLevel="h2" size="xl" id="add-connection-modal-title">
+            Add connection
+          </Title>
+        </ModalHeader>
+        <ModalBody>
+          <Form id="add-connection-form">
+            <FormGroup label="Connection name" isRequired fieldId="connection-name">
+              <TextInput
+                isRequired
+                type="text"
+                id="connection-name"
+                value={connectionName}
+                onChange={(_event, value) => setConnectionName(value)}
+                placeholder="Enter connection name"
+              />
+            </FormGroup>
+            <FormGroup label="Connection type" isRequired fieldId="connection-type" style={{ marginTop: '1rem' }}>
+              <Select
+                id="connection-type-select"
+                isOpen={isConnectionTypeOpen}
+                selected={connectionType}
+                onSelect={(_event, value) => {
+                  setConnectionType(value as string);
+                  setIsConnectionTypeOpen(false);
+                }}
+                onOpenChange={setIsConnectionTypeOpen}
+                toggle={(toggleRef: React.Ref<MenuToggleElement>) => (
+                  <MenuToggle
+                    ref={toggleRef}
+                    onClick={() => setIsConnectionTypeOpen(!isConnectionTypeOpen)}
+                    isExpanded={isConnectionTypeOpen}
+                    id="connection-type-toggle"
+                  >
+                    {connectionType || 'Select connection type'}
+                  </MenuToggle>
+                )}
+              >
+                <SelectList>
+                  <SelectOption value="S3 Bucket">S3 Bucket</SelectOption>
+                  <SelectOption value="COS">COS</SelectOption>
+                  <SelectOption value="Azure Blob">Azure Blob</SelectOption>
+                </SelectList>
+              </Select>
+            </FormGroup>
+            <FormGroup label="Bucket name" fieldId="bucket-name" style={{ marginTop: '1rem' }}>
+              <TextInput
+                type="text"
+                id="bucket-name"
+                value={bucketName}
+                onChange={(_event, value) => setBucketName(value)}
+                placeholder="Enter bucket name"
+              />
+            </FormGroup>
+            <FormGroup label="Endpoint" fieldId="endpoint" style={{ marginTop: '1rem' }}>
+              <TextInput
+                type="text"
+                id="endpoint"
+                value={endpoint}
+                onChange={(_event, value) => setEndpoint(value)}
+                placeholder="Enter endpoint URL"
+              />
+            </FormGroup>
+            <FormGroup label="Region" fieldId="region" style={{ marginTop: '1rem' }}>
+              <TextInput
+                type="text"
+                id="region"
+                value={region}
+                onChange={(_event, value) => setRegion(value)}
+                placeholder="Enter region"
+              />
+            </FormGroup>
+          </Form>
         </ModalBody>
         <ModalFooter>
           <Button 
             variant="primary" 
-            onClick={handleAddDocumentsConfirm} 
-            id="add-documents-confirm-button"
-            isDisabled={uploadedFiles.length === 0}
+            onClick={handleConnectionSubmit} 
+            id="add-connection-submit-button"
+            isDisabled={!connectionName.trim() || !connectionType.trim()}
           >
-            Add documents
+            Add connection
           </Button>
-          <Button variant="secondary" onClick={handleAddDocumentsModalClose} id="add-documents-cancel-button">
+          <Button variant="secondary" onClick={handleConnectionModalClose} id="add-connection-cancel-button">
             Cancel
           </Button>
         </ModalFooter>
       </Modal>
+
     </>
   );
 };
