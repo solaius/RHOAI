@@ -68,7 +68,6 @@ import {
   FolderOpenIcon,
   OutlinedFolderIcon,
   PencilAltIcon,
-  PlusCircleIcon,
   PlusIcon,
   DownloadIcon,
   CopyIcon,
@@ -77,6 +76,7 @@ import {
 } from '@patternfly/react-icons';
 import { useFeatureFlags } from '@app/utils/FeatureFlagsContext';
 import PipelineVisualization from '@app/assets/Gemini_Generated_Image_w6e0x1w6e0x1w6e0.png';
+import { AutoRAGIcon } from '@app/Home/icons/AutoRAGIcon';
 
 interface Document {
   id: string;
@@ -1664,7 +1664,7 @@ const AutoRAG: React.FunctionComponent = () => {
               flex: 1,
               minHeight: '400px'
             }}>
-              <EmptyState headingLevel="h2" titleText="AutoRAG Experiment" icon={PlusCircleIcon} id="autorag-empty-state">
+              <EmptyState headingLevel="h2" titleText="AutoRAG Experiment" icon={() => <AutoRAGIcon size={64} />} id="autorag-empty-state">
                 <EmptyStateBody>
                   Automatically configure and optimize your Retrieval-Augmented Generation workflows.
                 </EmptyStateBody>
