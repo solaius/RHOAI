@@ -50,7 +50,7 @@ import { CreatePromptModal } from './components/CreatePromptModal';
 import { DeletePromptModal } from './components/DeletePromptModal';
 import { mockPrompts } from './mockData';
 import { Prompt } from './types';
-import PageIcon from '@app/assets/PageIcon.svg';
+import { PromptLabIcon } from '@app/Home/icons';
 
 const PromptLab: React.FunctionComponent = () => {
   const navigate = useNavigate();
@@ -387,14 +387,8 @@ const PromptLab: React.FunctionComponent = () => {
       <PageSection id="prompt-lab-header">
         <Flex alignItems={{ default: 'alignItemsCenter' }} spaceItems={{ default: 'spaceItemsSm' }}>
           <FlexItem spacer={{ default: 'spacerSm' }}>
-            <div
-              style={{
-                display: 'inline-block',
-                width: '40px',
-                height: '40px',
-              }}
-            >
-              <span dangerouslySetInnerHTML={{ __html: PageIcon }} />
+            <div style={{ width: '40px', height: '40px', display: 'flex', alignItems: 'center' }}>
+              <PromptLabIcon withBackground size={32} />
             </div>
           </FlexItem>
           <FlexItem>

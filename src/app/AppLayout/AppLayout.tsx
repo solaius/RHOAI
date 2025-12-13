@@ -45,6 +45,7 @@ interface IAppLayout {
 const AppLayout: React.FunctionComponent<IAppLayout> = ({ children }) => {
   const [sidebarOpen, setSidebarOpen] = React.useState(true);
   const [userDropdownOpen, setUserDropdownOpen] = React.useState(false);
+  const [expandedGroups, setExpandedGroups] = React.useState<Set<string>>(new Set());
   const { userProfile, setUserProfile } = useUserProfile();
   const { theme, toggleTheme } = useTheme();
   const { flags } = useFeatureFlags();
@@ -97,6 +98,46 @@ const AppLayout: React.FunctionComponent<IAppLayout> = ({ children }) => {
       }
     }
   }, [fidelity, location.pathname, location.search, navigate]);
+
+  // Auto-expand navigation groups when navigating to a page within them
+  React.useEffect(() => {
+    const findParentGroupIds = (
+      routes: AppRouteConfig[],
+      currentPath: string,
+      parentGroupId?: string
+    ): string[] | null => {
+      for (let idx = 0; idx < routes.length; idx++) {
+        const route = routes[idx];
+        
+        if ('routes' in route && route.routes) {
+          const groupId = `${parentGroupId ? `${parentGroupId}_` : ''}nav-group-${idx}`;
+          
+          // Recursively search all descendants for the current path
+          const nestedGroupIds = findParentGroupIds(route.routes, currentPath, groupId);
+          if (nestedGroupIds !== null) {
+            // Found the path in descendants - add this group to the expansion list
+            return [groupId, ...nestedGroupIds];
+          }
+        } else if ('path' in route && route.path === currentPath) {
+          // Found the matching page at this level - return empty array (path found, no more groups to expand)
+          return [];
+        }
+      }
+      // Path not found in this subtree
+      return null;
+    };
+
+    const filteredRoutes = filterRoutesByFlags(routes, flags);
+    const parentGroupIds = findParentGroupIds(filteredRoutes, location.pathname);
+    
+    if (parentGroupIds && parentGroupIds.length > 0) {
+      setExpandedGroups((prev) => {
+        const newSet = new Set(prev);
+        parentGroupIds.forEach(id => newSet.add(id));
+        return newSet;
+      });
+    }
+  }, [location.pathname, flags]);
   
   // Clear local storage handler
   const handleClearLocalStorage = () => {
@@ -394,6 +435,18 @@ const AppLayout: React.FunctionComponent<IAppLayout> = ({ children }) => {
         return 'path' in route && route.path === location.pathname;
       });
     };
+
+    const handleToggle = () => {
+      setExpandedGroups((prev) => {
+        const newSet = new Set(prev);
+        if (newSet.has(groupId)) {
+          newSet.delete(groupId);
+        } else {
+          newSet.add(groupId);
+        }
+        return newSet;
+      });
+    };
     
     return (
       <NavExpandable
@@ -407,6 +460,8 @@ const AppLayout: React.FunctionComponent<IAppLayout> = ({ children }) => {
           </span>
         }
         isActive={isGroupActive(group.routes)}
+        isExpanded={expandedGroups.has(groupId)}
+        onToggle={handleToggle}
         style={(group as any).disabled ? { 
           color: '#6a6e73', 
           opacity: 0.5, 
