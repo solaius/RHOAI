@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { PageSection, Modal, ModalVariant, ModalBody, Button } from '@patternfly/react-core';
+import { PageSection, Modal, ModalVariant, ModalBody, ModalFooter, Button } from '@patternfly/react-core';
 import {
   BrainIcon,
   ChartLineIcon,
@@ -166,13 +166,13 @@ const HomeCapabilitiesSimple: React.FunctionComponent = () => {
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         id="page-not-available-modal"
-        actions={[
-          <Button key="close" variant="primary" onClick={() => setIsModalOpen(false)}>
-            Close
-          </Button>,
-        ]}
       >
         <ModalBody>{modalMessage}</ModalBody>
+        <ModalFooter>
+          <Button key="close" variant="primary" onClick={() => setIsModalOpen(false)}>
+            Close
+          </Button>
+        </ModalFooter>
       </Modal>
     </>
   );

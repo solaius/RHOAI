@@ -15,6 +15,7 @@ import {
   Modal,
   ModalVariant,
   ModalBody,
+  ModalFooter,
   Button,
 } from '@patternfly/react-core';
 import GettingStartingImage from '@app/bgimages/GettingStarting.png';
@@ -333,13 +334,13 @@ const HomeIllustratedGettingStarted: React.FunctionComponent = () => {
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         id="page-not-available-modal"
-        actions={[
-          <Button key="close" variant="primary" onClick={() => setIsModalOpen(false)}>
-            Close
-          </Button>,
-        ]}
       >
         <ModalBody>{modalMessage}</ModalBody>
+        <ModalFooter>
+          <Button key="close" variant="primary" onClick={() => setIsModalOpen(false)}>
+            Close
+          </Button>
+        </ModalFooter>
       </Modal>
     </>
   );

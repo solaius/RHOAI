@@ -446,7 +446,7 @@ const PromptDetails: React.FunctionComponent = () => {
                   marginRight: '1rem',
                 }}
               >
-                <DrawerPanelBody hasPadding>
+                <DrawerPanelBody>
                   <Flex direction={{ default: 'column' }} spaceItems={{ default: 'spaceItemsMd' }}>
                     <FlexItem>
                       <ToggleGroup aria-label="View selection" id="view-toggle-group">
@@ -542,7 +542,7 @@ const PromptDetails: React.FunctionComponent = () => {
               </DrawerPanelContent>
             }
           >
-            <DrawerContentBody hasPadding={true}>
+            <DrawerContentBody>
               {renderRightColumn()}
             </DrawerContentBody>
           </DrawerContent>
