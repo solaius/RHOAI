@@ -84,9 +84,7 @@ export const useResourcesSection = (): React.ReactNode => {
 
     return (
       <Card style={{ height: '100%' }} data-testid="resource-card-rhoai-documentation">
-        <CardTitle>
-          <Content>{resource.title}</Content>
-        </CardTitle>
+        <CardTitle>{resource.title}</CardTitle>
         <CardBody>
           <Stack hasGutter>
             <StackItem>
@@ -122,9 +120,7 @@ export const useResourcesSection = (): React.ReactNode => {
 
     return (
       <Card style={{ height: '100%' }}>
-        <CardTitle>
-          <Content>{resource.title}</Content>
-        </CardTitle>
+        <CardTitle>{resource.title}</CardTitle>
         <CardBody>
           <Stack hasGutter>
             <StackItem>
