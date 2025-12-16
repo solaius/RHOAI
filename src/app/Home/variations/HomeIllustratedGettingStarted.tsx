@@ -17,8 +17,13 @@ import {
   ModalBody,
   ModalFooter,
   Button,
+  Bullseye,
 } from '@patternfly/react-core';
-import GettingStartingImage from '@app/bgimages/GettingStarting.png';
+import '@patternfly/react-styles/css/utilities/Spacing/spacing.css';
+import '@patternfly/react-styles/css/utilities/Display/display.css';
+import '@patternfly/react-styles/css/utilities/Flex/flex.css';
+import '@patternfly/react-styles/css/utilities/Sizing/sizing.css';
+import GettingStartedImage from '@app/bgimages/GettingStarted.png';
 import { CapabilityCard } from './CapabilityCardVariations';
 import {
   PipelinesIcon,
@@ -35,6 +40,7 @@ import {
   PromptLabIcon,
   AIAssetEndpointsIcon,
 } from '../icons';
+import { TimesIcon } from '@patternfly/react-icons';
 import AiHubNavIcon from '../../../images/icons/AiHubNavIcon';
 import GenAiStudioNavIcon from '../../../images/icons/GenAiStudioNavIcon';
 import DevelopAndTrainNavIcon from '../../../images/icons/DevelopAndTrainNavIcon';
@@ -60,7 +66,9 @@ const categoryInfo: Record<
     icon: <AiHubNavIcon />,
     description: (
       <>
-        Discover, manage and deploy models in the <strong>AI hub</strong>
+        Discover, manage and deploy models
+        <br />
+        with <strong>AI hub</strong>
       </>
     ),
   },
@@ -69,7 +77,9 @@ const categoryInfo: Record<
     icon: <GenAiStudioNavIcon />,
     description: (
       <>
-        Build and experiment with generative AI in the <strong>Gen AI studio</strong>
+        Build and experiment with generative AI
+        <br />
+        with <strong>Gen AI studio</strong>
       </>
     ),
   },
@@ -78,7 +88,9 @@ const categoryInfo: Record<
     icon: <DevelopAndTrainNavIcon />,
     description: (
       <>
-        Create and train AI/ML models with <strong>Develop & Train</strong>
+        Create and train AI/ML models
+        <br />
+        with <strong>Develop & train</strong>
       </>
     ),
   },
@@ -87,7 +99,9 @@ const categoryInfo: Record<
     icon: <DevelopAndTrainNavIcon />,
     description: (
       <>
-        Monitor and evaluate model performance with <strong>Observe & Monitor</strong>
+        Monitor and evaluate model performance
+        <br />
+        with <strong>Observe & Monitor</strong>
       </>
     ),
   },
@@ -96,6 +110,7 @@ const categoryInfo: Record<
 const HomeIllustratedGettingStarted: React.FunctionComponent = () => {
   const [isModalOpen, setIsModalOpen] = React.useState(false);
   const [modalMessage, setModalMessage] = React.useState('');
+  const [isGetStartedCardVisible, setIsGetStartedCardVisible] = React.useState(true);
   const navigate = useNavigate();
 
   const showModal = (message: string) => {
@@ -241,40 +256,36 @@ const HomeIllustratedGettingStarted: React.FunctionComponent = () => {
           <StackItem>
             <Flex gap={{ default: 'gapMd' }} alignItems={{ default: 'alignItemsStretch' }}>
               {/* Get Started Card - twice as wide as each selector */}
-              <FlexItem flex={{ default: 'flex_3' }}>
-                <Card style={{ overflow: 'hidden', height: '100%' }}>
-                  <CardBody style={{ padding: 0, height: '100%' }}>
-                    <Flex alignItems={{ default: 'alignItemsStretch' }} style={{ height: '100%' }}>
-                      <FlexItem flex={{ default: 'flex_1' }} style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                        <img
-                          src={GettingStartingImage}
-                          alt="Getting Started Illustration"
-                          style={{ width: '100%', maxWidth: '180px', padding: '1rem' }}
-                        />
-                      </FlexItem>
-                      <FlexItem flex={{ default: 'flex_1' }} style={{ padding: '1rem', display: 'flex', alignItems: 'center' }}>
-                        <Flex
-                          direction={{ default: 'column' }}
-                          spaceItems={{ default: 'spaceItemsMd' }}
-                          style={{ width: '100%' }}
-                        >
-                          <FlexItem>
-                            <Content component="h2" style={{ fontSize: '1.25rem', fontWeight: 600, margin: 0 }}>
-                              Get started
-                            </Content>
-                          </FlexItem>
-                          <FlexItem>
-                            <Content>
-                              Discover models that are available for your organization to register, deploy, and
-                              customize.
-                            </Content>
-                          </FlexItem>
-                        </Flex>
-                      </FlexItem>
-                    </Flex>
-                  </CardBody>
-                </Card>
-              </FlexItem>
+              {isGetStartedCardVisible && (
+                <FlexItem flex={{ default: 'flex_3' }}>
+                  <Card style={{ overflow: 'hidden', height: '100%', position: 'relative' }}>
+                    <CardBody className="pf-v6-u-p-0" style={{ height: '100%' }}>
+                      <Button
+                        variant="plain"
+                        aria-label="Close Get Started card"
+                        onClick={() => setIsGetStartedCardVisible(false)}
+                        icon={<TimesIcon />}
+                        id="close-get-started-card-button"
+                        style={{ position: 'absolute', top: '0.5rem', right: '0.5rem', zIndex: 10 }}
+                      />
+                      <Flex alignItems={{ default: 'alignItemsStretch' }} spaceItems={{ default: 'spaceItemsXl' }} style={{ height: '100%' }}>
+                        <FlexItem flex={{ default: 'flexNone' }} className="pf-v6-u-pt-md pf-v6-u-pb-md pf-v6-u-display-flex pf-v6-u-align-items-center pf-v6-u-w-25">
+                          <img
+                            src={GettingStartedImage}
+                            alt="Getting Started Illustration"
+                            className="pf-v6-u-w-100"
+                          />
+                        </FlexItem>
+                        <FlexItem flex={{ default: 'flex_1' }} className="pf-v6-u-py-md pf-v6-u-pl-sm pf-v6-u-pr-lg pf-v6-u-display-flex pf-v6-u-align-items-center">
+                          <Content component="h1">
+                            Get started with OpenShift AI
+                          </Content>
+                        </FlexItem>
+                      </Flex>
+                    </CardBody>
+                  </Card>
+                </FlexItem>
+              )}
 
               {/* Category Selector Cards - half the width of Get Started */}
               {categoriesToShow.map((category) => (
@@ -284,27 +295,29 @@ const HomeIllustratedGettingStarted: React.FunctionComponent = () => {
                     isClicked={selectedCategory === category}
                     variant={selectedCategory === category ? 'default' : 'secondary'}
                     data-testid={`category-selector-${category}`}
-                    style={{ height: '100%' }}
+                    className="pf-v6-u-h-100"
                   >
-                    <CardHeader
-                      selectableActions={{
-                        onClickAction: () => handleCategoryClick(category),
-                        selectableActionAriaLabelledby: `category-label-${category}`,
-                      }}
-                    >
-                      <Flex gap={{ default: 'gapMd' }} alignItems={{ default: 'alignItemsFlexStart' }}>
-                        <FlexItem>
-                          <div style={{ fontSize: '24px', minWidth: '24px' }}>
-                            {categoryInfo[category].icon}
-                          </div>
-                        </FlexItem>
-                        <FlexItem flex={{ default: 'flex_1' }}>
-                          <Content id={`category-label-${category}`}>
-                            {categoryInfo[category].description}
-                          </Content>
-                        </FlexItem>
-                      </Flex>
-                    </CardHeader>
+                    <Bullseye>
+                      <CardHeader
+                        selectableActions={{
+                          onClickAction: () => handleCategoryClick(category),
+                          selectableActionAriaLabelledby: `category-label-${category}`,
+                        }}
+                      >
+                        <Flex gap={{ default: 'gapMd' }} alignItems={{ default: 'alignItemsFlexStart' }}>
+                          <FlexItem>
+                            <div style={{ fontSize: '24px', minWidth: '24px' }}>
+                              {categoryInfo[category].icon}
+                            </div>
+                          </FlexItem>
+                          <FlexItem flex={{ default: 'flex_1' }}>
+                            <Content id={`category-label-${category}`} isEditorial>
+                              {categoryInfo[category].description}
+                            </Content>
+                          </FlexItem>
+                        </Flex>
+                      </CardHeader>
+                    </Bullseye>
                   </Card>
                 </FlexItem>
               ))}
