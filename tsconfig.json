@@ -23,7 +23,8 @@
       "@images/*": ["src/images/*"]
     },
     "importHelpers": true,
-    "skipLibCheck": true
+    "skipLibCheck": true,
+    "downlevelIteration": true
   },
   "include": [
     "**/*.ts",

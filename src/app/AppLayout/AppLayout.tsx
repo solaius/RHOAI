@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { NavLink, useLocation, useNavigate } from 'react-router-dom';
+import { NavLink, useLocation, useNavigate, matchPath } from 'react-router-dom';
 import {
   Badge,
   Button,
@@ -118,9 +118,17 @@ const AppLayout: React.FunctionComponent<IAppLayout> = ({ children }) => {
             // Found the path in descendants - add this group to the expansion list
             return [groupId, ...nestedGroupIds];
           }
-        } else if ('path' in route && route.path === currentPath) {
-          // Found the matching page at this level - return empty array (path found, no more groups to expand)
-          return [];
+        } else if ('path' in route) {
+          // Use React Router's matchPath for proper path matching (handles exact and parameterized routes)
+          // In React Router v6, 'end' replaces 'exact' - end: true means exact match
+          const match = matchPath(
+            { path: route.path, end: route.exact !== false },
+            currentPath
+          );
+          if (match) {
+            // Found the matching page at this level - return empty array (path found, no more groups to expand)
+            return [];
+          }
         }
       }
       // Path not found in this subtree
@@ -131,8 +139,11 @@ const AppLayout: React.FunctionComponent<IAppLayout> = ({ children }) => {
     const parentGroupIds = findParentGroupIds(filteredRoutes, location.pathname);
     
     if (parentGroupIds && parentGroupIds.length > 0) {
+      // Always expand required groups when navigating to a page within them
+      // This ensures groups expand even if they were manually collapsed
       setExpandedGroups((prev) => {
         const newSet = new Set(prev);
+        // Add all required parent group IDs to ensure expansion
         parentGroupIds.forEach(id => newSet.add(id));
         return newSet;
       });

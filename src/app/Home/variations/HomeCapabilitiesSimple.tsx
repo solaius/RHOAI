@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { PageSection, Modal, ModalVariant, ModalBody, Button } from '@patternfly/react-core';
+import { PageSection, Modal, ModalVariant, ModalBody, ModalFooter, Button, Card, CardBody, CardHeader, Content, Flex, FlexItem, Bullseye, Stack, StackItem, Grid, GridItem } from '@patternfly/react-core';
 import {
   BrainIcon,
   ChartLineIcon,
@@ -11,8 +11,12 @@ import {
   FlaskIcon,
   RocketIcon,
   SearchIcon,
+  TimesIcon,
 } from '@patternfly/react-icons';
-import CapabilityGroupVariation2Cards from './CapabilityGroupVariation2Cards';
+import '@patternfly/react-styles/css/utilities/Spacing/spacing.css';
+import '@patternfly/react-styles/css/utilities/Display/display.css';
+import '@patternfly/react-styles/css/utilities/Flex/flex.css';
+import '@patternfly/react-styles/css/utilities/Sizing/sizing.css';
 import {
   PipelinesIcon,
   ModelCatalogIcon,
@@ -28,10 +32,92 @@ import {
   PromptLabIcon,
   AIAssetEndpointsIcon,
 } from '../icons';
+import AiHubNavIcon from '../../../images/icons/AiHubNavIcon';
+import GenAiStudioNavIcon from '../../../images/icons/GenAiStudioNavIcon';
+import DevelopAndTrainNavIcon from '../../../images/icons/DevelopAndTrainNavIcon';
+import GettingStartedImage from '@app/bgimages/GettingStarted.png';
+import { CapabilityCard } from './CapabilityCardVariations';
+
+type CapabilityCategory = 'ai-hub' | 'gen-ai' | 'develop' | 'observe';
+
+const categoryInfo: Record<
+  CapabilityCategory,
+  { label: string; icon: React.ReactNode; description: React.ReactNode }
+> = {
+  'ai-hub': {
+    label: 'AI Hub',
+    icon: <AiHubNavIcon />,
+    description: (
+      <>
+        Discover, manage and deploy models
+        <br />
+        with <strong>AI hub</strong>
+      </>
+    ),
+  },
+  'gen-ai': {
+    label: 'Gen AI studio',
+    icon: <GenAiStudioNavIcon />,
+    description: (
+      <>
+        Build and experiment with generative AI
+        <br />
+        with <strong>Gen AI studio</strong>
+      </>
+    ),
+  },
+  develop: {
+    label: 'Develop & Train',
+    icon: <DevelopAndTrainNavIcon />,
+    description: (
+      <>
+        Create and train AI/ML models
+        <br />
+        with <strong>Develop & train</strong>
+      </>
+    ),
+  },
+  observe: {
+    label: 'Observe & Monitor',
+    icon: <DevelopAndTrainNavIcon />,
+    description: (
+      <>
+        Monitor and evaluate model performance
+        <br />
+        with <strong>Observe & Monitor</strong>
+      </>
+    ),
+  },
+};
 
 const HomeCapabilitiesSimple: React.FunctionComponent = () => {
   const [isModalOpen, setIsModalOpen] = React.useState(false);
   const [modalMessage, setModalMessage] = React.useState('');
+  const [isGetStartedCardVisible, setIsGetStartedCardVisible] = React.useState(true);
+  const categoriesToShow: CapabilityCategory[] = ['ai-hub', 'gen-ai', 'develop'];
+
+  const getInitialCategory = (): CapabilityCategory | null => {
+    const stored = localStorage.getItem('homeCapabilitiesSelectedCategory');
+    if (stored === 'null' || stored === null) {
+      return null;
+    }
+    if (stored && categoriesToShow.includes(stored as CapabilityCategory)) {
+      return stored as CapabilityCategory;
+    }
+    return null;
+  };
+
+  const [selectedCategory, setSelectedCategory] = React.useState<CapabilityCategory | null>(
+    getInitialCategory
+  );
+
+  React.useEffect(() => {
+    localStorage.setItem('homeCapabilitiesSelectedCategory', selectedCategory || 'null');
+  }, [selectedCategory]);
+
+  const handleCategoryClick = (category: CapabilityCategory) => {
+    setSelectedCategory(selectedCategory === category ? null : category);
+  };
 
   const showModal = (message: string) => {
     setModalMessage(message);
@@ -152,13 +238,101 @@ const HomeCapabilitiesSimple: React.FunctionComponent = () => {
     },
   ];
 
+  const groupedCapabilities: Record<CapabilityCategory, typeof capabilities> = {
+    'ai-hub': capabilities.filter((c) => c.category === 'ai-hub') as typeof capabilities,
+    'gen-ai': capabilities.filter((c) => c.category === 'gen-ai') as typeof capabilities,
+    develop: capabilities.filter((c) => c.category === 'develop') as typeof capabilities,
+    observe: capabilities.filter((c) => c.category === 'observe') as typeof capabilities,
+  };
+
   return (
     <>
       <PageSection variant="default" hasBodyWrapper={false} id="home-capabilities-simple">
-        <CapabilityGroupVariation2Cards
-          capabilities={capabilities}
-          includeCategories={['ai-hub', 'gen-ai', 'develop']}
-        />
+        <Stack hasGutter>
+          <StackItem>
+            <Flex gap={{ default: 'gapMd' }} alignItems={{ default: 'alignItemsStretch' }}>
+              {/* Get Started Card */}
+              {isGetStartedCardVisible && (
+                <FlexItem flex={{ default: 'flex_3' }}>
+                  <Card style={{ overflow: 'hidden', height: '100%', position: 'relative' }}>
+                    <CardBody className="pf-v6-u-p-0" style={{ height: '100%' }}>
+                      <Button
+                        variant="plain"
+                        aria-label="Close Get Started card"
+                        onClick={() => setIsGetStartedCardVisible(false)}
+                        icon={<TimesIcon />}
+                        id="close-get-started-card-button"
+                        style={{ position: 'absolute', top: '0.5rem', right: '0.5rem', zIndex: 10 }}
+                      />
+                      <Flex alignItems={{ default: 'alignItemsStretch' }} spaceItems={{ default: 'spaceItemsXl' }} style={{ height: '100%' }}>
+                        <FlexItem flex={{ default: 'flexNone' }} className="pf-v6-u-pt-md pf-v6-u-pb-md pf-v6-u-display-flex pf-v6-u-align-items-center pf-v6-u-w-25">
+                          <img
+                            src={GettingStartedImage}
+                            alt="Getting Started Illustration"
+                            className="pf-v6-u-w-100"
+                          />
+                        </FlexItem>
+                        <FlexItem flex={{ default: 'flex_1' }} className="pf-v6-u-py-md pf-v6-u-pl-sm pf-v6-u-pr-lg pf-v6-u-display-flex pf-v6-u-align-items-center">
+                          <Content component="h1">
+                            Get started with OpenShift AI
+                          </Content>
+                        </FlexItem>
+                      </Flex>
+                    </CardBody>
+                  </Card>
+                </FlexItem>
+              )}
+
+              {/* Category Selector Cards */}
+              {categoriesToShow.map((category) => (
+                <FlexItem key={category} flex={{ default: 'flex_2' }}>
+                  <Card
+                    isClickable
+                    isClicked={selectedCategory === category}
+                    variant={selectedCategory === category ? 'default' : 'secondary'}
+                    data-testid={`category-selector-${category}`}
+                    className="pf-v6-u-h-100"
+                  >
+                    <Bullseye>
+                      <CardHeader
+                        selectableActions={{
+                          onClickAction: () => handleCategoryClick(category),
+                          selectableActionAriaLabelledby: `category-label-${category}`,
+                        }}
+                      >
+                        <Flex gap={{ default: 'gapMd' }} alignItems={{ default: 'alignItemsFlexStart' }}>
+                          <FlexItem>
+                            <div style={{ fontSize: '24px', minWidth: '24px' }}>
+                              {categoryInfo[category].icon}
+                            </div>
+                          </FlexItem>
+                          <FlexItem flex={{ default: 'flex_1' }}>
+                            <Content id={`category-label-${category}`} isEditorial>
+                              {categoryInfo[category].description}
+                            </Content>
+                          </FlexItem>
+                        </Flex>
+                      </CardHeader>
+                    </Bullseye>
+                  </Card>
+                </FlexItem>
+              ))}
+            </Flex>
+          </StackItem>
+          {selectedCategory && (
+            <StackItem>
+              <div data-testid={`capability-group-${selectedCategory}`}>
+                <Grid hasGutter sm={6} md={4} lg={3}>
+                  {groupedCapabilities[selectedCategory].map((capability) => (
+                    <GridItem key={capability.title}>
+                      <CapabilityCard capability={capability} layout="editorial" />
+                    </GridItem>
+                  ))}
+                </Grid>
+              </div>
+            </StackItem>
+          )}
+        </Stack>
       </PageSection>
       <Modal
         variant={ModalVariant.small}
@@ -166,13 +340,13 @@ const HomeCapabilitiesSimple: React.FunctionComponent = () => {
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
         id="page-not-available-modal"
-        actions={[
-          <Button key="close" variant="primary" onClick={() => setIsModalOpen(false)}>
-            Close
-          </Button>,
-        ]}
       >
         <ModalBody>{modalMessage}</ModalBody>
+        <ModalFooter>
+          <Button key="close" variant="primary" onClick={() => setIsModalOpen(false)}>
+            Close
+          </Button>
+        </ModalFooter>
       </Modal>
     </>
   );

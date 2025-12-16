@@ -184,12 +184,10 @@ const Playground: React.FunctionComponent = () => {
   const [configDescription, setConfigDescription] = useState('');
   
   // Edit prompt confirmation modal state
-  const [isEditPromptModalOpen, setIsEditPromptModalOpen] = useState(false);
   const [promptVersion, setPromptVersion] = useState('');
   const [promptAlias, setPromptAlias] = useState('');
   
   // Save prompt modal state
-  const [isSavePromptModalOpen, setIsSavePromptModalOpen] = useState(false);
   const [savePromptName, setSavePromptName] = useState('');
   const [savePromptAlias, setSavePromptAlias] = useState('');
 

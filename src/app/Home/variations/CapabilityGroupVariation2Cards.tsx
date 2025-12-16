@@ -47,7 +47,9 @@ const categoryInfo: Record<
     icon: <AiHubNavIcon />,
     description: (
       <>
-        Discover, manage and deploy models in the <strong>AI hub</strong>
+        Discover, manage and deploy models
+        <br />
+        with <strong>AI hub</strong>
       </>
     ),
   },
@@ -56,7 +58,9 @@ const categoryInfo: Record<
     icon: <GenAiStudioNavIcon />,
     description: (
       <>
-        Build and experiment with generative AI in the <strong>Gen AI studio</strong>
+        Build and experiment with generative AI
+        <br />
+        with <strong>Gen AI studio</strong>
       </>
     ),
   },
@@ -65,7 +69,9 @@ const categoryInfo: Record<
     icon: <DevelopAndTrainNavIcon />,
     description: (
       <>
-        Create and train AI/ML models with <strong>Develop & Train</strong>
+        Create and train AI/ML models
+        <br />
+        with <strong>Develop & train</strong>
       </>
     ),
   },
@@ -74,7 +80,9 @@ const categoryInfo: Record<
     icon: <ChartLineIcon />,
     description: (
       <>
-        Monitor and evaluate model performance with <strong>Observe & Monitor</strong>
+        Monitor and evaluate model performance
+        <br />
+        with <strong>Observe & Monitor</strong>
       </>
     ),
   },
@@ -158,7 +166,7 @@ const CapabilityGroupVariation2Cards: React.FunctionComponent<
                       </div>
                     </FlexItem>
                     <FlexItem flex={{ default: 'flex_1' }}>
-                      <Content id={`category-label-${category}`}>
+                      <Content id={`category-label-${category}`} isEditorial>
                         {categoryInfo[category].description}
                       </Content>
                     </FlexItem>

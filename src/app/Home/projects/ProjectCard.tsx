@@ -42,7 +42,7 @@ const ProjectCard: React.FunctionComponent<ProjectCardProps> = ({ project }) => 
               size="lg"
               onClick={() => navigate(`/projects/${project.name}`)}
             >
-              {project.displayName}
+              <strong>{project.displayName}</strong>
             </Button>
           </FlexItem>
           <FlexItem>

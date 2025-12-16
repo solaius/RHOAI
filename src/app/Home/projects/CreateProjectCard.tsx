@@ -9,6 +9,7 @@ import {
   EmptyStateBody,
   EmptyStateFooter,
 } from '@patternfly/react-core';
+import '@patternfly/react-styles/css/utilities/Spacing/spacing.css';
 import ProjectIcon from './ProjectIcon';
 
 interface CreateProjectCardProps {
@@ -26,7 +27,7 @@ const CreateProjectCard: React.FunctionComponent<CreateProjectCardProps> = ({
 
   return (
     <Card isFullHeight data-testid="create-project-card">
-      <CardBody>
+      <CardBody className="pf-v6-u-p-0">
         <Bullseye>
           <EmptyState variant="xs" icon={ProjectIcon}>
             <EmptyStateBody>
