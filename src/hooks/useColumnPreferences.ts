@@ -24,8 +24,9 @@ const isLatencyColumn = (columnId: string): boolean => {
 };
 
 // Get the latency column ID for a given metric and percentile
+// Must match the format in columnConfig.ts: `latency_${metric}_${percentile}`
 const getLatencyColumnId = (metric: LatencyMetricType, percentile: LatencyPercentileType): string => {
-  return `${metric.toLowerCase()}-${percentile.toLowerCase()}`;
+  return `latency_${metric}_${percentile}`;
 };
 
 export function useColumnPreferences(

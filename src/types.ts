@@ -1,6 +1,6 @@
 export type Category = "validated" | "redhat" | "other" | null;
 export type Workload = "chat" | "rag";
-export type LatencyMetricType = "TTFT" | "ITL" | "E2E";
+export type LatencyMetricType = "TTFT" | "ITL" | "E2E" | "TPS";
 export type LatencyPercentileType = "Mean" | "P90" | "P95" | "P99";
 export type SortKey = "latency" | "updated" | string;
 export type SortDirection = "asc" | "desc" | null;
@@ -9,6 +9,7 @@ export interface LatencyData {
   TTFT: { Mean: number; P90: number; P95: number; P99: number };
   ITL:  { Mean: number; P90: number; P95: number; P99: number };
   E2E:  { Mean: number; P90: number; P95: number; P99: number };
+  TPS:  { Mean: number; P90: number; P95: number; P99: number };
 }
 
 export interface BenchmarkData {
