@@ -40,6 +40,7 @@ import {
   DropdownItem,
   DropdownList,
   MenuToggle,
+  MenuToggleElement,
   Select,
   SelectList,
   SelectOption,
@@ -57,6 +58,11 @@ import {
   MenuContent,
   MenuList,
   MenuItem,
+  MenuSearch,
+  MenuSearchInput,
+  SearchInput,
+  ToggleGroup,
+  ToggleGroupItem,
 } from '@patternfly/react-core';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faUndo } from '@fortawesome/free-solid-svg-icons';
@@ -151,6 +157,14 @@ const markdownToHtml = (markdown: string): string => {
 
 type ModelDetailsProps = Record<string, never>;
 
+// Proposed workload labels for microcopy A/B testing
+const PROPOSED_WORKLOAD_LABELS: Record<string, string> = {
+  chat: "Chatbot-style prompt (512 input / 256 output tokens)",
+  rag: "RAG-style prompt (4096 input / 512 output tokens)",
+  code_fixing: "Code fixing-style prompt (1024 input / 1024 output tokens)",
+  long_rag: "Long RAG-style prompt (10240 input / 1536 output tokens)",
+};
+
 const ModelDetails: React.FunctionComponent<ModelDetailsProps> = () => {
   const { modelSlug } = useParams<{ modelSlug: string }>();
   const navigate = useNavigate();
@@ -180,6 +194,16 @@ const ModelDetails: React.FunctionComponent<ModelDetailsProps> = () => {
   
   // Check if model is validated (only validated models have Performance tab)
   const isValidated = model?.category === 'validated';
+  
+  // Microcopy toggle for A/B testing (demo purposes - remove before merge)
+  // State is synced via sessionStorage between catalog and details pages
+  const [useProprosedMicrocopy, setUseProposedMicrocopyState] = React.useState(() => {
+    return sessionStorage.getItem("demoMicrocopyToggle") === "proposed";
+  });
+  const setUseProposedMicrocopy = (value: boolean) => {
+    setUseProposedMicrocopyState(value);
+    sessionStorage.setItem("demoMicrocopyToggle", value ? "proposed" : "original");
+  };
   
   // Memoized catalog URL that preserves filters but removes details-page-specific params
   const catalogUrl = React.useMemo(() => {
@@ -295,8 +319,8 @@ const ModelDetails: React.FunctionComponent<ModelDetailsProps> = () => {
 
   // Initialize/update sort to the current latency column when filter changes
   React.useEffect(() => {
-    // Build the latency column ID from current filter
-    const latencyColId = `${latencyMetric.toLowerCase()}-${latencyPercentile.toLowerCase()}`;
+    // Build the latency column ID from current filter (must match format in columnConfig.ts)
+    const latencyColId = `latency_${latencyMetric}_${latencyPercentile}`;
     
     // Find the index of this column in orderedVisibleColumns
     const colIndex = orderedVisibleColumns.findIndex(colId => colId === latencyColId);
@@ -304,7 +328,9 @@ const ModelDetails: React.FunctionComponent<ModelDetailsProps> = () => {
     if (colIndex !== -1) {
       // Column index is offset by 1 because Hardware is column 0
       setActiveSortIndex(colIndex + 1);
-      setActiveSortDirection('asc');
+      // For TPS, higher is better, so sort descending (highest first)
+      // For latency metrics, lower is better, so sort ascending (lowest first)
+      setActiveSortDirection(latencyMetric === 'TPS' ? 'desc' : 'asc');
     }
   }, [latencyMetric, latencyPercentile, orderedVisibleColumns]);
 
@@ -318,6 +344,23 @@ const ModelDetails: React.FunctionComponent<ModelDetailsProps> = () => {
   
   // Hardware dropdown state (hardware values come from benchmark data)
   const [isHardwareOpen, setIsHardwareOpen] = React.useState(false);
+  const [hardwareSearchValue, setHardwareSearchValue] = React.useState('');
+  const hardwareMenuRef = React.useRef<HTMLDivElement>(null);
+  
+  // Close hardware menu on click outside
+  React.useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (hardwareMenuRef.current && !hardwareMenuRef.current.contains(event.target as Node)) {
+        setIsHardwareOpen(false);
+      }
+    };
+    if (isHardwareOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isHardwareOpen]);
   
   // Latency and RPS panel dropdown state
   const [isLatencyOpen, setIsLatencyOpen] = React.useState(false);
@@ -431,6 +474,14 @@ const ModelDetails: React.FunctionComponent<ModelDetailsProps> = () => {
   const hardwareOptions = React.useMemo(() => {
     return getAvailableHardware(allBenchmarks, workload);
   }, [allBenchmarks, workload]);
+
+  // Filter hardware options based on search value
+  const filteredHardwareOptions = React.useMemo(() => {
+    if (!hardwareOptions) return [];
+    return hardwareOptions.filter(hw => 
+      hw.toLowerCase().includes(hardwareSearchValue.toLowerCase())
+    );
+  }, [hardwareOptions, hardwareSearchValue]);
 
   // Auto-select a valid workload if current one isn't available
   React.useEffect(() => {
@@ -561,7 +612,8 @@ const ModelDetails: React.FunctionComponent<ModelDetailsProps> = () => {
     sortBy: {
       index: activeSortIndex as number,
       direction: activeSortDirection as 'asc' | 'desc',
-      defaultDirection: 'asc'
+      // For TPS, default to descending (highest first); for latency, default to ascending (lowest first)
+      defaultDirection: latencyMetric === 'TPS' ? 'desc' : 'asc'
     },
     onSort: (_event, index, direction) => {
       setActiveSortIndex(index);
@@ -641,7 +693,7 @@ const ModelDetails: React.FunctionComponent<ModelDetailsProps> = () => {
   };
 
   return (
-    <PageSection isFilled style={{ padding: 0 }}>
+    <PageSection isFilled style={{ padding: 0, minHeight: '100vh' }}>
       {/* Breadcrumbs */}
       <div style={{ padding: '1rem', paddingBottom: '0' }}>
           <Breadcrumb>
@@ -674,7 +726,7 @@ const ModelDetails: React.FunctionComponent<ModelDetailsProps> = () => {
 
       {/* Header */}
       <div style={{ padding: '1rem', paddingTop: '0.5rem' }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem' }}>
+        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: '1rem' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
             <div 
               style={{ width: '40px', height: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
@@ -703,6 +755,35 @@ const ModelDetails: React.FunctionComponent<ModelDetailsProps> = () => {
                       {model.description}
                     </p>
                   </div>
+                </div>
+          {/* Microcopy A/B toggle - DEMO ONLY, remove before merge */}
+          <div style={{ 
+            display: 'flex', 
+            alignItems: 'center', 
+            gap: '0.5rem',
+            padding: '0.5rem 0.75rem',
+            backgroundColor: '#fff0ff',
+            border: '2px dashed #ff00ff',
+            borderRadius: '4px',
+            flexShrink: 0
+          }}>
+            <span style={{ fontSize: '0.75rem', fontWeight: 600, color: '#ff00ff' }}>DEMO:</span>
+            <ToggleGroup aria-label="Microcopy version toggle">
+              <ToggleGroupItem
+                text="Original microcopy"
+                buttonId="microcopy-original-details"
+                isSelected={!useProprosedMicrocopy}
+                onChange={() => setUseProposedMicrocopy(false)}
+                style={!useProprosedMicrocopy ? { backgroundColor: '#ff00ff', color: 'white' } : {}}
+              />
+              <ToggleGroupItem
+                text="Proposed microcopy"
+                buttonId="microcopy-proposed-details"
+                isSelected={useProprosedMicrocopy}
+                onChange={() => setUseProposedMicrocopy(true)}
+                style={useProprosedMicrocopy ? { backgroundColor: '#ff00ff', color: 'white' } : {}}
+              />
+            </ToggleGroup>
                 </div>
               </div>
             </div>
@@ -804,7 +885,7 @@ const ModelDetails: React.FunctionComponent<ModelDetailsProps> = () => {
           <Tab eventKey={1} title={<TabTitleText>Performance Insights</TabTitleText>}>
             <div style={{ padding: '1rem' }}>
               {/* Hardware Configuration Card - includes filters and benchmarks table */}
-              <Card style={{ marginBottom: '1rem' }}>
+              <Card style={{ marginBottom: '1rem', overflow: 'visible' }}>
                 <CardHeader>
                   <div>
                     <Title headingLevel="h3" size="md">Hardware configuration</Title>
@@ -813,7 +894,7 @@ const ModelDetails: React.FunctionComponent<ModelDetailsProps> = () => {
                     </p>
                   </div>
                 </CardHeader>
-                <CardBody>
+                <CardBody style={{ overflow: 'visible' }}>
                 <Toolbar>
                   <ToolbarContent>
                     <ToolbarGroup>
@@ -826,7 +907,11 @@ const ModelDetails: React.FunctionComponent<ModelDetailsProps> = () => {
                               isExpanded={isWorkloadOpen}
                               style={{ height: '56px' }}
                             >
-                              <span style={{ fontWeight: 500 }}>Workload:</span> {WORKLOAD_OPTIONS.find(o => o.value === workload)?.label || workload}
+                              {useProprosedMicrocopy ? (
+                                <><span style={{ fontWeight: 500 }}>Performance scenario:</span> {PROPOSED_WORKLOAD_LABELS[workload] || workload}</>
+                              ) : (
+                                <><span style={{ fontWeight: 500 }}>Workload:</span> {WORKLOAD_OPTIONS.find(o => o.value === workload)?.label || workload}</>
+                              )}
                           </MenuToggle>
                             {isWorkloadOpen && (
                               <Menu 
@@ -844,7 +929,7 @@ const ModelDetails: React.FunctionComponent<ModelDetailsProps> = () => {
                                   <MenuList>
                                     {filteredWorkloadOptions.map((option) => (
                                       <MenuItem key={option.value} itemId={option.value}>
-                                        {option.label}
+                                        {useProprosedMicrocopy ? PROPOSED_WORKLOAD_LABELS[option.value] : option.label}
                                       </MenuItem>
                                     ))}
                                   </MenuList>
@@ -853,7 +938,9 @@ const ModelDetails: React.FunctionComponent<ModelDetailsProps> = () => {
                             )}
                           </div>
                           <Popover
-                            bodyContent="Sets the input and output token lengths used for generating the benchmark. Different scenarios (e.g. Chatbot) use different token counts, which impacts performance results below."
+                            bodyContent={useProprosedMicrocopy 
+                              ? <span>Select a predefined scenario used to measure and compare model performance.<br /><br />Each scenario uses fixed input and output token lengths. Scenario names approximate common use cases and do not describe model capabilities.</span>
+                              : "Sets the input and output token lengths used for generating the benchmark. Different scenarios (e.g. Chatbot) use different token counts, which impacts performance results below."}
                           >
                             <Button variant="plain" aria-label="Workload help" style={{ padding: '0.25rem' }}>
                               <OutlinedQuestionCircleIcon />
@@ -872,7 +959,9 @@ const ModelDetails: React.FunctionComponent<ModelDetailsProps> = () => {
                               isExpanded={isLatencyOpen}
                               style={{ height: '56px' }}
                             >
-                              <span style={{ fontWeight: 500 }}>Latency:</span> {latencyMetric} | {latencyPercentile} | Under {latencyValue}ms
+                              {useProprosedMicrocopy 
+                                ? <><span style={{ fontWeight: 500 }}>Latency:</span> {latencyMetric} at {latencyPercentile} {latencyMetric === 'TPS' ? `≥ ${latencyValue} tok/s` : `≤ ${latencyValue}ms`}</>
+                                : <><span style={{ fontWeight: 500 }}>Latency:</span> {latencyMetric} | {latencyPercentile} | {latencyMetric === 'TPS' ? `Above ${latencyValue} tok/s` : `Under ${latencyValue}ms`}</>}
                                     </MenuToggle>
                             {isLatencyOpen && (
                               <Panel 
@@ -900,21 +989,44 @@ const ModelDetails: React.FunctionComponent<ModelDetailsProps> = () => {
                                         {isMetricSelectOpen && (
                                           <Menu 
                                             role="listbox" 
-                                            onSelect={(_, itemId) => { setPendingLatencyMetric(itemId as any); setIsMetricSelectOpen(false); }}
+                                            onSelect={(_, itemId) => { 
+                                              const previousMetric = pendingLatencyMetric;
+                                              setPendingLatencyMetric(itemId as any); 
+                                              setIsMetricSelectOpen(false);
+                                              // Reset slider when switching between TPS and other metrics
+                                              // For TPS: higher is better, so start with low threshold (min)
+                                              // For latency metrics: lower is better, so start with high threshold (max)
+                                              if (itemId === 'TPS' && previousMetric !== 'TPS') {
+                                                setPendingLatencyValue(20); // min value for TPS
+                                              } else if (itemId !== 'TPS' && previousMetric === 'TPS') {
+                                                setPendingLatencyValue(893); // max value for latency metrics
+                                              }
+                                            }}
                                             selected={pendingLatencyMetric}
-                                            style={{ position: 'absolute', top: '100%', left: 0, zIndex: 9999, minWidth: '100%' }}
+                                            style={{ position: 'absolute', top: '100%', left: 0, zIndex: 9999, minWidth: '320px' }}
                                           >
                                             <MenuContent>
                                               <MenuList>
-                                                <MenuItem itemId="TTFT">TTFT</MenuItem>
-                                                <MenuItem itemId="ITL">ITL</MenuItem>
-                                                <MenuItem itemId="E2E">E2E</MenuItem>
+                                                <MenuItem itemId="TTFT" description="Time until the model starts responding. Best for interactive experiences.">
+                                                  TTFT (time to first token)
+                                                </MenuItem>
+                                                <MenuItem itemId="E2E" description="Total time to generate the full response. Best for summarization, batch jobs, and code generation.">
+                                                  E2E (end-to-end)
+                                                </MenuItem>
+                                                <MenuItem itemId="ITL" description="Time between tokens during generation. Important for smooth streaming and audio.">
+                                                  ITL (inter-token latency)
+                                                </MenuItem>
+                                                <MenuItem itemId="TPS" description="Generation speed in tokens per second. Higher is better.">
+                                                  TPS (tokens per second)
+                                                </MenuItem>
                                               </MenuList>
                                             </MenuContent>
                                           </Menu>
                                         )}
                                       </div>
-                                      <Popover bodyContent={<div>Choose the specific aspect of speed that matters most for your use case:<br/><br/><strong>TTFT (Time To First Token):</strong> How quickly the model starts responding. Important for perceived responsiveness.<br/><br/><strong>E2E (End-To-End):</strong> The total time to generate the full response. Important for completion tasks.<br/><br/><strong>ITL (Inter-Token Latency):</strong> The time gap between generating each new token. Consistent ITL ensures smooth streaming.<br/><br/><strong>TPS (Tokens Per Second):</strong> The speed of text generation. Higher TPS is better.</div>}>
+                                      <Popover bodyContent={useProprosedMicrocopy 
+                                        ? "Select the latency metric that matters most for your use case."
+                                        : <div>Choose the specific aspect of speed that matters most for your use case:<br/><br/><strong>TTFT (Time To First Token):</strong> How quickly the model starts responding. Important for perceived responsiveness.<br/><br/><strong>E2E (End-To-End):</strong> The total time to generate the full response. Important for completion tasks.<br/><br/><strong>ITL (Inter-Token Latency):</strong> The time gap between generating each new token. Consistent ITL ensures smooth streaming.<br/><br/><strong>TPS (Tokens Per Second):</strong> Generation speed in tokens per second. Higher TPS is better.</div>}>
                                         <Button variant="plain" aria-label="Metric help" style={{ padding: '0.25rem', marginRight: '0.5rem' }}>
                                           <OutlinedQuestionCircleIcon />
                                         </Button>
@@ -945,7 +1057,9 @@ const ModelDetails: React.FunctionComponent<ModelDetailsProps> = () => {
                                           </Menu>
                                         )}
                               </div>
-                                      <Popover bodyContent="Defines how consistently the model must perform. For example, P90 means 90% of requests must meet your target, Mean represents the average performance across all requests.">
+                                      <Popover bodyContent={useProprosedMicrocopy 
+                                        ? <span>Select the performance percentile for latency filtering. For example, <strong>P90</strong> means 90% of requests must meet the selected threshold. Higher percentiles show stricter requirements. <strong>Mean</strong> represents the average performance across all requests.</span>
+                                        : "Defines how consistently the model must perform. For example, P90 means 90% of requests must meet your target, Mean represents the average performance across all requests."}>
                                         <Button variant="plain" aria-label="Percentile help" style={{ padding: '0.25rem' }}>
                                           <OutlinedQuestionCircleIcon />
                                         </Button>
@@ -974,14 +1088,14 @@ const ModelDetails: React.FunctionComponent<ModelDetailsProps> = () => {
                                             }}
                                             style={{ width: '80px' }}
                                           />
-                                          <span style={{ padding: '0.5rem', backgroundColor: '#f3f4f6', borderRadius: '4px', fontSize: '0.875rem' }}>ms</span>
+                                          <span style={{ padding: '0.5rem', backgroundColor: '#f3f4f6', borderRadius: '4px', fontSize: '0.875rem' }}>{pendingLatencyMetric === 'TPS' ? 'tok/s' : 'ms'}</span>
                                 </div>
                               </div>
                                     </div>
                                     {/* Row 3: Apply and Reset buttons */}
                                     <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
                                       <Button variant="primary" onClick={handleApplyLatency}>
-                                  Apply filter
+                                  {useProprosedMicrocopy ? 'Filter' : 'Apply filter'}
                                 </Button>
                                       <Button variant="link" onClick={handleResetLatency}>
                                   Reset
@@ -993,7 +1107,16 @@ const ModelDetails: React.FunctionComponent<ModelDetailsProps> = () => {
                             )}
                             </div>
                           <Popover
-                            bodyContent="Filters out configurations that do not meet your specific speed requirements."
+                            bodyContent={useProprosedMicrocopy 
+                              ? <span>
+                                  Filter models by measured latency.<br /><br />
+                                  <ul style={{ margin: '0 0 0 1.25rem', padding: 0, listStyleType: 'disc' }}>
+                                    <li><strong>Metric:</strong> Select the latency metric (TTFT, E2E, ITL, or TPS) to evaluate.</li>
+                                    <li><strong>Percentile:</strong> Choose how strictly the model must meet the target. For example, P90 means 90% of requests must meet the selected threshold.</li>
+                                    <li><strong>Threshold:</strong> Set the maximum latency in milliseconds. Models exceeding this value are excluded.</li>
+                                  </ul>
+                                </span>
+                              : "Filters out configurations that do not meet your specific speed requirements."}
                           >
                             <Button variant="plain" aria-label="Latency help" style={{ padding: '0.25rem' }}>
                               <OutlinedQuestionCircleIcon />
@@ -1055,7 +1178,7 @@ const ModelDetails: React.FunctionComponent<ModelDetailsProps> = () => {
                                     {/* Row 2: Apply and Reset buttons */}
                                     <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
                                       <Button variant="primary" onClick={handleApplyRps}>
-                                  Apply filter
+                                  {useProprosedMicrocopy ? 'Filter' : 'Apply filter'}
                                 </Button>
                                       <Button variant="link" onClick={handleResetRps}>
                                   Reset
@@ -1067,7 +1190,9 @@ const ModelDetails: React.FunctionComponent<ModelDetailsProps> = () => {
                             )}
                             </div>
                           <Popover
-                            bodyContent="Sets your target traffic load (Requests Per Second). This value is used to calculate the optimal deployment size (number of replicas) required to handle this volume."
+                            bodyContent={useProprosedMicrocopy 
+                              ? "Target traffic load in requests per second (RPS). The system uses this value to size the deployment (number of replicas) for reliable performance."
+                              : "Set the minimum requests per second (RPS) that hardware configurations must support."}
                           >
                             <Button variant="plain" aria-label="RPS help" style={{ padding: '0.25rem' }}>
                               <OutlinedQuestionCircleIcon />
@@ -1080,45 +1205,72 @@ const ModelDetails: React.FunctionComponent<ModelDetailsProps> = () => {
                       {/* Hardware */}
                       <ToolbarItem>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.125rem' }}>
-                          <Dropdown
-                            isOpen={isHardwareOpen}
-                            onOpenChange={(isOpen) => setIsHardwareOpen(isOpen)}
-                            toggle={(toggleRef: React.Ref<HTMLButtonElement>) => (
-                              <MenuToggle
-                                ref={toggleRef}
-                                onClick={() => setIsHardwareOpen(!isHardwareOpen)}
-                                isExpanded={isHardwareOpen}
-                                style={{ height: '56px' }}
-                              >
-                                Hardware {hardware.length > 0 && <Badge isRead>{hardware.length}</Badge>}
+                          <div ref={hardwareMenuRef} style={{ position: 'relative' }}>
+                            <MenuToggle
+                              onClick={() => setIsHardwareOpen(!isHardwareOpen)}
+                              isExpanded={isHardwareOpen}
+                              style={{ height: '56px' }}
+                            >
+                              Hardware {hardware.length > 0 && <Badge isRead>{hardware.length}</Badge>}
                           </MenuToggle>
+                            {isHardwareOpen && (
+                              <Menu
+                                onSelect={(_event, itemId) => {
+                                  const hw = itemId as string;
+                                  if (hardware.includes(hw)) {
+                                    setHardware(hardware.filter(h => h !== hw));
+                                  } else {
+                                    setHardware([...hardware, hw]);
+                                  }
+                                }}
+                                selected={hardware}
+                                style={{ 
+                                  position: 'absolute', 
+                                  top: '100%', 
+                                  left: 0, 
+                                  zIndex: 9999,
+                                  minWidth: '300px',
+                                  boxShadow: 'var(--pf-t--global--box-shadow--md)',
+                                  backgroundColor: 'var(--pf-t--global--background--color--primary--default)'
+                                }}
+                              >
+                                <MenuSearch>
+                                  <MenuSearchInput>
+                                    <SearchInput
+                                      placeholder={useProprosedMicrocopy ? "Search hardware" : "Filter hardware"}
+                                      value={hardwareSearchValue}
+                                      aria-label="Filter hardware options"
+                                      onChange={(_event, value) => setHardwareSearchValue(value)}
+                                      onClear={() => setHardwareSearchValue('')}
+                                    />
+                                  </MenuSearchInput>
+                                </MenuSearch>
+                                <Divider />
+                                <MenuContent>
+                                  <MenuList>
+                                    {filteredHardwareOptions.length === 0 ? (
+                                      <MenuItem isDisabled>No results found</MenuItem>
+                                    ) : (
+                                      filteredHardwareOptions.map((hw) => (
+                                        <MenuItem 
+                                          key={hw}
+                                          itemId={hw}
+                                          hasCheckbox
+                                          isSelected={hardware.includes(hw)}
+                                        >
+                                          {hw}
+                                        </MenuItem>
+                                      ))
+                                    )}
+                                  </MenuList>
+                                </MenuContent>
+                              </Menu>
                             )}
-                            popperProps={{ position: 'left' }}
-                          >
-                            <DropdownList>
-                              {hardwareOptions.map((hw) => (
-                                <DropdownItem 
-                                  key={hw}
-                                  onClick={() => {
-                                    if (hardware.includes(hw)) {
-                                      setHardware(hardware.filter(h => h !== hw));
-                                    } else {
-                                      setHardware([...hardware, hw]);
-                                    }
-                                  }}
-                                >
-                                  <Checkbox
-                                    id={`hw-details-${hw}`}
-                                    label={hw}
-                                    isChecked={hardware.includes(hw)}
-                                    onChange={() => {}}
-                                  />
-                                </DropdownItem>
-                              ))}
-                            </DropdownList>
-                          </Dropdown>
+                          </div>
                           <Popover
-                            bodyContent="Filters by the hardware used to generate the benchmark. This is defined by the GPU type (e.g., A100) and the number of GPUs used for a single replica."
+                            bodyContent={useProprosedMicrocopy
+                              ? "Select the desired hardware configuration for benchmarking. Hardware configurations are displayed as GPU type (example, A100) followed by the number of GPUs per replica (example, 40 x 1)."
+                              : "Filter by specific GPU hardware configurations."}
                           >
                             <Button variant="plain" aria-label="Hardware help" style={{ padding: '0.25rem' }}>
                               <OutlinedQuestionCircleIcon />
@@ -1164,7 +1316,9 @@ const ModelDetails: React.FunctionComponent<ModelDetailsProps> = () => {
                                   </button>
                                 }
                               >
-                                Workload: {WORKLOAD_OPTIONS.find(o => o.value === workload)?.label || workload}
+                                {useProprosedMicrocopy 
+                                  ? `Performance scenario: ${PROPOSED_WORKLOAD_LABELS[workload] || workload}`
+                                  : `Workload: ${WORKLOAD_OPTIONS.find(o => o.value === workload)?.label || workload}`}
                               </Label>
                             </LabelGroup>
                           </ToolbarItem>
@@ -1178,7 +1332,7 @@ const ModelDetails: React.FunctionComponent<ModelDetailsProps> = () => {
                                 <ul className="pf-v6-c-label-group__list" role="list">
                                   <li className="pf-v6-c-label-group__list-item"><Label>Metric: {latencyMetric}</Label></li>
                                   <li className="pf-v6-c-label-group__list-item"><Label>Percentile: {latencyPercentile}</Label></li>
-                                  <li className="pf-v6-c-label-group__list-item"><Label>Under {latencyValue}ms</Label></li>
+                                  <li className="pf-v6-c-label-group__list-item"><Label>{useProprosedMicrocopy ? (latencyMetric === 'TPS' ? `≥ ${latencyValue} tok/s` : `≤ ${latencyValue}ms`) : (latencyMetric === 'TPS' ? `Above ${latencyValue} tok/s` : `Under ${latencyValue}ms`)}</Label></li>
                                 </ul>
                         </div>
                               <div className="pf-v6-c-label-group__close" style={{ marginLeft: '0.25rem', paddingLeft: 0, alignSelf: 'center' }}>
@@ -1307,7 +1461,8 @@ const ModelDetails: React.FunctionComponent<ModelDetailsProps> = () => {
                                 // Handle latency columns
                                 if (col.group === 'latency' && col.latencyMetric && col.latencyPercentile) {
                                   const value = benchmark.latencyData[col.latencyMetric][col.latencyPercentile];
-                                  return <Td key={colId}>{value}ms</Td>;
+                                  const unit = col.latencyMetric === 'TPS' ? ' tok/s' : 'ms';
+                                  return <Td key={colId}>{value}{unit}</Td>;
                                 }
                                 
                                 // Handle metadata columns
@@ -1411,7 +1566,7 @@ const ModelDetails: React.FunctionComponent<ModelDetailsProps> = () => {
                                       {latencyMetric} {latencyPercentile}
                                     </div>
                                     <div style={{ fontSize: '1rem', fontWeight: 500 }}>
-                                      {bestBenchmark.latencyData[latencyMetric][latencyPercentile]}ms
+                                      {bestBenchmark.latencyData[latencyMetric][latencyPercentile]}{latencyMetric === 'TPS' ? ' tok/s' : 'ms'}
                                     </div>
                                   </div>
                                   <div>

@@ -5,6 +5,7 @@ export interface LatencyData {
   TTFT: { Mean: number; P90: number; P95: number; P99: number };
   ITL: { Mean: number; P90: number; P95: number; P99: number };
   E2E: { Mean: number; P90: number; P95: number; P99: number };
+  TPS: { Mean: number; P90: number; P95: number; P99: number };
 }
 
 export interface BenchmarkData {
@@ -37,6 +38,8 @@ const generateLatencyData = (baseLatency: number, seed: number): LatencyData => 
   const ttftFactor = 0.3 + (seed % 20) / 100; // TTFT is typically fastest (30-50% of E2E)
   const itlFactor = 0.05 + (seed % 10) / 200; // ITL is very small per-token latency
   const e2eFactor = 1; // E2E is the base
+  // TPS is tokens per second - higher is better, inversely related to latency
+  const baseTps = Math.round(1000 / (baseLatency * itlFactor) + (seed % 50));
 
   // Create percentile multipliers (P99 > P95 > P90 > Mean)
   const meanMultiplier = 0.85;
@@ -62,6 +65,12 @@ const generateLatencyData = (baseLatency: number, seed: number): LatencyData => 
       P90: Math.round(baseLatency * e2eFactor * p90Multiplier),
       P95: Math.round(baseLatency * e2eFactor * p95Multiplier),
       P99: Math.round(baseLatency * e2eFactor * p99Multiplier),
+    },
+    TPS: {
+      Mean: Math.round(baseTps * 1.1),  // Mean is typically higher for TPS
+      P90: Math.round(baseTps * 1.0),
+      P95: Math.round(baseTps * 0.9),   // Lower percentiles are worse for TPS
+      P99: Math.round(baseTps * 0.75),
     },
   };
 };
@@ -293,7 +302,7 @@ export const filterBenchmarks = (
     hardware?: string[];
     latencyValue?: number;
     rpsValue?: number;
-    latencyMetric?: "TTFT" | "ITL" | "E2E";
+    latencyMetric?: "TTFT" | "ITL" | "E2E" | "TPS";
     latencyPercentile?: "Mean" | "P90" | "P95" | "P99";
   }
 ): BenchmarkData[] => {
@@ -320,9 +329,14 @@ export const filterBenchmarks = (
   };
   
   // Filter by latency (workload-specific latency is already in the benchmark)
+  // For TPS, higher is better, so filter >= threshold
+  // For other metrics (TTFT, ITL, E2E), lower is better, so filter <= threshold
   filtered = filtered.filter(row => {
     const rowLatency = getLatencyForFilter(row);
-    return rowLatency <= latencyValue;
+    if (latencyMetric === "TPS") {
+      return rowLatency >= latencyValue; // TPS: keep models with TPS >= threshold
+    }
+    return rowLatency <= latencyValue; // Latency: keep models with latency <= threshold
   });
   
   // Calculate replicas based on Max RPS: replicas = ceiling(Max RPS / RPS per replica)
@@ -347,5 +361,12 @@ export const filterBenchmarks = (
         latency: currentLatency,
       };
     })
-    .sort((a, b) => a.latency - b.latency);
+    .sort((a, b) => {
+      // For TPS, higher is better, so sort descending
+      // For other metrics, lower is better, so sort ascending
+      if (latencyMetric === "TPS") {
+        return b.latency - a.latency; // Descending for TPS
+      }
+      return a.latency - b.latency; // Ascending for latency metrics
+    });
 };

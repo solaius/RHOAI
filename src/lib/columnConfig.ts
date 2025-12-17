@@ -59,7 +59,7 @@ export const COLUMN_DEFINITIONS: Column[] = [
   },
   // Latency group - TTFT
   {
-    id: "ttft-mean",
+    id: "latency_TTFT_Mean",
     label: "TTFT latency mean",
     group: "latency",
     defaultVisible: true,
@@ -67,7 +67,7 @@ export const COLUMN_DEFINITIONS: Column[] = [
     latencyPercentile: "Mean",
   },
   {
-    id: "ttft-p90",
+    id: "latency_TTFT_P90",
     label: "TTFT latency P90",
     group: "latency",
     defaultVisible: true,
@@ -75,7 +75,7 @@ export const COLUMN_DEFINITIONS: Column[] = [
     latencyPercentile: "P90",
   },
   {
-    id: "ttft-p95",
+    id: "latency_TTFT_P95",
     label: "TTFT latency P95",
     group: "latency",
     defaultVisible: false,
@@ -83,7 +83,7 @@ export const COLUMN_DEFINITIONS: Column[] = [
     latencyPercentile: "P95",
   },
   {
-    id: "ttft-p99",
+    id: "latency_TTFT_P99",
     label: "TTFT latency P99",
     group: "latency",
     defaultVisible: false,
@@ -92,7 +92,7 @@ export const COLUMN_DEFINITIONS: Column[] = [
   },
   // Latency group - E2E
   {
-    id: "e2e-mean",
+    id: "latency_E2E_Mean",
     label: "E2E latency mean",
     group: "latency",
     defaultVisible: false,
@@ -100,7 +100,7 @@ export const COLUMN_DEFINITIONS: Column[] = [
     latencyPercentile: "Mean",
   },
   {
-    id: "e2e-p90",
+    id: "latency_E2E_P90",
     label: "E2E latency P90",
     group: "latency",
     defaultVisible: false,
@@ -108,7 +108,7 @@ export const COLUMN_DEFINITIONS: Column[] = [
     latencyPercentile: "P90",
   },
   {
-    id: "e2e-p95",
+    id: "latency_E2E_P95",
     label: "E2E latency P95",
     group: "latency",
     defaultVisible: false,
@@ -116,16 +116,16 @@ export const COLUMN_DEFINITIONS: Column[] = [
     latencyPercentile: "P95",
   },
   {
-    id: "e2e-p99",
+    id: "latency_E2E_P99",
     label: "E2E latency P99",
     group: "latency",
     defaultVisible: false,
     latencyMetric: "E2E",
     latencyPercentile: "P99",
   },
-  // Latency group - ITL (TPS)
+  // Latency group - ITL
   {
-    id: "itl-mean",
+    id: "latency_ITL_Mean",
     label: "ITL latency mean",
     group: "latency",
     defaultVisible: false,
@@ -133,7 +133,7 @@ export const COLUMN_DEFINITIONS: Column[] = [
     latencyPercentile: "Mean",
   },
   {
-    id: "itl-p90",
+    id: "latency_ITL_P90",
     label: "ITL latency P90",
     group: "latency",
     defaultVisible: false,
@@ -141,7 +141,7 @@ export const COLUMN_DEFINITIONS: Column[] = [
     latencyPercentile: "P90",
   },
   {
-    id: "itl-p95",
+    id: "latency_ITL_P95",
     label: "ITL latency P95",
     group: "latency",
     defaultVisible: false,
@@ -149,11 +149,44 @@ export const COLUMN_DEFINITIONS: Column[] = [
     latencyPercentile: "P95",
   },
   {
-    id: "itl-p99",
+    id: "latency_ITL_P99",
     label: "ITL latency P99",
     group: "latency",
     defaultVisible: false,
     latencyMetric: "ITL",
+    latencyPercentile: "P99",
+  },
+  // Latency group - TPS (Tokens Per Second)
+  {
+    id: "latency_TPS_Mean",
+    label: "TPS mean",
+    group: "latency",
+    defaultVisible: false,
+    latencyMetric: "TPS",
+    latencyPercentile: "Mean",
+  },
+  {
+    id: "latency_TPS_P90",
+    label: "TPS P90",
+    group: "latency",
+    defaultVisible: false,
+    latencyMetric: "TPS",
+    latencyPercentile: "P90",
+  },
+  {
+    id: "latency_TPS_P95",
+    label: "TPS P95",
+    group: "latency",
+    defaultVisible: false,
+    latencyMetric: "TPS",
+    latencyPercentile: "P95",
+  },
+  {
+    id: "latency_TPS_P99",
+    label: "TPS P99",
+    group: "latency",
+    defaultVisible: false,
+    latencyMetric: "TPS",
     latencyPercentile: "P99",
   },
   // Request profile group
@@ -187,7 +220,8 @@ export const getDefaultVisibleColumns = (
   ];
 
   // Only the latency column matching the current filter is visible by default
-  const latencyColumnId = `${latencyMetric.toLowerCase()}-${latencyPercentile.toLowerCase()}`;
+  // Must match the format used in generateLatencyColumns: `latency_${metric}_${percentile}`
+  const latencyColumnId = `latency_${latencyMetric}_${latencyPercentile}`;
 
   return [...alwaysVisible, latencyColumnId];
 };
