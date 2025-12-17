@@ -293,6 +293,9 @@ const ModelCatalog: React.FunctionComponent = () => {
   const [selectedLanguages, setSelectedLanguages] = React.useState<string[]>(() => 
     searchParams.get("languages")?.split(",").filter(Boolean) || []
   );
+  const [selectedTensorTypes, setSelectedTensorTypes] = React.useState<string[]>(() => 
+    searchParams.get("tensorTypes")?.split(",").filter(Boolean) || []
+  );
 
   // Search state
   const [search, setSearchState] = React.useState(() => searchParams.get("search") || "");
@@ -515,7 +518,7 @@ const ModelCatalog: React.FunctionComponent = () => {
     if (showFilterChangedAlert) {
         setShowFilterChangedAlert(false);
       }
-  }, [showFilterChangedAlert, workload, latencyMetric, latencyPercentile, latencyValue, rpsValue, hardware, selectedTasks, selectedProviders, selectedLicenses, selectedLanguages, search]);
+  }, [showFilterChangedAlert, workload, latencyMetric, latencyPercentile, latencyValue, rpsValue, hardware, selectedTasks, selectedProviders, selectedLicenses, selectedLanguages, selectedTensorTypes, search]);
   
   // Search state for filter categories
   const [taskSearch, setTaskSearch] = React.useState('');
@@ -542,7 +545,7 @@ const ModelCatalog: React.FunctionComponent = () => {
       workload, latencyMetric, latencyPercentile, 
       latencyValue, rpsValue, hardware,
       tasks: selectedTasks, providers: selectedProviders, licenses: selectedLicenses,
-      languages: selectedLanguages, search
+      languages: selectedLanguages, tensorTypes: selectedTensorTypes, search
     });
     sessionStorage.setItem("catalogFilterState", filterState);
     
@@ -568,6 +571,7 @@ const ModelCatalog: React.FunctionComponent = () => {
     if (selectedProviders.length > 0) params.set("providers", selectedProviders.join(","));
     if (selectedLicenses.length > 0) params.set("licenses", selectedLicenses.join(","));
     if (selectedLanguages.length > 0) params.set("languages", selectedLanguages.join(","));
+    if (selectedTensorTypes.length > 0) params.set("tensorTypes", selectedTensorTypes.join(","));
     params.set("workload", workload);
     params.set("latencyMetric", latencyMetric);
     params.set("latencyPercentile", latencyPercentile);
@@ -783,6 +787,9 @@ const ModelCatalog: React.FunctionComponent = () => {
     return Array.from(new Set(allLanguages)).sort();
   }, []);
 
+  // Tensor type options - fixed order
+  const tensorTypeOptions = ['FP8', 'FP16', 'INT4', 'INT8'];
+
   // Helper functions to filter options based on search
   const FILTER_COLLAPSE_THRESHOLD = 5;
 
@@ -821,7 +828,7 @@ const ModelCatalog: React.FunctionComponent = () => {
   // Reset visible count when filters/category change
   React.useEffect(() => {
     setVisibleCount(10);
-  }, [search, category, selectedTasks, selectedProviders, selectedLicenses, selectedLanguages, performanceFiltersEnabled]);
+  }, [search, category, selectedTasks, selectedProviders, selectedLicenses, selectedLanguages, selectedTensorTypes, performanceFiltersEnabled]);
 
   // Check if any filters or search are active (including performance toggle)
   const hasActiveFiltersOrSearch = React.useMemo(() => {
@@ -830,8 +837,9 @@ const ModelCatalog: React.FunctionComponent = () => {
            selectedProviders.length > 0 || 
            selectedLicenses.length > 0 || 
            selectedLanguages.length > 0 ||
+           selectedTensorTypes.length > 0 ||
            performanceFiltersEnabled;
-  }, [search, selectedTasks, selectedProviders, selectedLicenses, selectedLanguages, performanceFiltersEnabled]);
+  }, [search, selectedTasks, selectedProviders, selectedLicenses, selectedLanguages, selectedTensorTypes, performanceFiltersEnabled]);
 
   // Filter functions using real Model type
   const filteredModels = React.useMemo(() => {
@@ -869,6 +877,9 @@ const ModelCatalog: React.FunctionComponent = () => {
         const modelLang = Array.isArray(model.language) ? model.language : [model.language];
         return modelLang.some(l => selectedLanguages.includes(l));
       });
+    }
+    if (selectedTensorTypes.length > 0) {
+      filtered = filtered.filter(model => model.tensorType && selectedTensorTypes.includes(model.tensorType));
     }
     
     // Performance filters (only when toggle is ON) - use local state for instant reactivity
@@ -933,7 +944,7 @@ const ModelCatalog: React.FunctionComponent = () => {
     }
     
     return filtered;
-  }, [search, category, selectedTasks, selectedProviders, selectedLicenses, selectedLanguages, 
+  }, [search, category, selectedTasks, selectedProviders, selectedLicenses, selectedLanguages, selectedTensorTypes,
       performanceFiltersEnabled, workload, hardware, latencyValue, rpsValue, latencyMetric, latencyPercentile, sortOption]);
 
   const getValidatedModels = React.useMemo(() => 
@@ -1043,6 +1054,22 @@ const ModelCatalog: React.FunctionComponent = () => {
         return next;
       });
       return newLanguages;
+    });
+  }, [setSearchParams]);
+
+  const handleTensorTypeFilter = React.useCallback((tensorType: string, checked: boolean) => {
+    setSelectedTensorTypes(prev => {
+      const newTensorTypes = checked ? [...prev, tensorType] : prev.filter(t => t !== tensorType);
+      setSearchParams(prevParams => {
+        const next = new URLSearchParams(prevParams);
+        if (newTensorTypes.length > 0) {
+          next.set("tensorTypes", newTensorTypes.join(","));
+        } else {
+          next.delete("tensorTypes");
+        }
+        return next;
+      });
+      return newTensorTypes;
     });
   }, [setSearchParams]);
 
@@ -1190,8 +1217,8 @@ const ModelCatalog: React.FunctionComponent = () => {
           {model.validated && !performanceFiltersEnabled && (
             <div style={{ marginBottom: '1rem' }}>
               <Button 
-                variant="link" 
-                isInline 
+                variant="link"
+                isInline
                 style={{ fontSize: '0.875rem', padding: 0 }}
                 onClick={() => {
                   storeFilterStateForAlert();
@@ -1203,6 +1230,7 @@ const ModelCatalog: React.FunctionComponent = () => {
                   if (selectedProviders.length > 0) params.set("providers", selectedProviders.join(","));
                   if (selectedLicenses.length > 0) params.set("licenses", selectedLicenses.join(","));
                   if (selectedLanguages.length > 0) params.set("languages", selectedLanguages.join(","));
+                  if (selectedTensorTypes.length > 0) params.set("tensorTypes", selectedTensorTypes.join(","));
                   params.set("tab", "performance");
                   navigate(`/ai-assets/models/${model.id}?${params.toString()}`);
                 }}
@@ -1288,6 +1316,7 @@ const ModelCatalog: React.FunctionComponent = () => {
                     if (selectedProviders.length > 0) params.set("providers", selectedProviders.join(","));
                     if (selectedLicenses.length > 0) params.set("licenses", selectedLicenses.join(","));
                     if (selectedLanguages.length > 0) params.set("languages", selectedLanguages.join(","));
+                    if (selectedTensorTypes.length > 0) params.set("tensorTypes", selectedTensorTypes.join(","));
                     params.set("workload", workload);
                     params.set("latencyMetric", latencyMetric);
                     params.set("latencyPercentile", latencyPercentile);
@@ -1559,6 +1588,25 @@ const ModelCatalog: React.FunctionComponent = () => {
                     </Button>
                   )}
                 </div>
+
+            <Divider style={{ marginBottom: '1rem' }} />
+
+            {/* Tensor Type Filter */}
+            <div style={{ marginBottom: '1.5rem' }}>
+                  <div style={{ marginBottom: '0.5rem', fontWeight: '500', fontSize: '0.875rem' }}>
+                Tensor type
+                  </div>
+              {tensorTypeOptions.map(tensorType => (
+                <div key={tensorType} style={{ marginBottom: '0.5rem' }}>
+                  <Checkbox
+                    id={`tensorType-${tensorType}`}
+                        label={tensorType}
+                    isChecked={selectedTensorTypes.includes(tensorType)}
+                    onChange={(_event, checked) => handleTensorTypeFilter(tensorType, checked)}
+                  />
+                </div>
+              ))}
+                </div>
                     </div>
                 </div>
 
@@ -1576,7 +1624,7 @@ const ModelCatalog: React.FunctionComponent = () => {
           {/* Main Content */}
           <div style={{ padding: '1.5rem' }}>
             {/* Search Input - always visible */}
-            <div style={{ marginBottom: (!performanceFiltersEnabled && (selectedTasks.length > 0 || selectedProviders.length > 0 || selectedLicenses.length > 0 || selectedLanguages.length > 0)) ? '0' : '1rem' }}>
+            <div style={{ marginBottom: (!performanceFiltersEnabled && (selectedTasks.length > 0 || selectedProviders.length > 0 || selectedLicenses.length > 0 || selectedLanguages.length > 0 || selectedTensorTypes.length > 0)) ? '0' : '1rem' }}>
               <SearchInput
                 placeholder="Filter by name or description"
                 value={searchInput}
@@ -1595,7 +1643,7 @@ const ModelCatalog: React.FunctionComponent = () => {
             </div>
 
             {/* Filter chips toolbar - when performance toggle is OFF and has filters */}
-            {(!performanceFiltersEnabled && (selectedTasks.length > 0 || selectedProviders.length > 0 || selectedLicenses.length > 0 || selectedLanguages.length > 0)) && (
+            {(!performanceFiltersEnabled && (selectedTasks.length > 0 || selectedProviders.length > 0 || selectedLicenses.length > 0 || selectedLanguages.length > 0 || selectedTensorTypes.length > 0)) && (
             <div key="filter-chips-off" style={{ marginTop: '1rem' }}>
               <Toolbar id="search-toolbar">
               {/* First row: All chips */}
@@ -1641,6 +1689,16 @@ const ModelCatalog: React.FunctionComponent = () => {
                       </LabelGroup>
                     </ToolbarItem>
                   )}
+                  {/* Tensor type chips */}
+                  {selectedTensorTypes.length > 0 && (
+                    <ToolbarItem>
+                      <LabelGroup categoryName="Tensor type" isClosable onClick={() => setSelectedTensorTypes([])}>
+                        {selectedTensorTypes.map(tensorType => (
+                          <Label key={tensorType} onClose={() => handleTensorTypeFilter(tensorType, false)}>{tensorType}</Label>
+                        ))}
+                      </LabelGroup>
+                    </ToolbarItem>
+                  )}
                 </ToolbarGroup>
               </ToolbarContent>
               {/* Second row: Reset all filters button */}
@@ -1653,6 +1711,7 @@ const ModelCatalog: React.FunctionComponent = () => {
                     setSelectedProviders([]);
                     setSelectedLicenses([]);
                     setSelectedLanguages([]);
+                    setSelectedTensorTypes([]);
                   }}>
                     Reset all filters
                   </Button>
@@ -2027,6 +2086,16 @@ const ModelCatalog: React.FunctionComponent = () => {
                       </LabelGroup>
                     </ToolbarItem>
                   )}
+                  {/* Tensor type chips */}
+                  {selectedTensorTypes.length > 0 && (
+                    <ToolbarItem>
+                      <LabelGroup categoryName="Tensor type" isClosable onClick={() => setSelectedTensorTypes([])}>
+                        {selectedTensorTypes.map(tensorType => (
+                          <Label key={tensorType} onClose={() => handleTensorTypeFilter(tensorType, false)}>{tensorType}</Label>
+                        ))}
+                      </LabelGroup>
+                    </ToolbarItem>
+                  )}
                   {/* Workload Chip with undo icon */}
                     {workload !== DEFAULT_WORKLOAD && (
                     <ToolbarItem>
@@ -2114,7 +2183,7 @@ const ModelCatalog: React.FunctionComponent = () => {
                 </ToolbarGroup>
               </ToolbarContent>
               {/* Second row: Reset all filters button */}
-              {(selectedTasks.length > 0 || selectedProviders.length > 0 || selectedLicenses.length > 0 || selectedLanguages.length > 0 ||
+              {(selectedTasks.length > 0 || selectedProviders.length > 0 || selectedLicenses.length > 0 || selectedLanguages.length > 0 || selectedTensorTypes.length > 0 ||
                 workload !== DEFAULT_WORKLOAD || latencyMetric !== DEFAULT_LATENCY_METRIC || latencyPercentile !== DEFAULT_LATENCY_PERCENTILE || 
                 latencyValue !== DEFAULT_LATENCY_VALUE || rpsValue !== DEFAULT_RPS_VALUE || hardware.length > 0) && (
                 <ToolbarContent style={{ paddingTop: '0.5rem' }}>
@@ -2126,6 +2195,7 @@ const ModelCatalog: React.FunctionComponent = () => {
                   setSelectedProviders([]);
                   setSelectedLicenses([]);
                   setSelectedLanguages([]);
+                  setSelectedTensorTypes([]);
                     resetPerformanceFilters();
                 }}>
                   Reset all filters
@@ -2213,7 +2283,7 @@ const ModelCatalog: React.FunctionComponent = () => {
             {(() => {
               const hasFilters = search.trim() !== '' || selectedTasks.length > 0 || 
                 selectedProviders.length > 0 || selectedLicenses.length > 0 || 
-                selectedLanguages.length > 0 || (performanceFiltersEnabled && (
+                selectedLanguages.length > 0 || selectedTensorTypes.length > 0 || (performanceFiltersEnabled && (
                   latencyValue !== DEFAULT_LATENCY_VALUE || rpsValue !== DEFAULT_RPS_VALUE || 
                   hardware.length > 0
                 ));
@@ -2287,6 +2357,7 @@ const ModelCatalog: React.FunctionComponent = () => {
                           setSelectedProviders([]);
                           setSelectedLicenses([]);
                           setSelectedLanguages([]);
+                          setSelectedTensorTypes([]);
                           if (performanceFiltersEnabled) {
                             resetPerformanceFilters();
                           }

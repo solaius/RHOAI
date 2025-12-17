@@ -54,6 +54,7 @@ export interface Model {
   metrics: ModelMetrics;
   performance?: ModelPerformance;
   modelCard?: string; // Markdown content for Hugging Face-style model card
+  tensorType?: string; // e.g., "FP8", "FP16", "INT4", "INT8"
 }
 
 export interface Column {
