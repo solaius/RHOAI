@@ -1,50 +1,56 @@
-# GitLab Pages for Static HTML
-# Using GitLab Pages parallel deployments for branch previews
-image: alpine:latest
+# GitLab Pages for Node.js Web App
+# Configured to deploy from 'gitlab-pages' branch to keep main branch clean
+image: registry.redhat.io/ubi8/nodejs-18:latest
 
 stages:
+  - build
   - deploy
 
 variables:
-  # Default prefix (overridden per branch in job rules)
-  PAGES_PREFIX: "branch-$CI_COMMIT_BRANCH"
+  NODE_ENV: production
+  NODE_OPTIONS: "--max-old-space-size=3072"
 
 # Default settings for all jobs
 default:
   tags:
-    - shared-podman
+    - itup-alm-x86
 
-# GitLab Pages deployment using parallel deployments feature
-pages:
-  stage: deploy
+# Cache disabled due to S3 upload timeouts in Red Hat GitLab environment
+# cache:
+#   key: ${CI_COMMIT_REF_SLUG}
+#   paths:
+#     - .npm/
+#   policy: pull-push
+
+build:
+  stage: build
+  variables:
+    KUBERNETES_MEMORY_REQUEST: "2Gi"
+    KUBERNETES_MEMORY_LIMIT: "4Gi"
+  rules:
+    - if: $CI_COMMIT_BRANCH == "feature-store-overview"
   script:
-    - echo "Pages deployment accessible at ${CI_PAGES_URL}"
-    - |
-      if [ -z "$PAGES_PREFIX" ]; then
-        # Main branch: files at root
-        mkdir -p public
-        cp index.html public/
-        echo "Deployed to root"
-      else
-        # Other branches: create directory structure with branch prefix
-        mkdir -p public/${PAGES_PREFIX}
-        cp index.html public/${PAGES_PREFIX}/
-        echo "Deployed to /${PAGES_PREFIX}/"
-      fi
-    - echo "Contents of public/:"
-    - find public -type f
+    - echo "Installing dependencies (including devDependencies for build tools)..."
+    - npm ci --include=dev
+    - echo "Setting up environment for build..."
+    - export PATH="$PWD/node_modules/.bin:$PATH"
+    - echo "Verifying build tools are available..."
+    - which tsc || echo "TypeScript compiler not found - will use npx fallback"
+    - echo "Running build process..."
+    - npm run build
+    - echo "Preparing files for GitLab Pages..."
+    # GitLab Pages expects files in a 'public' directory
+    - mv dist public
   artifacts:
     paths:
       - public
-  environment:
-    name: pages/$CI_COMMIT_BRANCH
-    url: $CI_PAGES_URL
+
+pages:
+  stage: deploy
   rules:
-    - if: $CI_COMMIT_BRANCH == "main"
-      # Main branch deploys to root (empty prefix)
-      variables:
-        PAGES_PREFIX: ""
-    - if: $CI_COMMIT_BRANCH != "main"
-      # Other branches use "branch-" prefix + branch slug as path prefix
-      variables:
-        PAGES_PREFIX: "branch-$CI_COMMIT_BRANCH"
+    - if: $CI_COMMIT_BRANCH == "feature-store-overview"
+  script:
+    - echo "Deploying to GitLab Pages..."
+  artifacts:
+    paths:
+      - public
