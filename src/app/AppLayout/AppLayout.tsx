@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { NavLink, useLocation, useNavigate } from 'react-router-dom';
+import { NavLink, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import {
   Badge,
   Button,
@@ -50,6 +50,7 @@ const AppLayout: React.FunctionComponent<IAppLayout> = ({ children }) => {
   const { flags } = useFeatureFlags();
   const navigate = useNavigate();
   const location = useLocation();
+  const [searchParams] = useSearchParams();
   
   // Environment variable controls for prototype appearance
   const useGenericLogo = process.env.GENERIC_LOGO === 'true';
@@ -296,6 +297,17 @@ const AppLayout: React.FunctionComponent<IAppLayout> = ({ children }) => {
     </Masthead>
   );
 
+  // Helper to preserve featureStore param for feature-store routes during cross-navigation
+  const getNavLinkPath = (path: string): string => {
+    if (path.includes('/feature-store/')) {
+      const featureStoreParam = searchParams.get('featureStore');
+      if (featureStoreParam) {
+        return `${path}?featureStore=${encodeURIComponent(featureStoreParam)}`;
+      }
+    }
+    return path;
+  };
+
   const renderNavItem = (route: IAppRoute, index: number, groupId?: string) => {
     const IconComponent = route.icon;
     const itemId = `${groupId ? `${groupId}_` : ''}${route.label}-${index}`;
@@ -349,7 +361,7 @@ const AppLayout: React.FunctionComponent<IAppLayout> = ({ children }) => {
           </div>
         ) : (
           <NavLink
-            to={route.path}
+            to={getNavLinkPath(route.path)}
             style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}
           >
             <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>

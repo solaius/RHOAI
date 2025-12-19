@@ -1,6 +1,6 @@
 import * as React from 'react';
 import { useState, useMemo, useRef, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import {
   PageSection,
   Title,
@@ -163,13 +163,25 @@ const FeatureServicesIcon = () => (
  */
 const Overview: React.FunctionComponent = () => {
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   
   // Tab state
   const [activeTabKey, setActiveTabKey] = useState<string | number>(0);
   
-  // Feature Store context selector state
-  const [selectedFeatureStore, setSelectedFeatureStore] = useState('All feature stores');
+  // Feature Store context selector state - initialize from URL param if present
+  const [selectedFeatureStore, setSelectedFeatureStore] = useState(() => {
+    const featureStoreParam = searchParams.get('featureStore');
+    return featureStoreParam || 'All feature stores';
+  });
   const [isFeatureStoreOpen, setIsFeatureStoreOpen] = useState(false);
+  
+  // Update feature store selection when URL param changes
+  useEffect(() => {
+    const featureStoreParam = searchParams.get('featureStore');
+    if (featureStoreParam) {
+      setSelectedFeatureStore(featureStoreParam);
+    }
+  }, [searchParams]);
   
   // Global search state
   const [globalSearchValue, setGlobalSearchValue] = useState('');
@@ -513,17 +525,18 @@ const Overview: React.FunctionComponent = () => {
     );
   };
   
-  // Render learn how to connect popover - no duplicate header
+  // Render integration instructions popover content
   const renderLearnPopoverContent = () => (
-    <div style={{ maxWidth: '350px' }}>
-      <div style={{ fontSize: '14px', marginBottom: '8px' }}>
-        To consume and manage resources from the feature store, follow these steps:
-      </div>
-      <List style={{ marginLeft: '8px' }}>
-        <ListItem style={{ fontSize: '14px' }}>Create or select a workbench in your project</ListItem>
-        <ListItem style={{ fontSize: '14px' }}>Add the feature store connection to your workbench</ListItem>
-        <ListItem style={{ fontSize: '14px' }}>Use the SDK to access features</ListItem>
-      </List>
+    <div style={{ maxWidth: '400px', fontSize: '14px' }}>
+      <p style={{ marginBottom: '12px' }}>
+        To connect a feature store to a workbench, the workbench must belong to a project that has permission to access the feature store.
+      </p>
+      <p style={{ marginBottom: '12px' }}>
+        To see which projects have the required permissions, click <strong>View connected workbenches</strong>.
+      </p>
+      <p style={{ margin: 0 }}>
+        In a compatible project, create or edit a workbench and select the desired feature store in the <strong>Feature stores</strong> field.
+      </p>
     </div>
   );
   
@@ -535,7 +548,7 @@ const Overview: React.FunctionComponent = () => {
           <FlexItem>
             <Title headingLevel="h1" size="2xl" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
               <div style={{ 
-                background: '#f0f0f0', 
+                background: 'var(--pf-t--global--color--nonstatus--gray--default)', 
                 borderRadius: '50%', 
                 width: '40px', 
                 height: '40px', 
@@ -550,102 +563,128 @@ const Overview: React.FunctionComponent = () => {
             </Title>
           </FlexItem>
           <FlexItem>
-            {/* Global Search Bar */}
-            <div ref={searchContainerRef} style={{ position: 'relative', width: '400px' }}>
-              <Tooltip 
-                content="Search by name, description, or tag (e.g., team=platform)" 
-                position="bottom"
+            {/* Global Search Bar - matching Entities page style */}
+            <div ref={searchContainerRef} style={{ position: 'relative', width: '350px' }}>
+              <Tooltip
+                content="Search by name, description, or tag (e.g., team=platform)"
+                position="top"
+                triggerRef={searchContainerRef}
               >
                 <SearchInput
                   id="feature-store-overview-global-search"
+                  aria-label="Global search"
                   placeholder="Search by name, description, or tag (e.g., team=platform)"
                   value={globalSearchValue}
                   onChange={(_event, value) => {
                     setGlobalSearchValue(value);
-                    setIsSearchDropdownOpen(!!value.trim());
-                  }}
-                  onClear={() => {
-                    setGlobalSearchValue('');
-                    setIsSearchDropdownOpen(false);
+                    setIsSearchDropdownOpen(value.trim().length > 0);
                   }}
                   onFocus={() => {
                     if (globalSearchValue.trim()) {
                       setIsSearchDropdownOpen(true);
                     }
                   }}
-                  style={{ width: '100%' }}
+                  onBlur={() => {
+                    // Delay to allow dropdown click
+                    setTimeout(() => setIsSearchDropdownOpen(false), 200);
+                  }}
+                  onClear={() => {
+                    setGlobalSearchValue('');
+                    setIsSearchDropdownOpen(false);
+                  }}
                 />
               </Tooltip>
               
-              {/* Search Results Dropdown */}
-              {isSearchDropdownOpen && globalSearchResults.total > 0 && (
-                <Panel 
-                  variant="raised" 
-                  style={{ 
-                    position: 'absolute', 
-                    top: '100%', 
-                    left: 0, 
-                    right: 0, 
-                    zIndex: 1000, 
-                    maxHeight: '400px', 
+              {/* Search Dropdown - matching Entities page style */}
+              {isSearchDropdownOpen && globalSearchValue.trim().length > 0 && (
+                <Panel
+                  variant="raised"
+                  style={{
+                    position: 'absolute',
+                    top: '100%',
+                    right: 0,
+                    width: '420px',
+                    maxHeight: '450px',
                     overflowY: 'auto',
+                    zIndex: 1000,
                     marginTop: '4px',
-                    boxShadow: 'var(--pf-t--global--box-shadow--lg)',
+                    boxShadow: '0 4px 8px rgba(0,0,0,0.2)',
                   }}
                 >
                   <PanelMain>
-                    <PanelMainBody style={{ padding: 0 }}>
-                      <div style={{ textAlign: 'center', padding: '12px 16px', borderBottom: '1px solid var(--pf-t--global--border--color--default)' }}>
-                        <span style={{ 
-                          color: 'var(--pf-t--global--text--color--link--default)', 
-                          fontWeight: 'bold',
-                          textDecoration: 'none'
-                        }}>
+                    <PanelMainBody style={{ padding: '16px 0' }}>
+                      {/* Results count - centered */}
+                      <div style={{ textAlign: 'center', marginBottom: '16px', padding: '0 16px' }}>
+                        <span style={{ color: 'var(--pf-t--global--text--color--link--default)', textDecoration: 'none' }}>
                           {globalSearchResults.total} results from {selectedFeatureStore}
                         </span>
                       </div>
                       
-                      {Object.entries(groupedResults).map(([category, results], categoryIndex) => (
-                        <React.Fragment key={category}>
-                          {categoryIndex > 0 && <Divider />}
-                          <div style={{ padding: '8px 16px', backgroundColor: 'var(--pf-t--global--background--color--secondary--default)' }}>
-                            <span style={{ fontWeight: 600, fontSize: '0.875rem' }}>{category}</span>
-                          </div>
-                          {results.map((result) => (
-                            <div
-                              key={result.id}
-                              onClick={() => handleSearchResultClick(result)}
-                              style={{
-                                padding: '12px 16px',
-                                cursor: 'pointer',
-                                borderBottom: '1px solid var(--pf-t--global--border--color--default)',
-                              }}
-                              onMouseEnter={(e) => {
-                                e.currentTarget.style.backgroundColor = 'var(--pf-t--global--background--color--secondary--hover)';
-                              }}
-                              onMouseLeave={(e) => {
-                                e.currentTarget.style.backgroundColor = 'transparent';
-                              }}
-                            >
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
-                                <span style={{ fontWeight: 400 }}>{highlightMatch(result.name, globalSearchValue)}</span>
-                                {result.featureStore && (
-                                  <Label 
-                                    variant="outline" 
-                                    color="blue"
-                                    isCompact
-                                  >
-                                    {result.featureStore}
-                                  </Label>
-                                )}
-                              </div>
-                              <div style={{ fontSize: '0.875rem', color: 'var(--pf-t--global--text--color--subtle)' }}>
-                                {highlightMatch(result.description, globalSearchValue)}
-                              </div>
+                      <Divider />
+                      
+                      {globalSearchResults.total === 0 ? (
+                        <Content component="p" style={{ padding: '16px' }}>No results found</Content>
+                      ) : (
+                        Object.entries(groupedResults).map(([category, results], categoryIndex) => (
+                          <div key={category}>
+                            {categoryIndex > 0 && <Divider />}
+                            <div style={{ padding: '0 16px' }}>
+                              <Content component="small" style={{ color: '#6a6e73', fontWeight: 600, marginTop: '12px', marginBottom: '8px', display: 'block' }}>
+                                {category}
+                              </Content>
+                              {results.map((result) => (
+                                <div
+                                  key={result.id}
+                                  style={{
+                                    padding: '8px 0',
+                                    cursor: 'pointer',
+                                  }}
+                                  onClick={() => handleSearchResultClick(result)}
+                                  onMouseEnter={(e) => {
+                                    e.currentTarget.style.backgroundColor = '#f0f0f0';
+                                  }}
+                                  onMouseLeave={(e) => {
+                                    e.currentTarget.style.backgroundColor = 'transparent';
+                                  }}
+                                >
+                                  <Flex alignItems={{ default: 'alignItemsCenter' }} spaceItems={{ default: 'spaceItemsSm' }}>
+                                    <FlexItem>
+                                      <span style={{ fontWeight: 400 }}>
+                                        {highlightMatch(result.name, globalSearchValue)}
+                                      </span>
+                                    </FlexItem>
+                                    {result.featureStore && (
+                                      <FlexItem>
+                                        <Label isCompact variant="outline" color="blue">{result.featureStore}</Label>
+                                      </FlexItem>
+                                    )}
+                                  </Flex>
+                                  <Content component="small" style={{ color: '#6a6e73', display: 'block', marginTop: '4px' }}>
+                                    {highlightMatch(result.description, globalSearchValue)}
+                                  </Content>
+                                  {result.tags && result.tags.length > 0 && (() => {
+                                    // Only show tags that match the search query
+                                    const matchingTags = result.tags.filter(tag => 
+                                      tag.toLowerCase().includes(globalSearchValue.toLowerCase())
+                                    );
+                                    return matchingTags.length > 0 ? (
+                                      <Flex spaceItems={{ default: 'spaceItemsXs' }} style={{ marginTop: '8px' }}>
+                                        {matchingTags.map((tag, idx) => (
+                                          <FlexItem key={idx}>
+                                            <Label color="blue" isCompact>
+                                              {highlightMatch(tag, globalSearchValue)}
+                                            </Label>
+                                          </FlexItem>
+                                        ))}
+                                      </Flex>
+                                    ) : null;
+                                  })()}
+                                </div>
+                              ))}
                             </div>
-                          ))}
-                        </React.Fragment>
-                      ))}
+                          </div>
+                        ))
+                      )}
                     </PanelMainBody>
                   </PanelMain>
                 </Panel>
@@ -657,8 +696,8 @@ const Overview: React.FunctionComponent = () => {
         <Content component="p" style={{ marginTop: '12px' }}>
           The feature store is a centralized catalog for managing, storing, and serving features, ensuring your models have reliable access to consistent data from prototyping to production. To consume and manage resources from feature store, you must integrate it with your workbenches.{' '}
           <Popover
-            aria-label="Learn how to connect"
-            headerContent="How to connect your workbench"
+            aria-label="Integration instructions"
+            headerContent="Integration instructions"
             bodyContent={renderLearnPopoverContent()}
             isVisible={isLearnPopoverOpen}
             shouldOpen={() => setIsLearnPopoverOpen(true)}
@@ -682,9 +721,17 @@ const Overview: React.FunctionComponent = () => {
                   isOpen={isFeatureStoreOpen}
                   onOpenChange={(isOpen) => setIsFeatureStoreOpen(isOpen)}
                   onSelect={(_event, value) => {
-                    setSelectedFeatureStore(value as string);
+                    const newValue = value as string;
+                    setSelectedFeatureStore(newValue);
                     setIsFeatureStoreOpen(false);
                     setPage(1); // Reset pagination when feature store changes
+                    // Update URL parameter for cross-navigation consistency
+                    if (newValue === 'All feature stores') {
+                      searchParams.delete('featureStore');
+                    } else {
+                      searchParams.set('featureStore', newValue);
+                    }
+                    setSearchParams(searchParams, { replace: true });
                   }}
                   selected={selectedFeatureStore}
                   toggle={(toggleRef: React.Ref<MenuToggleElement>) => (
@@ -785,7 +832,13 @@ const Overview: React.FunctionComponent = () => {
                     <Button 
                       variant="link" 
                       isInline 
-                      onClick={() => navigate(card.link)}
+                      onClick={() => {
+                        // Pass feature store selection via URL parameter for cross-navigation consistency
+                        const featureStoreParam = selectedFeatureStore !== 'All feature stores' 
+                          ? `?featureStore=${encodeURIComponent(selectedFeatureStore)}` 
+                          : '';
+                        navigate(`${card.link}${featureStoreParam}`);
+                      }}
                     >
                       Go to <strong>{card.title}</strong>
                     </Button>

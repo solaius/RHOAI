@@ -82,32 +82,32 @@ const mockSearchResults: SearchResult[] = [
     name: 'dependents_registry_source',
     description: 'External or internal registry containing dependent-related data.',
     category: 'Data Sources',
-    featureStore: 'Banking',
-    tags: ['team=analytics'],
+    featureStore: 'Fraud detection',
+    tags: ['domain=demographics', 'env=production'],
   },
   {
     id: 'f-001',
     name: 'local_type',
     description: 'Categorical indicator of the borrower\'s residential area type',
     category: 'Features',
-    featureStore: 'Customer churn',
-    tags: ['team=analytics'],
+    featureStore: 'Customer analytics',
+    tags: ['domain=demographics', 'type=numeric'],
   },
   {
     id: 'f-002',
     name: 'social_media_usage_hours_per_day',
     description: 'Average number of hours per day the borrower spends on social media.',
     category: 'Features',
-    featureStore: 'Customer churn',
-    tags: ['team=analytics', 'team=ana'],
+    featureStore: 'Product recommendations',
+    tags: ['term=credit', 'type=numeric', 'env=production'],
   },
   {
     id: 'fv-001',
     name: 'personal_profile_view',
     description: 'Aggregated features from the user\'s personal and demographic data.',
     category: 'Feature Views',
-    featureStore: 'Banking',
-    tags: ['team=analytics'],
+    featureStore: 'Fraud detection',
+    tags: ['domain=demographics', 'use_case=fraud'],
   },
 ];
 
@@ -144,7 +144,7 @@ const highlightMatch = (text: string, query: string): React.ReactNode => {
  */
 export const EntitiesListPage: React.FC = () => {
   const navigate = useNavigate();
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [page, setPage] = useState(1);
   const [perPage, setPerPage] = useState(10);
   
@@ -336,27 +336,31 @@ export const EntitiesListPage: React.FC = () => {
           compareA = a.name.toLowerCase();
           compareB = b.name.toLowerCase();
           break;
-        case 2: // Join key
+        case 1: // Feature store
+          compareA = a.featureStore.toLowerCase();
+          compareB = b.featureStore.toLowerCase();
+          break;
+        case 3: // Join key
           compareA = a.joinKey.toLowerCase();
           compareB = b.joinKey.toLowerCase();
           break;
-        case 3: // Value type
+        case 4: // Value type
           compareA = a.valueType.toLowerCase();
           compareB = b.valueType.toLowerCase();
           break;
-        case 4: // Feature views
+        case 5: // Feature views
           compareA = extrasA.featureViewsCount;
           compareB = extrasB.featureViewsCount;
           break;
-        case 5: // Created
+        case 6: // Created
           compareA = new Date(a.created).getTime();
           compareB = new Date(b.created).getTime();
           break;
-        case 6: // Updated
+        case 7: // Updated
           compareA = new Date(a.lastUpdated).getTime();
           compareB = new Date(b.lastUpdated).getTime();
           break;
-        case 7: // Owner
+        case 8: // Owner
           compareA = extrasA.owner.toLowerCase();
           compareB = extrasB.owner.toLowerCase();
           break;
@@ -495,6 +499,7 @@ export const EntitiesListPage: React.FC = () => {
   // Column definitions
   const columns = [
     'Entities',
+    'Feature store',
     'Tags',
     'Join key',
     'Value type',
@@ -529,7 +534,7 @@ export const EntitiesListPage: React.FC = () => {
             <Flex justifyContent={{ default: 'justifyContentSpaceBetween' }} alignItems={{ default: 'alignItemsFlexStart' }}>
               <FlexItem>
                 <Title headingLevel="h1" size="2xl" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                  <div style={{ background: '#f0f0f0', borderRadius: '50%', width: '40px', height: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '28px' }}>
+                  <div style={{ background: 'var(--pf-t--global--color--nonstatus--gray--default)', borderRadius: '50%', width: '40px', height: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '28px' }}>
                     <svg className="pf-v6-svg" viewBox="0 0 40 40" fill="currentColor" aria-hidden="true" role="img" width="1em" height="1em"><path d="M28.125,9c0-1.99902-1.62598-3.625-3.625-3.625s-3.625,1.62598-3.625,3.625c0,1.78497,1.29919,3.26373,3,3.56177v2.43823c0,1.30957-1.06543,2.375-2.375,2.375h-6c-1.33502,0-2.53003.57721-3.375,1.48492v-8.29816c1.70081-.29803,3-1.77679,3-3.56177,0-1.99902-1.62598-3.625-3.625-3.625s-3.625,1.62598-3.625,3.625c0,1.78497,1.29919,3.26373,3,3.56177v14.87646c-1.70081.29803-3,1.77679-3,3.56177,0,1.99902,1.62598,3.625,3.625,3.625s3.625-1.62598,3.625-3.625c0-1.78497-1.29919-3.26373-3-3.56177v-3.43823c0-1.86133,1.51416-3.375,3.375-3.375h6c1.99902,0,3.625-1.62598,3.625-3.625v-2.43823c1.70081-.29803,3-1.77679,3-3.56177ZM9.125,7c0-1.30957,1.06543-2.375,2.375-2.375s2.375,1.06543,2.375,2.375-1.06543,2.375-2.375,2.375-2.375-1.06543-2.375-2.375ZM13.875,29c0,1.30957-1.06543,2.375-2.375,2.375s-2.375-1.06543-2.375-2.375,1.06543-2.375,2.375-2.375,2.375,1.06543,2.375,2.375ZM24.5,11.375c-1.30957,0-2.375-1.06543-2.375-2.375s1.06543-2.375,2.375-2.375,2.375,1.06543,2.375,2.375-1.06543,2.375-2.375,2.375Z"></path></svg>
                   </div>
                   Entities
@@ -635,17 +640,23 @@ export const EntitiesListPage: React.FC = () => {
                                       <Content component="small" style={{ color: '#6a6e73', display: 'block', marginTop: '4px' }}>
                                         {highlightMatch(result.description, globalSearchValue)}
                                       </Content>
-                                      {result.tags.length > 0 && (
-                                        <Flex spaceItems={{ default: 'spaceItemsXs' }} style={{ marginTop: '8px' }}>
-                                          {result.tags.map((tag, idx) => (
-                                            <FlexItem key={idx}>
-                                              <Label color="blue" isCompact>
-                                                {highlightMatch(tag, globalSearchValue)}
-                                              </Label>
-                                            </FlexItem>
-                                          ))}
-                                        </Flex>
-                                      )}
+                                      {result.tags.length > 0 && (() => {
+                                        // Only show tags that match the search query
+                                        const matchingTags = result.tags.filter(tag => 
+                                          tag.toLowerCase().includes(globalSearchValue.toLowerCase())
+                                        );
+                                        return matchingTags.length > 0 ? (
+                                          <Flex spaceItems={{ default: 'spaceItemsXs' }} style={{ marginTop: '8px' }}>
+                                            {matchingTags.map((tag, idx) => (
+                                              <FlexItem key={idx}>
+                                                <Label color="blue" isCompact>
+                                                  {highlightMatch(tag, globalSearchValue)}
+                                                </Label>
+                                              </FlexItem>
+                                            ))}
+                                          </Flex>
+                                        ) : null;
+                                      })()}
                                     </div>
                                   ))}
                                 </div>
@@ -675,7 +686,7 @@ export const EntitiesListPage: React.FC = () => {
               <FlexItem>
                 <Flex spaceItems={{ default: 'spaceItemsSm' }} alignItems={{ default: 'alignItemsCenter' }}>
                   <FlexItem>
-                    <Content component="p" style={{ fontWeight: 'bold', margin: 0 }}>Feature store</Content>
+                    <span style={{ fontWeight: 400 }}>Feature store</span>
                   </FlexItem>
                   <FlexItem>
                     <Select
@@ -683,8 +694,16 @@ export const EntitiesListPage: React.FC = () => {
                       isOpen={isFeatureStoreOpen}
                       selected={selectedFeatureStore}
                       onSelect={(_event, value) => {
-                        setSelectedFeatureStore(value as string);
+                        const newValue = value as string;
+                        setSelectedFeatureStore(newValue);
                         setIsFeatureStoreOpen(false);
+                        // Update URL parameter for cross-navigation consistency
+                        if (newValue === 'All feature stores') {
+                          searchParams.delete('featureStore');
+                        } else {
+                          searchParams.set('featureStore', newValue);
+                        }
+                        setSearchParams(searchParams, { replace: true });
                       }}
                       onOpenChange={(isOpen) => setIsFeatureStoreOpen(isOpen)}
                       toggle={(toggleRef: React.Ref<MenuToggleElement>) => (
@@ -711,63 +730,49 @@ export const EntitiesListPage: React.FC = () => {
                 </Flex>
               </FlexItem>
               
-              {/* View Connected Workbenches Link with Icon */}
+              {/* View Connected Workbenches Link with Icon - matching Overview page */}
               <FlexItem>
                 <Popover
                   position="right"
                   aria-label="Connected workbenches"
                   headerContent="Connected workbenches"
+                  showClose
+                  minWidth="460px"
                   bodyContent={
-                    <Flex direction={{ default: 'column' }} spaceItems={{ default: 'spaceItemsMd' }}>
-                      {/* Connected workbenches section */}
-                      <FlexItem>
-                        <Content component="p" style={{ fontSize: '14px', margin: 0 }}>
-                          Workbenches already connected to{' '}
-                          {selectedFeatureStore === 'All feature stores' ? (
-                            <strong>All feature stores</strong>
-                          ) : (
-                            <>the <strong>{selectedFeatureStore}</strong> feature store</>
-                          )}:
-                        </Content>
-                        <List isPlain style={{ fontSize: '14px', marginTop: 0 }}>
+                    <div>
+                      {/* First section - Connected workbenches */}
+                      <div style={{ marginBottom: '16px' }}>
+                        <div style={{ fontSize: '14px', marginBottom: '8px' }}>
+                          Workbenches already connected to the {selectedFeatureStore === 'All feature stores' ? <strong>All feature stores</strong> : <strong>{selectedFeatureStore}</strong>} feature store:
+                        </div>
+                        <List style={{ marginLeft: '8px' }}>
                           {mockConnectedWorkbenches.map((wb, idx) => (
-                            <ListItem key={idx} style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                              •{' '}
-                              <Button variant="link" isInline style={{ fontWeight: 600 }}>
-                                {wb.name} <ExternalLinkAltIcon style={{ marginLeft: '4px' }} />
-                              </Button>
+                            <ListItem key={idx} style={{ fontSize: '14px' }}>
+                              <Button variant="link" isInline icon={<ExternalLinkAltIcon />} iconPosition="end" style={{ fontWeight: 600 }}>{wb.name}</Button>
                               {' '}in{' '}
                               <Button variant="link" isInline style={{ fontWeight: 600 }}>{wb.project}</Button>
                               {' '}project
                             </ListItem>
                           ))}
                         </List>
-                      </FlexItem>
+                      </div>
                       
-                      {/* Projects without workbenches section */}
-                      <FlexItem>
-                        <Content component="p" style={{ fontSize: '14px', margin: 0 }}>
-                          Projects that can access{' '}
-                          {selectedFeatureStore === 'All feature stores' ? (
-                            <strong>All feature stores</strong>
-                          ) : (
-                            <>the <strong>{selectedFeatureStore}</strong> feature store</>
-                          )}{' '}
-                          but do not have connected workbenches:
-                        </Content>
-                        <List isPlain style={{ fontSize: '14px', marginTop: 0 }}>
+                      {/* Second section - Projects without workbenches */}
+                      <div>
+                        <div style={{ fontSize: '14px', marginBottom: '8px' }}>
+                          Projects that can access the {selectedFeatureStore === 'All feature stores' ? <strong>All feature stores</strong> : <strong>{selectedFeatureStore}</strong>} feature store but do not have connected workbenches:
+                        </div>
+                        <List style={{ marginLeft: '8px' }}>
                           {mockProjectsWithoutWorkbenches.map((project, idx) => (
-                            <ListItem key={idx}>
-                              •{' '}
+                            <ListItem key={idx} style={{ fontSize: '14px' }}>
                               <Button variant="link" isInline style={{ fontWeight: 600 }}>{project.name}</Button>
                               {' '}project
                             </ListItem>
                           ))}
                         </List>
-                      </FlexItem>
-                    </Flex>
+                      </div>
+                    </div>
                   }
-                  minWidth="400px"
                 >
                   <Button variant="link" icon={<WrenchIcon />}>
                     View connected workbenches
@@ -961,6 +966,9 @@ export const EntitiesListPage: React.FC = () => {
                         </FlexItem>
                       </Flex>
                     </Td>
+
+                    {/* Feature Store Column */}
+                    <Td dataLabel="Feature store">{entity.featureStore}</Td>
 
                     {/* Tags Column - Clickable to add filter (key=value format) */}
                     <Td dataLabel="Tags">
