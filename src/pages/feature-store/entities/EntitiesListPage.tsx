@@ -224,23 +224,27 @@ export const EntitiesListPage: React.FC = () => {
     if (!globalSearchValue.trim()) return { results: [], total: 0 };
     
     const query = globalSearchValue.toLowerCase();
+    
+    // Filter function for feature store
+    const matchesFeatureStore = (itemFeatureStore: string | undefined) => {
+      return selectedFeatureStore === 'All feature stores' || itemFeatureStore === selectedFeatureStore;
+    };
+    
+    // Filter mock search results (Data Sources, Features, Feature Views) by feature store
     const filteredResults = mockSearchResults.filter(result => 
-      result.name.toLowerCase().includes(query) ||
+      matchesFeatureStore(result.featureStore) &&
+      (result.name.toLowerCase().includes(query) ||
       result.description.toLowerCase().includes(query) ||
-      result.tags.some(tag => tag.toLowerCase().includes(query))
+      result.tags.some(tag => tag.toLowerCase().includes(query)))
     );
     
-    // Also search entities (filter by selected feature store if not "All")
-    let entitiesToSearch = mockEntities;
-    if (selectedFeatureStore !== 'All feature stores') {
-      entitiesToSearch = mockEntities.filter(e => e.featureStore === selectedFeatureStore);
-    }
-    
-    const entityResults: SearchResult[] = entitiesToSearch
+    // Also search entities (filter by selected feature store)
+    const entityResults: SearchResult[] = mockEntities
       .filter(entity => 
-        entity.name.toLowerCase().includes(query) ||
+        matchesFeatureStore(entity.featureStore) &&
+        (entity.name.toLowerCase().includes(query) ||
         entity.description.toLowerCase().includes(query) ||
-        entity.tags.some(tag => tag.toLowerCase().includes(query))
+        entity.tags.some(tag => tag.toLowerCase().includes(query)))
       )
       .map(entity => ({
         id: entity.id,
@@ -594,7 +598,7 @@ export const EntitiesListPage: React.FC = () => {
                           {/* Results count - centered */}
                           <div style={{ textAlign: 'center', marginBottom: '16px', padding: '0 16px' }}>
                             <span style={{ color: 'var(--pf-t--global--text--color--link--default)', textDecoration: 'none' }}>
-                              {globalSearchResults.total} results from All feature stores
+                              {globalSearchResults.total} results from {selectedFeatureStore}
                             </span>
                           </div>
                           

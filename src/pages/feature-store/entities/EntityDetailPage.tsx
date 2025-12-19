@@ -205,24 +205,32 @@ const mockSearchResults: SearchResult[] = [
     name: 'dependents_registry_source',
     description: 'External or internal registry containing dependent-related data.',
     category: 'Data Sources',
-    featureStore: 'Banking',
-    tags: ['team=analytics'],
+    featureStore: 'Fraud detection',
+    tags: ['domain=demographics', 'env=production'],
   },
   {
     id: 'f-001',
     name: 'local_type',
     description: 'Categorical indicator of the borrower\'s residential area type',
     category: 'Features',
-    featureStore: 'Customer churn',
-    tags: ['team=analytics'],
+    featureStore: 'Customer analytics',
+    tags: ['domain=demographics', 'type=numeric'],
+  },
+  {
+    id: 'f-002',
+    name: 'social_media_usage_hours_per_day',
+    description: 'Average number of hours per day the borrower spends on social media.',
+    category: 'Features',
+    featureStore: 'Product recommendations',
+    tags: ['term=credit', 'type=numeric', 'env=production'],
   },
   {
     id: 'fv-001',
     name: 'personal_profile_view',
     description: 'Aggregated features from the user\'s personal and demographic data.',
     category: 'Feature Views',
-    featureStore: 'Banking',
-    tags: ['team=analytics'],
+    featureStore: 'Fraud detection',
+    tags: ['domain=demographics', 'use_case=fraud'],
   },
 ];
 
@@ -346,7 +354,7 @@ export const EntityDetailPage: React.FC = () => {
         name: entity.name,
         description: entity.description,
         category: 'Entities' as const,
-        featureStore: 'Fraud detection',
+        featureStore: entity.featureStore,
         tags: entity.tags,
       }));
     
@@ -657,6 +665,7 @@ export const EntityDetailPage: React.FC = () => {
               </Tooltip>
               
               {/* Search Dropdown */}
+              {/* Search Dropdown - matching Entities list page style */}
               {isSearchDropdownOpen && globalSearchValue.trim().length > 0 && (
                 <Panel
                   variant="raised"
@@ -674,10 +683,11 @@ export const EntityDetailPage: React.FC = () => {
                 >
                   <PanelMain>
                     <PanelMainBody style={{ padding: '16px 0' }}>
+                      {/* Results count - centered */}
                       <div style={{ textAlign: 'center', marginBottom: '16px', padding: '0 16px' }}>
-                        <Button variant="link" isInline>
-                          {globalSearchResults.total} results from All feature stores
-                        </Button>
+                        <span style={{ color: 'var(--pf-t--global--text--color--link--default)', textDecoration: 'none' }}>
+                          {globalSearchResults.total} results from {selectedFeatureStore}
+                        </span>
                       </div>
                       
                       <Divider />
@@ -722,6 +732,23 @@ export const EntityDetailPage: React.FC = () => {
                                   <Content component="small" style={{ color: '#6a6e73', display: 'block', marginTop: '4px' }}>
                                     {highlightMatch(result.description, globalSearchValue)}
                                   </Content>
+                                  {result.tags.length > 0 && (() => {
+                                    // Only show tags that match the search query
+                                    const matchingTags = result.tags.filter(tag => 
+                                      tag.toLowerCase().includes(globalSearchValue.toLowerCase())
+                                    );
+                                    return matchingTags.length > 0 ? (
+                                      <Flex spaceItems={{ default: 'spaceItemsXs' }} style={{ marginTop: '8px' }}>
+                                        {matchingTags.map((tag, idx) => (
+                                          <FlexItem key={idx}>
+                                            <Label color="blue" isCompact>
+                                              {highlightMatch(tag, globalSearchValue)}
+                                            </Label>
+                                          </FlexItem>
+                                        ))}
+                                      </Flex>
+                                    ) : null;
+                                  })()}
                                 </div>
                               ))}
                             </div>
