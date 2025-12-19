@@ -9,6 +9,7 @@ import { useFeatureFlags } from '@app/utils/FeatureFlagsContext';
 // New components
 import { Home } from '@app/Home/Home';
 import { Projects } from '@app/Projects/Projects';
+import { ProjectDetail } from '@app/Projects/ProjectDetail';
 
 // AIAssets - imported from migrated src-3.0
 import { Models } from '@app/AIAssets/Models/Models';
@@ -43,7 +44,7 @@ import { FeatureFlags } from '@app/FeatureFlags/FeatureFlags';
 import { Workbenches } from '@app/DevelopTrain/Workbenches/Workbenches';
 import { FeatureStore } from '@app/DevelopTrain/FeatureStore/FeatureStore';
 import { Overview } from '@app/DevelopTrain/FeatureStore/Overview/Overview';
-import { Entities } from '@app/DevelopTrain/FeatureStore/Entities/Entities';
+import { Entities, EntityDetailPage } from '@app/DevelopTrain/FeatureStore/Entities/Entities';
 import { DataSources } from '@app/DevelopTrain/FeatureStore/DataSources/DataSources';
 import { DataSets } from '@app/DevelopTrain/FeatureStore/DataSets/DataSets';
 import { Features } from '@app/DevelopTrain/FeatureStore/Features/Features';
@@ -123,6 +124,12 @@ const routes: AppRouteConfig[] = [
     path: '/projects',
     title: 'RHOAI 3.1 Console | Projects',
     icon: createFontAwesomeIcon('fa-light fa-folder'),
+  },
+  {
+    element: <ProjectDetail />,
+    exact: true,
+    path: '/projects/:projectId',
+    title: 'RHOAI 3.1 Console | Project Details',
   },
   {
     label: 'AI hub',
@@ -250,6 +257,12 @@ const routes: AppRouteConfig[] = [
             label: 'Entities',
             path: '/develop-train/feature-store/entities',
             title: 'RHOAI 3.1 Console | Feature Store - Entities',
+          },
+          {
+            element: <EntityDetailPage />,
+            exact: true,
+            path: '/develop-train/feature-store/entities/:entityId',
+            title: 'RHOAI 3.1 Console | Feature Store - Entity Details',
           },
           {
             element: <DataSources />,

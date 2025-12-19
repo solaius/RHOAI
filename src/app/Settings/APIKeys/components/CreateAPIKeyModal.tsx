@@ -266,7 +266,9 @@ const CreateAPIKeyModal: React.FunctionComponent<CreateAPIKeyModalProps> = ({ is
                     <li key={`rate-${idx}`}>Rate limit: {limit.amount.toLocaleString()} requests per {limit.quantity} {limit.unit}</li>
                   ))
                 }
-                <li>Accessible models: {userTier.models.length}</li>
+                {userTier.models && userTier.models.length > 0 && (
+                  <li>Accessible models: {userTier.models.length}</li>
+                )}
               </ul>
             </div>
           </Alert>
