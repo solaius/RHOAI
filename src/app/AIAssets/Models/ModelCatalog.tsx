@@ -2403,13 +2403,11 @@ const ModelCatalog: React.FunctionComponent = () => {
 
               if (showPerformanceEmpty) {
                 // Get the display name for the current category
-                const categoryDisplayName = category === 'validated' 
-                  ? 'Red Hat AI validated models' 
-                  : category === 'redhat' 
-                    ? 'Red Hat AI models' 
-                    : category === 'other' 
-                      ? 'Other models' 
-                      : 'All models';
+                // Note: Inside this block, category can only be 'redhat' or 'other' 
+                // since showPerformanceEmpty requires categoryHasNoBenchmarkedModels
+                const categoryDisplayName = category === 'redhat' 
+                  ? 'Red Hat AI models' 
+                  : 'Other models';
                 
                 return (
                   <div style={{ 
