@@ -65,7 +65,7 @@ import {
   ToggleGroupItem,
 } from '@patternfly/react-core';
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
-import { faUndo } from '@fortawesome/free-solid-svg-icons';
+import { faUndo, faChartColumn } from '@fortawesome/free-solid-svg-icons';
 import {
   Table,
   Thead,
@@ -743,7 +743,7 @@ const ModelDetails: React.FunctionComponent<ModelDetailsProps> = () => {
                       </div>
                     }
                   >
-                    <Label variant="filled" color="purple" style={{ cursor: 'pointer' }}>
+                    <Label variant="filled" color="purple" style={{ cursor: 'pointer' }} icon={<FontAwesomeIcon icon={faChartColumn} />}>
                       Validated
                     </Label>
                   </Popover>

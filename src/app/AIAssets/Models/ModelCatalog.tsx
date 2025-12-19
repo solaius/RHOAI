@@ -872,6 +872,32 @@ const ModelCatalog: React.FunctionComponent = () => {
   // Pagination state for "Load more" functionality
   const [visibleCount, setVisibleCount] = React.useState(10);
   
+  // Dynamic cards per row calculation
+  const galleryContainerRef = React.useRef<HTMLDivElement>(null);
+  const [cardsPerRow, setCardsPerRow] = React.useState(3);
+  
+  React.useEffect(() => {
+    const calculateCardsPerRow = () => {
+      if (galleryContainerRef.current) {
+        const containerWidth = galleryContainerRef.current.offsetWidth;
+        const cardMinWidth = 280; // matches Gallery minWidths
+        const gutter = 16; // PatternFly default gutter
+        // Calculate how many cards fit: (containerWidth + gutter) / (cardMinWidth + gutter)
+        const count = Math.floor((containerWidth + gutter) / (cardMinWidth + gutter));
+        setCardsPerRow(Math.max(1, count)); // At least 1 card
+      }
+    };
+    
+    calculateCardsPerRow();
+    
+    const resizeObserver = new ResizeObserver(calculateCardsPerRow);
+    if (galleryContainerRef.current) {
+      resizeObserver.observe(galleryContainerRef.current);
+    }
+    
+    return () => resizeObserver.disconnect();
+  }, []);
+  
   // Reset visible count when filters/category change
   React.useEffect(() => {
     setVisibleCount(10);
@@ -1209,7 +1235,7 @@ const ModelCatalog: React.FunctionComponent = () => {
             />
             {model.validated ? (
               <Popover bodyContent="Validated models are benchmarked for performance and quality using leading open source evaluation datasets.">
-                <Label variant="filled" color="purple" style={{ cursor: 'pointer' }}>
+                <Label variant="filled" color="purple" style={{ cursor: 'pointer' }} icon={<FontAwesomeIcon icon={faChartColumn} />}>
                   Validated
                 </Label>
               </Popover>
@@ -2487,8 +2513,8 @@ const ModelCatalog: React.FunctionComponent = () => {
 
             {/* Models List - Grouped view when no category and no filters, single list otherwise */}
             {category === null && !hasActiveFiltersOrSearch ? (
-              <>
-                {/* Red Hat AI validated models section - One row (4 models) */}
+              <div ref={galleryContainerRef}>
+                {/* Red Hat AI validated models section - Dynamic row based on screen width */}
                 {getValidatedModels.length > 0 && (
                   <div style={{ marginBottom: '2rem' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -2503,7 +2529,7 @@ const ModelCatalog: React.FunctionComponent = () => {
                       Third-party models benchmarked for performance and quality by Red Hat using leading open-source evaluation datasets.
                     </p>
                     <Gallery hasGutter minWidths={{ default: '280px' }} maxWidths={{ default: '1fr' }}>
-                      {getValidatedModels.slice(0, 4).map(model => {
+                      {getValidatedModels.slice(0, cardsPerRow).map(model => {
                         const modelCard = getFilteredModels().find(m => m.id === model.id);
                         return modelCard ? renderModelCard(modelCard) : null;
                       })}
@@ -2511,7 +2537,7 @@ const ModelCatalog: React.FunctionComponent = () => {
                   </div>
                 )}
 
-                {/* Red Hat AI models section - One row (4 models) */}
+                {/* Red Hat AI models section - Dynamic row based on screen width */}
                 {getRedHatModels.length > 0 && (
                   <div style={{ marginBottom: '2rem' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -2526,7 +2552,7 @@ const ModelCatalog: React.FunctionComponent = () => {
                       Red Hat models with full support and legal indemnification.
                     </p>
                     <Gallery hasGutter minWidths={{ default: '280px' }} maxWidths={{ default: '1fr' }}>
-                      {getRedHatModels.slice(0, 4).map(model => {
+                      {getRedHatModels.slice(0, cardsPerRow).map(model => {
                         const modelCard = getFilteredModels().find(m => m.id === model.id);
                         return modelCard ? renderModelCard(modelCard) : null;
                       })}
@@ -2534,7 +2560,7 @@ const ModelCatalog: React.FunctionComponent = () => {
                   </div>
                 )}
 
-                {/* Other models section - One row (4 models) */}
+                {/* Other models section - Dynamic row based on screen width */}
                 {getCommunityModels.length > 0 && (
                   <div style={{ marginBottom: '2rem' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -2549,14 +2575,14 @@ const ModelCatalog: React.FunctionComponent = () => {
                       Admin-configured and externally sourced models.
                     </p>
                     <Gallery hasGutter minWidths={{ default: '280px' }} maxWidths={{ default: '1fr' }}>
-                      {getCommunityModels.slice(0, 4).map(model => {
+                      {getCommunityModels.slice(0, cardsPerRow).map(model => {
                         const modelCard = getFilteredModels().find(m => m.id === model.id);
                         return modelCard ? renderModelCard(modelCard) : null;
                       })}
                     </Gallery>
                   </div>
                 )}
-              </>
+              </div>
             ) : (
               /* Single combined list when category is selected OR when filtering/searching */
               filteredModels.length > 0 && (
