@@ -1931,14 +1931,7 @@ const ModelCatalog: React.FunctionComponent = () => {
                                           </Menu>
                                         )}
                                       </div>
-                                      <Popover bodyContent={useProprosedMicrocopy 
-                                        ? "Select the latency metric that matters most for your use case."
-                                        : <div>Choose the specific aspect of speed that matters most for your use case:<br/><br/><strong>TTFT (Time To First Token):</strong> How quickly the model starts responding. Important for perceived responsiveness.<br/><br/><strong>E2E (End-To-End):</strong> The total time to generate the full response. Important for completion tasks.<br/><br/><strong>ITL (Inter-Token Latency):</strong> The time gap between generating each new token. Consistent ITL ensures smooth streaming.<br/><br/><strong>TPS (Tokens Per Second):</strong> Generation speed in tokens per second. Higher TPS is better.</div>}>
-                                        <Button variant="plain" aria-label="Metric help" style={{ padding: '0.25rem', marginRight: '0.5rem' }}>
-                                          <OutlinedQuestionCircleIcon />
-                                        </Button>
-                                      </Popover>
-                                      <div ref={percentileMenuRef} style={{ position: 'relative', flex: 1 }}>
+                                      <div ref={percentileMenuRef} style={{ position: 'relative', flex: 1, marginLeft: '0.5rem' }}>
                                         <MenuToggle 
                                           onClick={() => { setIsPercentileSelectOpen(!isPercentileSelectOpen); setIsMetricSelectOpen(false); }}
                                           isExpanded={isPercentileSelectOpen}
