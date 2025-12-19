@@ -166,12 +166,12 @@ const scrollbarStyles = `
   }
 `;
 
-// Proposed workload labels for microcopy A/B testing
-const PROPOSED_WORKLOAD_LABELS: Record<string, string> = {
-  chat: "Chatbot-style prompt (512 input / 256 output tokens)",
-  rag: "RAG-style prompt (4096 input / 512 output tokens)",
-  code_fixing: "Code fixing-style prompt (1024 input / 1024 output tokens)",
-  long_rag: "Long RAG-style prompt (10240 input / 1536 output tokens)",
+// Workload labels for scenario display
+const WORKLOAD_LABELS: Record<string, string> = {
+  chat: "Chatbot (512 input / 256 output)",
+  rag: "RAG (4096 input / 512 output)",
+  code_fixing: "Code fixing (1024 input / 1024 output)",
+  long_rag: "Long RAG (10240 input / 1536 output)",
 };
 
 const ModelCatalog: React.FunctionComponent = () => {
@@ -252,6 +252,18 @@ const ModelCatalog: React.FunctionComponent = () => {
     } catch { /* ignore */ }
     return [];
   });
+  
+  // Read model name from sessionStorage during initialization (before it gets cleared)
+  const initialModelName = React.useMemo(() => {
+    try {
+      const stored = sessionStorage.getItem("catalogPerfFilters");
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        return parsed.modelName ?? '';
+      }
+    } catch { /* ignore */ }
+    return '';
+  }, []);
   
   // Clear sessionStorage after reading (one-time restore)
   React.useEffect(() => {
@@ -479,18 +491,10 @@ const ModelCatalog: React.FunctionComponent = () => {
   const [showAllLicenses, setShowAllLicenses] = React.useState(false);
   const [showAllLanguages, setShowAllLanguages] = React.useState(false);
   
-  // Microcopy toggle for A/B testing (demo purposes - remove before merge)
-  // State is synced via sessionStorage between catalog and details pages
-  const [useProprosedMicrocopy, setUseProposedMicrocopyState] = React.useState(() => {
-    return sessionStorage.getItem("demoMicrocopyToggle") === "proposed";
-  });
-  const setUseProposedMicrocopy = (value: boolean) => {
-    setUseProposedMicrocopyState(value);
-    sessionStorage.setItem("demoMicrocopyToggle", value ? "proposed" : "original");
-  };
   
   // Alert state for filter changes
   const [showFilterChangedAlert, setShowFilterChangedAlert] = React.useState(false);
+  const [alertModelName, setAlertModelName] = React.useState<string>('');
   const mountTime = React.useRef<number>(Date.now());
   
   // Column preferences for performance table
@@ -528,7 +532,9 @@ const ModelCatalog: React.FunctionComponent = () => {
           JSON.stringify(stored.hardware || []) !== JSON.stringify(hardware);
         
         if (filtersChanged) {
-        setShowFilterChangedAlert(true);
+          // Use model name read during initialization (before sessionStorage was cleared)
+          setAlertModelName(initialModelName);
+          setShowFilterChangedAlert(true);
           // Reset mount time for grace period
           mountTime.current = Date.now();
         }
@@ -1186,40 +1192,37 @@ const ModelCatalog: React.FunctionComponent = () => {
     return (
     <GalleryItem key={cardKey}>
       <Card style={{ height: '100%' }}>
-        <CardHeader style={{ paddingBottom: '1rem' }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            {model.validated ? (
-              <div 
-                style={{ width: '20px', height: '20px' }}
-                dangerouslySetInnerHTML={{ __html: ValidatedModelIcon }}
-              />
-            ) : model.provider === 'Red Hat' ? (
-              <div 
-                style={{ width: '20px', height: '20px' }}
-                dangerouslySetInnerHTML={{ __html: RedHatIcon }}
-              />
-            ) : (
-              <div 
-                style={{ width: '20px', height: '20px' }}
-                dangerouslySetInnerHTML={{ __html: GenericModelSvgIcon }}
-              />
-            )}
+        <CardHeader style={{ paddingBottom: '0.5rem' }}>
+          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
+            <div 
+              style={{ 
+                width: '56px', 
+                height: '56px', 
+                display: 'flex', 
+                alignItems: 'center', 
+                justifyContent: 'center',
+                flexShrink: 0,
+                padding: (!model.validated && model.provider !== 'Red Hat') ? '4px' : 0,
+                boxSizing: 'border-box'
+              }}
+              dangerouslySetInnerHTML={{ __html: model.validated ? ValidatedModelIcon : (model.provider === 'Red Hat' ? RedHatIcon : GenericModelSvgIcon) }}
+            />
             {model.validated ? (
               <Popover bodyContent="Validated models are benchmarked for performance and quality using leading open source evaluation datasets.">
                 <Label variant="filled" color="purple" style={{ cursor: 'pointer' }}>
-                Validated
-              </Label>
+                  Validated
+                </Label>
               </Popover>
             ) : model.provider === 'Red Hat' ? (
               <Popover bodyContent="Red Hat models with full support and legal indemnification.">
                 <Label variant="filled" color="grey" style={{ cursor: 'pointer' }}>
-                Red Hat
-              </Label>
+                  Red Hat
+                </Label>
               </Popover>
             ) : null}
           </div>
         </CardHeader>
-          <CardBody style={{ paddingTop: '1.5rem', display: 'flex', flexDirection: 'column' }}>
+          <CardBody style={{ paddingTop: '0.5rem', display: 'flex', flexDirection: 'column' }}>
           {/* Title area with min-height for B-2 layout alignment */}
           <div style={{ 
             minHeight: model.validated && performanceFiltersEnabled ? '3rem' : 'auto',
@@ -1284,7 +1287,7 @@ const ModelCatalog: React.FunctionComponent = () => {
                   navigate(`/ai-assets/models/${model.id}?${params.toString()}`);
                 }}
               >
-                {useProprosedMicrocopy ? `${model.benchmarks} performance benchmarks →` : `View ${model.benchmarks} benchmarks →`}
+                {`View ${model.benchmarks} benchmarks →`}
               </Button>
                 </div>
           )}
@@ -1321,10 +1324,11 @@ const ModelCatalog: React.FunctionComponent = () => {
             
             // Get latency based on current filter metric/percentile (use local state)
             const latencyDisplayValue = currentBenchmark.latencyData[latencyMetric][latencyPercentile];
-            const latencyLabel = latencyMetric === 'TTFT' ? 'Time To First Token - measures the time until the first response token is generated.' : 
-                                 latencyMetric === 'ITL' ? 'Inter-Token Latency - measures the average time between consecutive tokens.' : 
-                                 latencyMetric === 'TPS' ? 'Tokens Per Second - measures the generation speed in tokens per second. Higher is better.' :
-                                 'End-to-End Latency - measures the total time from request to complete response.';
+            const latencyLabel = latencyMetric === 'TTFT' 
+              ? <span><b>TTFT (time to first token):</b> Time until the model starts responding. Best for interactive experiences.</span>
+              : latencyMetric === 'ITL' 
+                ? <span><b>ITL (inter-token latency):</b> Average time between consecutive tokens. Best for streaming experiences.</span>
+                : <span><b>E2E (end-to-end latency):</b> Total time from request to complete response. Best for batch processing.</span>;
             const latencyUnit = latencyMetric === 'TPS' ? 'tok/s' : 'ms';
             
             return (
@@ -1344,7 +1348,7 @@ const ModelCatalog: React.FunctionComponent = () => {
                   </div>
                   <div style={{ display: 'flex', fontSize: '0.75rem', color: 'var(--pf-t--global--text--color--subtle)' }}>
                     <span style={{ flex: '1', minWidth: '80px' }}>Hardware</span>
-                    <span style={{ flex: '1', minWidth: '60px' }}>Replica</span>
+                    <span style={{ flex: '1', minWidth: '60px' }}>Replicas</span>
                     <span style={{ flex: '1', minWidth: '80px', textAlign: 'right', display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '0.25rem' }}>
                       {latencyMetric}
                       <Popover bodyContent={latencyLabel}>
@@ -1376,7 +1380,7 @@ const ModelCatalog: React.FunctionComponent = () => {
                     if (hardware.length > 0) params.set("hardware", hardware.join(","));
                       params.set("tab", "performance");
                     navigate(`/ai-assets/models/${model.id}?${params.toString()}`);
-                  }}>{useProprosedMicrocopy ? 'performance benchmarks' : 'benchmarks'}</Button>
+                  }}>benchmarks</Button>
                 </span>
                 <div style={{ display: 'flex', gap: '0.25rem' }}>
                   <Button 
@@ -1444,34 +1448,6 @@ const ModelCatalog: React.FunctionComponent = () => {
           </div>
           Catalog
         </Title>
-          {/* Microcopy A/B toggle - DEMO ONLY, remove before merge */}
-          <div style={{ 
-            display: 'flex', 
-            alignItems: 'center', 
-            gap: '0.5rem',
-            padding: '0.5rem 0.75rem',
-            backgroundColor: '#fff0ff',
-            border: '2px dashed #ff00ff',
-            borderRadius: '4px'
-          }}>
-            <span style={{ fontSize: '0.75rem', fontWeight: 600, color: '#ff00ff' }}>DEMO:</span>
-            <ToggleGroup aria-label="Microcopy version toggle">
-              <ToggleGroupItem
-                text="Original microcopy"
-                buttonId="microcopy-original"
-                isSelected={!useProprosedMicrocopy}
-                onChange={() => setUseProposedMicrocopy(false)}
-                style={!useProprosedMicrocopy ? { backgroundColor: '#ff00ff', color: 'white' } : {}}
-              />
-              <ToggleGroupItem
-                text="Proposed microcopy"
-                buttonId="microcopy-proposed"
-                isSelected={useProprosedMicrocopy}
-                onChange={() => setUseProposedMicrocopy(true)}
-                style={useProprosedMicrocopy ? { backgroundColor: '#ff00ff', color: 'white' } : {}}
-              />
-            </ToggleGroup>
-          </div>
         </div>
         <p style={{ color: '#6A6E73', fontSize: '0.875rem', marginBottom: '1.5rem' }}>
           Discover models provided by Red Hat and other providers that are available for your organization to register, deploy, and customize.
@@ -1805,7 +1781,7 @@ const ModelCatalog: React.FunctionComponent = () => {
             {/* Performance Toolbar - use display instead of conditional rendering to prevent blink */}
             <div style={{ display: performanceFiltersEnabled ? 'block' : 'none', marginTop: '0.5rem' }}>
                 <Title headingLevel="h3" size="lg" style={{ marginBottom: '0.5rem' }}>
-                  {useProprosedMicrocopy ? 'Workload and performance constraints' : 'Set performance criteria to find the best model'}
+                  Workload and performance constraints
                 </Title>
                 <Toolbar>
                   <ToolbarContent>
@@ -1819,11 +1795,7 @@ const ModelCatalog: React.FunctionComponent = () => {
                               isExpanded={isWorkloadOpen}
                               style={{ height: '56px' }}
                             >
-                              {useProprosedMicrocopy ? (
-                                <><span style={{ fontWeight: 500 }}>Performance scenario:</span> {PROPOSED_WORKLOAD_LABELS[workload] || workload}</>
-                              ) : (
-                                <><span style={{ fontWeight: 500 }}>Workload:</span> {WORKLOAD_OPTIONS.find(o => o.value === workload)?.label || workload}</>
-                              )}
+                              <><span style={{ fontWeight: 500 }}>Scenario:</span> {WORKLOAD_LABELS[workload] || workload}</>
                             </MenuToggle>
                             {isWorkloadOpen && (
                               <Menu 
@@ -1836,7 +1808,7 @@ const ModelCatalog: React.FunctionComponent = () => {
                                   <MenuList>
                                     {WORKLOAD_OPTIONS.map((option) => (
                                       <MenuItem key={option.value} itemId={option.value}>
-                                        {useProprosedMicrocopy ? PROPOSED_WORKLOAD_LABELS[option.value] : option.label}
+                                        {WORKLOAD_LABELS[option.value]}
                                       </MenuItem>
                                     ))}
                                   </MenuList>
@@ -1845,9 +1817,7 @@ const ModelCatalog: React.FunctionComponent = () => {
                             )}
                           </div>
                           <Popover
-                            bodyContent={useProprosedMicrocopy 
-                              ? <span>Select a predefined scenario used to measure and compare model performance.<br /><br />Each scenario uses fixed input and output token lengths. Scenario names approximate common use cases and do not describe model capabilities.</span>
-                              : "Sets the input and output token lengths used for generating the benchmark. Different scenarios (e.g. Chatbot) use different token counts, which impacts performance results below."}
+                            bodyContent={<span>Select a predefined scenario used to measure and compare model performance.<br /><br />Each scenario uses fixed input and output token lengths. Scenario names approximate common use cases and do not describe model capabilities.</span>}
                           >
                             <Button variant="plain" aria-label="Workload help" style={{ padding: '0.25rem' }}>
                               <OutlinedQuestionCircleIcon />
@@ -1866,9 +1836,7 @@ const ModelCatalog: React.FunctionComponent = () => {
                               isExpanded={isLatencyOpen}
                               style={{ height: '56px' }}
                             >
-                              {useProprosedMicrocopy 
-                                ? <><span style={{ fontWeight: 500 }}>Latency:</span> {latencyMetric} at {latencyPercentile} {latencyMetric === 'TPS' ? `≥ ${latencyValue} tok/s` : `≤ ${latencyValue}ms`}</>
-                                : <><span style={{ fontWeight: 500 }}>Latency:</span> {latencyMetric} | {latencyPercentile} | {latencyMetric === 'TPS' ? `Above ${latencyValue} tok/s` : `Under ${latencyValue}ms`}</>}
+                              <><span style={{ fontWeight: 500 }}>Latency:</span> {isLatencyOpen ? pendingLatencyMetric : latencyMetric} at {isLatencyOpen ? pendingLatencyPercentile : latencyPercentile} ≤ {isLatencyOpen ? pendingLatencyValue : latencyValue}ms</>
                                     </MenuToggle>
                             {isLatencyOpen && (
                               <Panel 
@@ -1923,9 +1891,6 @@ const ModelCatalog: React.FunctionComponent = () => {
                                                 <MenuItem itemId="ITL" description="Time between tokens during generation. Important for smooth streaming and audio.">
                                                   ITL (inter-token latency)
                                                 </MenuItem>
-                                                <MenuItem itemId="TPS" description="Generation speed in tokens per second. Higher is better.">
-                                                  TPS (tokens per second)
-                                                </MenuItem>
                                               </MenuList>
                                             </MenuContent>
                                           </Menu>
@@ -1957,9 +1922,7 @@ const ModelCatalog: React.FunctionComponent = () => {
                                           </Menu>
                                         )}
                               </div>
-                                      <Popover bodyContent={useProprosedMicrocopy 
-                                        ? <span>Select the performance percentile for latency filtering. For example, <strong>P90</strong> means 90% of requests must meet the selected threshold. Higher percentiles show stricter requirements. <strong>Mean</strong> represents the average performance across all requests.</span>
-                                        : "Defines how consistently the model must perform. For example, P90 means 90% of requests must meet your target, Mean represents the average performance across all requests."}>
+                                      <Popover bodyContent={<span>Select the latency measure used for benchmarking - percentile or mean.<br /><br /><b>P90, P95, P99:</b> The selected percentage of requests must meet the latency threshold.<br /><b>Mean:</b> The average latency across all requests.</span>}>
                                         <Button variant="plain" aria-label="Percentile help" style={{ padding: '0.25rem' }}>
                                           <OutlinedQuestionCircleIcon />
                                         </Button>
@@ -1995,7 +1958,7 @@ const ModelCatalog: React.FunctionComponent = () => {
                                     {/* Row 3: Apply and Reset buttons */}
                                     <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
                                       <Button variant="primary" onClick={handleApplyLatency}>
-                                  {useProprosedMicrocopy ? 'Filter' : 'Apply filter'}
+                                  Apply
                                 </Button>
                                       <Button variant="link" onClick={handleResetLatency}>
                                   Reset
@@ -2007,16 +1970,14 @@ const ModelCatalog: React.FunctionComponent = () => {
                             )}
                             </div>
                           <Popover
-                            bodyContent={useProprosedMicrocopy 
-                              ? <span>
-                                  Filter models by measured latency.<br /><br />
+                            bodyContent={<span>
+                                  Filter performance benchmarks by measured latency.<br /><br />
                                   <ul style={{ margin: '0 0 0 1.25rem', padding: 0, listStyleType: 'disc' }}>
-                                    <li><strong>Metric:</strong> Select the latency metric (TTFT, E2E, ITL, or TPS) to evaluate.</li>
-                                    <li><strong>Percentile:</strong> Choose how strictly the model must meet the target. For example, P90 means 90% of requests must meet the selected threshold.</li>
-                                    <li><strong>Threshold:</strong> Set the maximum latency in milliseconds. Models exceeding this value are excluded.</li>
+                                    <li><b>Metric:</b> Select the latency metric (TTFT, E2E, or ITL) to evaluate.</li>
+                                    <li><b>Percentile:</b> Choose how strictly the model must meet the target. For example, P90 means 90% of requests must meet the selected threshold.</li>
+                                    <li><b>Threshold:</b> Set the maximum latency in milliseconds. Models exceeding this value are excluded.</li>
                                   </ul>
-                                </span>
-                              : "Filters out configurations that do not meet your specific speed requirements."}
+                                </span>}
                           >
                             <Button variant="plain" aria-label="Latency help" style={{ padding: '0.25rem' }}>
                               <OutlinedQuestionCircleIcon />
@@ -2034,7 +1995,7 @@ const ModelCatalog: React.FunctionComponent = () => {
                               isExpanded={isRpsOpen}
                               style={{ height: '56px' }}
                             >
-                              <span style={{ fontWeight: 500 }}>Max RPS:</span> {rpsValue}
+                              <span style={{ fontWeight: 500 }}>Max RPS:</span> {isRpsOpen ? pendingRpsValue : rpsValue}
                             </MenuToggle>
                             {isRpsOpen && (
                               <Panel 
@@ -2078,7 +2039,7 @@ const ModelCatalog: React.FunctionComponent = () => {
                                     {/* Row 2: Apply and Reset buttons */}
                                     <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
                                       <Button variant="primary" onClick={handleApplyRps}>
-                                  {useProprosedMicrocopy ? 'Filter' : 'Apply filter'}
+                                  Apply
                                 </Button>
                                       <Button variant="link" onClick={handleResetRps}>
                                   Reset
@@ -2090,9 +2051,7 @@ const ModelCatalog: React.FunctionComponent = () => {
                             )}
                             </div>
                           <Popover
-                            bodyContent={useProprosedMicrocopy 
-                              ? "Target traffic load in requests per second (RPS). The system uses this value to size the deployment (number of replicas) for reliable performance."
-                              : "Set the minimum requests per second (RPS) that hardware configurations must support."}
+                            bodyContent="Set your target traffic load in requests per second (RPS). This value is used to calculate the optimal deployment size (number of replicas) for reliable performance."
                           >
                             <Button variant="plain" aria-label="RPS help" style={{ padding: '0.25rem' }}>
                               <OutlinedQuestionCircleIcon />
@@ -2137,7 +2096,7 @@ const ModelCatalog: React.FunctionComponent = () => {
                                 <MenuSearch>
                                   <MenuSearchInput>
                                     <SearchInput
-                                      placeholder={useProprosedMicrocopy ? "Search hardware" : "Filter hardware"}
+                                      placeholder="Search hardware"
                                       value={hardwareSearchValue}
                                       aria-label="Filter hardware options"
                                       onChange={(_event, value) => setHardwareSearchValue(value)}
@@ -2168,9 +2127,7 @@ const ModelCatalog: React.FunctionComponent = () => {
                             )}
                           </div>
                           <Popover
-                            bodyContent={useProprosedMicrocopy
-                              ? "Select the desired hardware configuration for benchmarking. Hardware configurations are displayed as GPU type (example, A100) followed by the number of GPUs per replica (example, 40 x 1)."
-                              : "Filter by specific GPU hardware configurations."}
+                            bodyContent="Select the desired hardware configuration used for benchmarking. The format of hardware is [GPU type] x [number of GPUs per replica]. Example, A100 x 1"
                           >
                             <Button variant="plain" aria-label="Hardware help" style={{ padding: '0.25rem' }}>
                               <OutlinedQuestionCircleIcon />
@@ -2258,9 +2215,7 @@ const ModelCatalog: React.FunctionComponent = () => {
                             </button>
                           }
                         >
-                          {useProprosedMicrocopy 
-                            ? `Performance scenario: ${PROPOSED_WORKLOAD_LABELS[workload] || workload}`
-                            : `Workload: ${WORKLOAD_OPTIONS.find(o => o.value === workload)?.label || workload}`}
+                          {`Scenario: ${WORKLOAD_LABELS[workload] || workload}`}
                       </Label>
                       </LabelGroup>
                     </ToolbarItem>
@@ -2274,7 +2229,7 @@ const ModelCatalog: React.FunctionComponent = () => {
                           <ul className="pf-v6-c-label-group__list" role="list">
                             <li className="pf-v6-c-label-group__list-item"><Label>Metric: {latencyMetric}</Label></li>
                             <li className="pf-v6-c-label-group__list-item"><Label>Percentile: {latencyPercentile}</Label></li>
-                            <li className="pf-v6-c-label-group__list-item"><Label>{useProprosedMicrocopy ? (latencyMetric === 'TPS' ? `≥ ${latencyValue} tok/s` : `≤ ${latencyValue}ms`) : (latencyMetric === 'TPS' ? `Above ${latencyValue} tok/s` : `Under ${latencyValue}ms`)}</Label></li>
+                            <li className="pf-v6-c-label-group__list-item"><Label>{latencyMetric === 'TPS' ? `≥ ${latencyValue} tok/s` : `≤ ${latencyValue}ms`}</Label></li>
                           </ul>
                         </div>
                         <div className="pf-v6-c-label-group__close" style={{ marginLeft: '0.25rem', paddingLeft: 0, alignSelf: 'center' }}>
@@ -2396,8 +2351,8 @@ const ModelCatalog: React.FunctionComponent = () => {
                       isExpanded={isSortOpen}
                     >
                       Sort: {sortOption === 'latency' 
-                        ? (useProprosedMicrocopy ? 'Latency (Lowest → Highest)' : 'Lowest latency')
-                        : (useProprosedMicrocopy ? 'Publish date (Newest → Oldest)' : 'Recent publish')}
+                        ? 'Latency (Lowest → Highest)'
+                        : 'Publish date (Newest → Oldest)'}
                     </MenuToggle>
                   )}
                   selected={sortOption}
@@ -2408,8 +2363,8 @@ const ModelCatalog: React.FunctionComponent = () => {
                   popperProps={{ position: 'right' }}
                 >
                   <SelectList>
-                    <SelectOption value="latency">{useProprosedMicrocopy ? 'Latency (Lowest → Highest)' : 'Lowest latency'}</SelectOption>
-                    <SelectOption value="updated">{useProprosedMicrocopy ? 'Publish date (Newest → Oldest)' : 'Recent publish'}</SelectOption>
+                    <SelectOption value="latency">Latency (Lowest → Highest)</SelectOption>
+                    <SelectOption value="updated">Publish date (Newest → Oldest)</SelectOption>
                   </SelectList>
                 </Select>
               )}
@@ -2420,7 +2375,7 @@ const ModelCatalog: React.FunctionComponent = () => {
               <Alert
                 variant="info"
                 isInline
-                title="The results list has been updated to match the latest performance criteria set on the details page."
+                title={`The performance constraints and results have been updated to match the constraints you applied to the ${alertModelName} model details page.`}
                 actionClose={
                   <AlertActionCloseButton onClose={() => setShowFilterChangedAlert(false)} />
                 }
@@ -2447,6 +2402,15 @@ const ModelCatalog: React.FunctionComponent = () => {
               );
 
               if (showPerformanceEmpty) {
+                // Get the display name for the current category
+                const categoryDisplayName = category === 'validated' 
+                  ? 'Red Hat AI validated models' 
+                  : category === 'redhat' 
+                    ? 'Red Hat AI models' 
+                    : category === 'other' 
+                      ? 'Other models' 
+                      : 'All models';
+                
                 return (
                   <div style={{ 
                     width: 'calc(100vw - 320px - 240px - 6rem)',
@@ -2456,12 +2420,12 @@ const ModelCatalog: React.FunctionComponent = () => {
                   }}>
                     <EmptyState 
                       variant={EmptyStateVariant.lg} 
-                      titleText="No performance data available in selected category" 
+                      titleText="No models with performance data" 
                       headingLevel="h4" 
                       icon={ChartColumnIcon}
                     >
                     <EmptyStateBody>
-                        Select the All models category to view all models with performance data, or turn Model performance view off to view models in the selected category.
+                        No models in the {categoryDisplayName} category have performance data. Select another model category, or turn off Model performance view to see models in the selected category.
                       </EmptyStateBody>
                       <EmptyStateFooter>
                         <EmptyStateActions>
@@ -2471,7 +2435,7 @@ const ModelCatalog: React.FunctionComponent = () => {
                         </EmptyStateActions>
                         <EmptyStateActions>
                         <Button variant="link" onClick={() => setPerformanceFiltersEnabled(false)}>
-                          Turn Model performance view off
+                          Turn off Model performance view
                         </Button>
                         </EmptyStateActions>
                       </EmptyStateFooter>
@@ -2669,14 +2633,18 @@ const ModelCatalog: React.FunctionComponent = () => {
         </ModalHeader>
         <ModalBody>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-            {(['hardware', 'metadata', 'latency', 'requestProfile'] as const).map(group => {
+            {(['hardware', 'metadata', 'latency', 'throughput', 'requestProfile'] as const).map(group => {
               const groupColumns = COLUMN_DEFINITIONS.filter(col => col.group === group);
               if (groupColumns.length === 0) return null;
+              
+              const groupLabel = group === 'requestProfile' ? 'Request Profile' 
+                : group === 'throughput' ? 'Throughput' 
+                : group;
               
               return (
                 <div key={group}>
                   <Title headingLevel="h4" size="md" style={{ marginBottom: '0.75rem', textTransform: 'capitalize' }}>
-                    {group === 'requestProfile' ? 'Request Profile' : group}
+                    {groupLabel}
                   </Title>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                     {groupColumns.map(col => (

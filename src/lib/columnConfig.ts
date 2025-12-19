@@ -156,11 +156,11 @@ export const COLUMN_DEFINITIONS: Column[] = [
     latencyMetric: "ITL",
     latencyPercentile: "P99",
   },
-  // Latency group - TPS (Tokens Per Second)
+  // Throughput group - TPS (Tokens Per Second)
   {
     id: "latency_TPS_Mean",
     label: "TPS mean",
-    group: "latency",
+    group: "throughput",
     defaultVisible: false,
     latencyMetric: "TPS",
     latencyPercentile: "Mean",
@@ -168,7 +168,7 @@ export const COLUMN_DEFINITIONS: Column[] = [
   {
     id: "latency_TPS_P90",
     label: "TPS P90",
-    group: "latency",
+    group: "throughput",
     defaultVisible: false,
     latencyMetric: "TPS",
     latencyPercentile: "P90",
@@ -176,7 +176,7 @@ export const COLUMN_DEFINITIONS: Column[] = [
   {
     id: "latency_TPS_P95",
     label: "TPS P95",
-    group: "latency",
+    group: "throughput",
     defaultVisible: false,
     latencyMetric: "TPS",
     latencyPercentile: "P95",
@@ -184,7 +184,7 @@ export const COLUMN_DEFINITIONS: Column[] = [
   {
     id: "latency_TPS_P99",
     label: "TPS P99",
-    group: "latency",
+    group: "throughput",
     defaultVisible: false,
     latencyMetric: "TPS",
     latencyPercentile: "P99",
@@ -223,7 +223,10 @@ export const getDefaultVisibleColumns = (
   // Must match the format used in generateLatencyColumns: `latency_${metric}_${percentile}`
   const latencyColumnId = `latency_${latencyMetric}_${latencyPercentile}`;
 
-  return [...alwaysVisible, latencyColumnId];
+  // The TPS (throughput) column matching the current percentile is also visible by default
+  const throughputColumnId = `latency_TPS_${latencyPercentile}`;
+
+  return [...alwaysVisible, latencyColumnId, throughputColumnId];
 };
 
 // Get column by ID

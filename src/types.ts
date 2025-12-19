@@ -61,7 +61,7 @@ export interface Model {
 export interface Column {
   id: string;
   label: string;
-  group: "hardware" | "metadata" | "latency" | "requestProfile";
+  group: "hardware" | "metadata" | "latency" | "throughput" | "requestProfile";
   defaultVisible: boolean;
   latencyMetric?: LatencyMetricType;
   latencyPercentile?: LatencyPercentileType;
