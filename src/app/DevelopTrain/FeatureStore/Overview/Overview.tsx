@@ -52,6 +52,7 @@ import {
   TagIcon,
 } from '@patternfly/react-icons';
 import { mockEntities } from '../../../../mockData/entities';
+import { FeatureStoreLineage } from '../../../../components/FeatureStoreLineage/FeatureStoreLineage';
 import {
   mockDataSources,
   mockDatasets,
@@ -543,7 +544,7 @@ const Overview: React.FunctionComponent = () => {
   return (
     <>
       {/* Header Section */}
-      <PageSection>
+  <PageSection>
         <Flex justifyContent={{ default: 'justifyContentSpaceBetween' }} alignItems={{ default: 'alignItemsFlexStart' }}>
           <FlexItem>
             <Title headingLevel="h1" size="2xl" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
@@ -956,7 +957,7 @@ const Overview: React.FunctionComponent = () => {
                     <Td colSpan={4} style={{ textAlign: 'center', padding: '24px' }}>
                       <Content component="p" style={{ color: 'var(--pf-t--global--text--color--subtle)' }}>
                         No recently viewed resources for {selectedFeatureStore}.
-                      </Content>
+    </Content>
                     </Td>
                   </Tr>
                 ) : (
@@ -1009,14 +1010,14 @@ const Overview: React.FunctionComponent = () => {
         </PageSection>
       )}
       
-      {/* Lineage Tab Content (Empty) */}
+      {/* Lineage Tab Content */}
       {activeTabKey === 1 && (
         <PageSection style={{ backgroundColor: 'var(--pf-t--global--background--color--primary--default)', minHeight: 'calc(100vh - 350px)' }}>
-          {/* Empty content for Lineage tab */}
-        </PageSection>
+          <FeatureStoreLineage selectedFeatureStore={selectedFeatureStore} />
+  </PageSection>
       )}
     </>
-  );
+);
 };
 
 export { Overview };

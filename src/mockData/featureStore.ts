@@ -574,3 +574,293 @@ export const formatRelativeTime = (dateString: string): string => {
   return `${diffMonths} month${diffMonths > 1 ? 's' : ''} ago`;
 };
 
+// ============================================
+// Lineage Graph Types
+// ============================================
+export type LineageNodeType = 'entity' | 'dataSource' | 'featureView' | 'featureService';
+export type DataSourceType = 'Batch' | 'Stream' | 'Request';
+
+export interface LineageNodeData {
+  description?: string;
+  // Specific to Feature View
+  features?: string[];
+  featureCount?: number;
+  // Specific to Data Source
+  sourceType?: DataSourceType;
+}
+
+export interface LineageNode {
+  id: string;
+  type: LineageNodeType;
+  label: string;
+  data: LineageNodeData;
+}
+
+export interface LineageEdge {
+  id: string;
+  source: string;
+  target: string;
+}
+
+export interface LineageGraphData {
+  nodes: LineageNode[];
+  edges: LineageEdge[];
+}
+
+// ============================================
+// Lineage Mock Data (for specific feature store graphs)
+// ============================================
+
+/**
+ * Generate lineage graph data for a specific feature store.
+ * The graph flows: Entity -> Data Source -> Feature View -> Feature Service
+ * 
+ * @param featureStore - The name of the feature store to generate lineage for
+ * @returns LineageGraphData containing nodes and edges
+ */
+export const generateLineageData = (featureStore: string): LineageGraphData => {
+  const nodes: LineageNode[] = [];
+  const edges: LineageEdge[] = [];
+  
+  // Filter resources by feature store
+  const filteredEntities = mockEntities.filter(e => e.featureStore === featureStore);
+  const filteredDataSources = mockDataSources.filter(ds => ds.featureStore === featureStore);
+  const filteredFeatureViews = mockFeatureViews.filter(fv => fv.featureStore === featureStore);
+  const filteredFeatureServices = mockFeatureServices.filter(fs => fs.featureStore === featureStore);
+  const filteredFeatures = mockFeatures.filter(f => f.featureStore === featureStore);
+  
+  // Create Entity nodes
+  filteredEntities.forEach(entity => {
+    nodes.push({
+      id: `entity-${entity.id}`,
+      type: 'entity',
+      label: `Entity: ${entity.name}`,
+      data: {
+        description: entity.description,
+      },
+    });
+  });
+  
+  // Create Data Source nodes with source type
+  filteredDataSources.forEach(ds => {
+    // Determine source type based on sourceType field
+    let sourceType: DataSourceType = 'Batch';
+    if (ds.sourceType === 'Kafka') {
+      sourceType = 'Stream';
+    } else if (ds.sourceType === 'Request' || ds.sourceType === 'API') {
+      sourceType = 'Request';
+    }
+    
+    nodes.push({
+      id: `datasource-${ds.id}`,
+      type: 'dataSource',
+      label: `${sourceType} data source: ${ds.name}`,
+      data: {
+        description: ds.description,
+        sourceType,
+      },
+    });
+  });
+  
+  // Create Feature View nodes with feature count and features list
+  filteredFeatureViews.forEach(fv => {
+    // Get features for this feature view
+    const viewFeatures = filteredFeatures.filter(f => f.featureViewId === fv.id);
+    const featureNames = viewFeatures.map(f => f.name);
+    
+    // Determine view type (Batch vs On demand)
+    const viewType = fv.dataSourceId ? 'Batch' : 'On demand';
+    
+    nodes.push({
+      id: `featureview-${fv.id}`,
+      type: 'featureView',
+      label: `${viewType} FeatureView: ${fv.name}`,
+      data: {
+        description: fv.description,
+        featureCount: fv.featureCount,
+        features: featureNames.length > 0 ? featureNames : generateMockFeatures(fv.featureCount),
+      },
+    });
+  });
+  
+  // Create Feature Service nodes
+  filteredFeatureServices.forEach(fs => {
+    nodes.push({
+      id: `featureservice-${fs.id}`,
+      type: 'featureService',
+      label: `FeatureService: ${fs.name}`,
+      data: {
+        description: fs.description,
+      },
+    });
+  });
+  
+  // Create edges: Entity -> Data Source (based on entity relationships)
+  filteredEntities.forEach(entity => {
+    // Connect entities to data sources that might use them
+    // Using a simple heuristic: connect to first data source in same feature store
+    if (filteredDataSources.length > 0) {
+      const connectedDs = filteredDataSources[0]; // Simplified connection
+      edges.push({
+        id: `edge-entity-${entity.id}-ds-${connectedDs.id}`,
+        source: `entity-${entity.id}`,
+        target: `datasource-${connectedDs.id}`,
+      });
+    }
+  });
+  
+  // Create edges: Data Source -> Feature View
+  filteredFeatureViews.forEach(fv => {
+    if (fv.dataSourceId) {
+      // Direct connection via dataSourceId
+      edges.push({
+        id: `edge-ds-${fv.dataSourceId}-fv-${fv.id}`,
+        source: `datasource-${fv.dataSourceId}`,
+        target: `featureview-${fv.id}`,
+      });
+    } else {
+      // Connect to first available data source if no specific one
+      if (filteredDataSources.length > 0) {
+        edges.push({
+          id: `edge-ds-${filteredDataSources[0].id}-fv-${fv.id}`,
+          source: `datasource-${filteredDataSources[0].id}`,
+          target: `featureview-${fv.id}`,
+        });
+      }
+    }
+    
+    // Also create edges from entities to feature views (via entityIds)
+    fv.entityIds.forEach(entityId => {
+      const entityNode = nodes.find(n => n.id === `entity-${entityId}`);
+      if (entityNode) {
+        // Check if we should create a direct entity -> feature view edge
+        // This handles cases where there's no intermediate data source
+      }
+    });
+  });
+  
+  // Create edges: Feature View -> Feature Service
+  filteredFeatureServices.forEach(fs => {
+    fs.featureViewIds.forEach(fvId => {
+      edges.push({
+        id: `edge-fv-${fvId}-fs-${fs.id}`,
+        source: `featureview-${fvId}`,
+        target: `featureservice-${fs.id}`,
+      });
+    });
+  });
+  
+  return { nodes, edges };
+};
+
+/**
+ * Helper to generate mock feature names for feature views without explicit features
+ */
+const generateMockFeatures = (count: number): string[] => {
+  const baseFeatures = [
+    'state', 'location_type', 'tax_returns_field', 'population', 
+    'total_wages', 'income', 'age', 'credit_score', 'transaction_count',
+    'avg_balance', 'loan_amount', 'interest_rate', 'tenure'
+  ];
+  return baseFeatures.slice(0, Math.min(count, baseFeatures.length));
+};
+
+/**
+ * Find all connected nodes (upstream and downstream) from a selected node.
+ * Used for highlighting the lineage path when a node is clicked.
+ * 
+ * @param nodeId - The ID of the selected node
+ * @param edges - Array of all edges in the graph
+ * @returns Object containing upstream and downstream node IDs
+ */
+export const findConnectedPaths = (
+  nodeId: string,
+  edges: LineageEdge[]
+): { upstream: Set<string>; downstream: Set<string> } => {
+  const upstream = new Set<string>();
+  const downstream = new Set<string>();
+  
+  // Build adjacency maps for efficient traversal
+  const forwardMap = new Map<string, string[]>(); // source -> targets
+  const backwardMap = new Map<string, string[]>(); // target -> sources
+  
+  edges.forEach(edge => {
+    // Forward map (for downstream traversal)
+    if (!forwardMap.has(edge.source)) {
+      forwardMap.set(edge.source, []);
+    }
+    forwardMap.get(edge.source)!.push(edge.target);
+    
+    // Backward map (for upstream traversal)
+    if (!backwardMap.has(edge.target)) {
+      backwardMap.set(edge.target, []);
+    }
+    backwardMap.get(edge.target)!.push(edge.source);
+  });
+  
+  // BFS to find all upstream nodes (ancestors)
+  const findUpstream = (startId: string) => {
+    const queue = [startId];
+    const visited = new Set<string>();
+    
+    while (queue.length > 0) {
+      const current = queue.shift()!;
+      if (visited.has(current)) continue;
+      visited.add(current);
+      
+      const sources = backwardMap.get(current) || [];
+      sources.forEach(source => {
+        if (!visited.has(source)) {
+          upstream.add(source);
+          queue.push(source);
+        }
+      });
+    }
+  };
+  
+  // BFS to find all downstream nodes (descendants)
+  const findDownstream = (startId: string) => {
+    const queue = [startId];
+    const visited = new Set<string>();
+    
+    while (queue.length > 0) {
+      const current = queue.shift()!;
+      if (visited.has(current)) continue;
+      visited.add(current);
+      
+      const targets = forwardMap.get(current) || [];
+      targets.forEach(target => {
+        if (!visited.has(target)) {
+          downstream.add(target);
+          queue.push(target);
+        }
+      });
+    }
+  };
+  
+  findUpstream(nodeId);
+  findDownstream(nodeId);
+  
+  return { upstream, downstream };
+};
+
+/**
+ * Find all edge IDs that connect the highlighted nodes
+ */
+export const findConnectedEdges = (
+  selectedNodeId: string,
+  connectedNodeIds: Set<string>,
+  edges: LineageEdge[]
+): Set<string> => {
+  const connectedEdges = new Set<string>();
+  const allConnectedNodes = new Set([selectedNodeId, ...connectedNodeIds]);
+  
+  edges.forEach(edge => {
+    if (allConnectedNodes.has(edge.source) && allConnectedNodes.has(edge.target)) {
+      connectedEdges.add(edge.id);
+    }
+  });
+  
+  return connectedEdges;
+};
+

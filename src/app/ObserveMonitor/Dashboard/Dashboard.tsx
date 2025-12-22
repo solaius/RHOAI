@@ -792,14 +792,14 @@ const Dashboard: React.FunctionComponent = () => {
           <Flex justifyContent={{ default: 'justifyContentSpaceBetween' }} alignItems={{ default: 'alignItemsFlexStart' }}>
             <FlexItem>
               <Flex direction={{ default: 'column' }} spaceItems={{ default: 'spaceItemsSm' }}>
+            <FlexItem>
+              <Title headingLevel="h1" size="2xl">Dashboard</Title>
+            </FlexItem>
                 <FlexItem>
-                  <Title headingLevel="h1" size="2xl">Dashboard</Title>
-                </FlexItem>
-                <FlexItem>
-                  <Content component={ContentVariants.p}>
-                    Monitor the health and performance of your AI workloads and infrastructure
-                  </Content>
-                </FlexItem>
+              <Content component={ContentVariants.p}>
+            Monitor the health and performance of your AI workloads and infrastructure
+              </Content>
+            </FlexItem>
               </Flex>
             </FlexItem>
             <FlexItem>
@@ -834,7 +834,7 @@ const Dashboard: React.FunctionComponent = () => {
                       ))}
                     </DropdownList>
                   </Dropdown>
-                </FlexItem>
+            </FlexItem>
                 <FlexItem>
                   <Tooltip content="Refresh dashboard">
                     <Button
@@ -847,9 +847,9 @@ const Dashboard: React.FunctionComponent = () => {
                   </Tooltip>
                 </FlexItem>
               </Flex>
-            </FlexItem>
-          </Flex>
-        </FlexItem>
+                </FlexItem>
+                      </Flex>
+                </FlexItem>
 
         {/* PAGE-LEVEL PROJECT FILTER - Affects both tabs */}
         <FlexItem>
@@ -864,8 +864,8 @@ const Dashboard: React.FunctionComponent = () => {
                     Project
                   </Content>
                 </FlexItem>
-              </Flex>
-            </FlexItem>
+                      </Flex>
+                </FlexItem>
             
             <FlexItem>
               <Dropdown
@@ -900,7 +900,7 @@ const Dashboard: React.FunctionComponent = () => {
                   ))}
                 </DropdownList>
               </Dropdown>
-            </FlexItem>
+                </FlexItem>
 
             <FlexItem>
               <Button 
@@ -909,39 +909,39 @@ const Dashboard: React.FunctionComponent = () => {
               >
                 Go to <OutlinedFolderIcon /> Projects
               </Button>
-            </FlexItem>
-          </Flex>
+                </FlexItem>
+                      </Flex>
         </FlexItem>
 
-        {/* Tab Navigation */}
-        <FlexItem>
-          <Tabs
-            activeKey={selectedTab}
+            {/* Tab Navigation */}
+            <FlexItem>
+              <Tabs
+                activeKey={selectedTab}
             onSelect={handleTabSelect}
-            aria-label="Dashboard view tabs"
-          >
+                aria-label="Dashboard view tabs"
+              >
             {userProfile === 'AI Admin' && (
-              <Tab
-                eventKey="Cluster"
-                title={<TabTitleText>Cluster</TabTitleText>}
-                aria-label="Cluster tab"
-              />
+                <Tab
+                  eventKey="Cluster"
+                  title={<TabTitleText>Cluster</TabTitleText>}
+                  aria-label="Cluster tab"
+                />
             )}
             {(userProfile === 'AI Admin' || userProfile === 'AI Engineer' || userProfile === 'Data Scientist') && (
-              <Tab
-                eventKey="Models"
-                title={<TabTitleText>Models</TabTitleText>}
-                aria-label="Models tab"
-              />
+                <Tab
+                  eventKey="Models"
+                  title={<TabTitleText>Models</TabTitleText>}
+                  aria-label="Models tab"
+                />
             )}
-          </Tabs>
-        </FlexItem>
+              </Tabs>
+            </FlexItem>
 
         {/* Tab Content - Cluster */}
         {selectedTab === 'Cluster' && (
           <>
             {/* Overview section header */}
-            <FlexItem>
+          <FlexItem>
               <Title headingLevel="h2" size="xl">Overview</Title>
               <Content component={ContentVariants.p} className="pf-v6-u-color-200 pf-v6-u-mt-sm">
                 Key cluster metrics and health indicators at a glance
@@ -951,27 +951,27 @@ const Dashboard: React.FunctionComponent = () => {
             {/* Overview metrics - Combined Card */}
             <FlexItem>
               <Card isCompact id="overview-metrics-card">
-                <CardBody>
+              <CardBody>
                   <Flex>
                     {/* System Health */}
                     <FlexItem flex={{ default: 'flex_1' }}>
                       <Flex direction={{ default: 'column' }} spaceItems={{ default: 'spaceItemsSm' }}>
-                        <FlexItem>
+                  <FlexItem>
                           <Title headingLevel="h3" size="md">System health</Title>
-                        </FlexItem>
+                  </FlexItem>
                         <FlexItem>
                           <Title headingLevel="h4" size="xl">100%</Title>
                         </FlexItem>
-                        <FlexItem>
+                      <FlexItem>
                           <Content component={ContentVariants.small} className="pf-v6-u-color-200">
                             3/3 nodes healthy
                           </Content>
-                        </FlexItem>
-                        <FlexItem>
+                      </FlexItem>
+                      <FlexItem>
                           <Label color="green" icon={<CheckCircleIcon />} id="system-health-status-label">
                             Healthy
                           </Label>
-                        </FlexItem>
+                      </FlexItem>
                         <FlexItem>
                           <Button 
                             variant="link" 
@@ -986,8 +986,8 @@ const Dashboard: React.FunctionComponent = () => {
                           >
                             View in OpenShift
                           </Button>
-                        </FlexItem>
-                      </Flex>
+                      </FlexItem>
+                    </Flex>
                     </FlexItem>
 
                     <Divider orientation={{ default: 'vertical' }} />
@@ -995,29 +995,29 @@ const Dashboard: React.FunctionComponent = () => {
                     {/* Active Models */}
                     <FlexItem flex={{ default: 'flex_1' }}>
                       <Flex direction={{ default: 'column' }} spaceItems={{ default: 'spaceItemsSm' }}>
-                        <FlexItem>
+                      <FlexItem>
                           <Title headingLevel="h3" size="md">Active models</Title>
-                        </FlexItem>
-                        <FlexItem>
+                      </FlexItem>
+                      <FlexItem>
                           <Title headingLevel="h4" size="xl">4</Title>
-                        </FlexItem>
+                      </FlexItem>
                         <FlexItem>
                           <Content component={ContentVariants.small} className="pf-v6-u-color-200">
                             Models currently deployed
                           </Content>
                         </FlexItem>
-                      </Flex>
-                    </FlexItem>
+                          </Flex>
+                        </FlexItem>
 
                     <Divider orientation={{ default: 'vertical' }} />
 
                     {/* GPU Utilization */}
                     <FlexItem flex={{ default: 'flex_1' }}>
                       <Flex direction={{ default: 'column' }} spaceItems={{ default: 'spaceItemsSm' }}>
-                        <FlexItem>
+                      <FlexItem>
                           <Title headingLevel="h3" size="md">GPU utilization</Title>
-                        </FlexItem>
-                        <FlexItem>
+                      </FlexItem>
+                      <FlexItem>
                           <Title headingLevel="h4" size="xl">100%</Title>
                         </FlexItem>
                         <FlexItem>
@@ -1034,29 +1034,29 @@ const Dashboard: React.FunctionComponent = () => {
                           >
                             View details
                           </Button>
-                        </FlexItem>
-                      </Flex>
-                    </FlexItem>
+                      </FlexItem>
+                    </Flex>
+            </FlexItem>
 
                     <Divider orientation={{ default: 'vertical' }} />
 
                     {/* Success Rate */}
                     <FlexItem flex={{ default: 'flex_1' }}>
                       <Flex direction={{ default: 'column' }} spaceItems={{ default: 'spaceItemsSm' }}>
-                        <FlexItem>
+                      <FlexItem>
                           <Title headingLevel="h3" size="md">Success rate</Title>
                         </FlexItem>
-                        <FlexItem>
+                    <FlexItem>
                           <Title headingLevel="h4" size="xl">99.2%</Title>
-                        </FlexItem>
-                        <FlexItem>
+                      </FlexItem>
+                      <FlexItem>
                           <Content component={ContentVariants.small} className="pf-v6-u-color-200">
                             Request success rate
                           </Content>
                         </FlexItem>
-                      </Flex>
+                          </Flex>
                     </FlexItem>
-                  </Flex>
+                        </Flex>
                 </CardBody>
               </Card>
             </FlexItem>
@@ -1298,7 +1298,7 @@ const Dashboard: React.FunctionComponent = () => {
             <Divider />
 
             {/* Resource Usage by Project */}
-            <FlexItem>
+                      <FlexItem>
               <Title headingLevel="h3" size="lg">Resource Usage by Project</Title>
               <Content component="p" style={{ color: 'var(--pf-t--global--text--color--subtle)', marginTop: 'var(--pf-t--global--spacer--sm)' }}>
                 Compare resource consumption across different projects over time
@@ -1311,10 +1311,10 @@ const Dashboard: React.FunctionComponent = () => {
                     {/* GPU Usage */}
                     <GridItem span={12} md={6} lg={4}>
                       <Card isCompact isFullHeight id="project-gpu-usage-card">
-                        <CardTitle>
+                <CardTitle>
                           <Title headingLevel="h4" size="md">GPU Usage</Title>
-                        </CardTitle>
-                        <CardBody>
+                </CardTitle>
+                <CardBody>
                           <div style={{ height: '280px', width: '100%' }}>
                             <ReactECharts
                               option={{
@@ -1381,7 +1381,7 @@ const Dashboard: React.FunctionComponent = () => {
                           </div>
                         </CardBody>
                       </Card>
-                    </GridItem>
+                        </GridItem>
 
                     {/* CPU Usage */}
                     <GridItem span={12} md={6} lg={4}>
@@ -1456,7 +1456,7 @@ const Dashboard: React.FunctionComponent = () => {
                           </div>
                         </CardBody>
                       </Card>
-                    </GridItem>
+                        </GridItem>
 
                     {/* Memory Usage */}
                     <GridItem span={12} md={6} lg={4}>
@@ -1531,23 +1531,23 @@ const Dashboard: React.FunctionComponent = () => {
                           </div>
                         </CardBody>
                       </Card>
-                    </GridItem>
-                  </Grid>
+                        </GridItem>
+                      </Grid>
                 </CardBody>
               </Card>
-            </FlexItem>
+                      </FlexItem>
 
             {/* Divider */}
             <Divider />
 
             {/* Cluster Details */}
-            <FlexItem>
+                      <FlexItem>
               <Title headingLevel="h3" size="lg">Cluster Details</Title>
               <Content component="p" style={{ color: 'var(--pf-t--global--text--color--subtle)', marginTop: 'var(--pf-t--global--spacer--sm)' }}>
                 View technical configuration and infrastructure details
               </Content>
             </FlexItem>
-          <FlexItem>
+                        <FlexItem>
               <Grid hasGutter>
                 <GridItem span={12} md={6}>
                   <Card isFullHeight id="cluster-details-card">
@@ -1557,21 +1557,21 @@ const Dashboard: React.FunctionComponent = () => {
                           <Flex direction={{ default: 'column' }}>
                             <Content component={ContentVariants.small} className="pf-v6-u-font-weight-bold">Provider</Content>
                             <Content component={ContentVariants.small}>AWS</Content>
-                          </Flex>
-                        </FlexItem>
+                        </Flex>
+                      </FlexItem>
                         <FlexItem>
                           <Flex direction={{ default: 'column' }}>
                             <Content component={ContentVariants.small} className="pf-v6-u-font-weight-bold">OpenShift version</Content>
                             <Content component={ContentVariants.small}>2.24.0</Content>
-                          </Flex>
+                    </Flex>
                         </FlexItem>
-                        <FlexItem>
+                      <FlexItem>
                           <Flex direction={{ default: 'column' }}>
                             <Content component={ContentVariants.small} className="pf-v6-u-font-weight-bold">Channel</Content>
                             <Content component={ContentVariants.small}>fast</Content>
                           </Flex>
-                        </FlexItem>
-                        <FlexItem>
+                      </FlexItem>
+                      <FlexItem>
                           <Flex direction={{ default: 'column' }}>
                             <Content component={ContentVariants.small} className="pf-v6-u-font-weight-bold">API server</Content>
                             <Content component={ContentVariants.small} className="pf-v6-u-font-family-monospace">
@@ -1592,13 +1592,13 @@ const Dashboard: React.FunctionComponent = () => {
                           >
                             View settings
                           </Button>
-                        </FlexItem>
-                      </Flex>
+                      </FlexItem>
+                    </Flex>
                     </CardBody>
                   </Card>
                 </GridItem>
               </Grid>
-            </FlexItem>
+          </FlexItem>
           </>
         )}
 
@@ -1610,7 +1610,7 @@ const Dashboard: React.FunctionComponent = () => {
               <Flex alignItems={{ default: 'alignItemsCenter' }} spaceItems={{ default: 'spaceItemsMd' }}>
                 
                 {/* LEFT: Category Selector Dropdown */}
-                <FlexItem>
+                    <FlexItem>
                   <Dropdown
                     isOpen={filterCategoryOpen}
                     onSelect={(_event, value) => {
@@ -1690,7 +1690,7 @@ const Dashboard: React.FunctionComponent = () => {
                   {/* Models Filter */}
                   {activeFilterCategory === 'Models' && (
                     <Flex spaceItems={{ default: 'spaceItemsSm' }} alignItems={{ default: 'alignItemsCenter' }}>
-                      <FlexItem>
+                        <FlexItem>
                         <Select
                           isOpen={isModelSelectOpen}
                           selected={selectedModels}
@@ -1743,8 +1743,8 @@ const Dashboard: React.FunctionComponent = () => {
                               ))}
                           </SelectList>
                         </Select>
-                      </FlexItem>
-                      <FlexItem>
+                        </FlexItem>
+                        <FlexItem>
                         <SearchInput
                           placeholder="Search models"
                           value={modelSearchValue}
@@ -1757,9 +1757,9 @@ const Dashboard: React.FunctionComponent = () => {
                             }
                           }}
                           id="model-search-input"
-                        />
-                      </FlexItem>
-                    </Flex>
+                          />
+                        </FlexItem>
+                      </Flex>
                   )}
 
                   {/* Status Filter */}
@@ -1835,12 +1835,12 @@ const Dashboard: React.FunctionComponent = () => {
                       </SelectList>
                     </Select>
                   )}
-                </FlexItem>
+                    </FlexItem>
 
                 {/* Clear All Filters */}
                 {(modelSearchChips.length > 0 || selectedProjects.length > 0 || selectedModels.length > 0 || 
                   selectedStatuses.length > 0 || selectedHardwareProfiles.length > 0) && (
-                  <FlexItem>
+                    <FlexItem>
                     <Button 
                       variant="link" 
                       onClick={() => {
@@ -1859,7 +1859,7 @@ const Dashboard: React.FunctionComponent = () => {
             {/* Active Filter Chips Row */}
             {(modelSearchChips.length > 0 || selectedProjects.length > 0 || selectedModels.length > 0 || 
               selectedStatuses.length > 0 || selectedHardwareProfiles.length > 0) && (
-              <FlexItem>
+                        <FlexItem>
                 <Flex spaceItems={{ default: 'spaceItemsSm' }} alignItems={{ default: 'alignItemsCenter' }} flexWrap={{ default: 'wrap' }}>
                   
                   {/* Search Chips */}
@@ -1888,12 +1888,12 @@ const Dashboard: React.FunctionComponent = () => {
                           </Label>
                         ))}
                       </div>
-                    </FlexItem>
+                        </FlexItem>
                   )}
                   
                   {/* Model Chips */}
                   {selectedModels.length > 0 && (
-                    <FlexItem>
+                        <FlexItem>
                       <div style={{
                         border: '1px solid var(--pf-t--global--border--color--default)',
                         borderRadius: 'var(--pf-t--global--border--radius--small)',
@@ -1917,7 +1917,7 @@ const Dashboard: React.FunctionComponent = () => {
                           </Label>
                         ))}
                       </div>
-                    </FlexItem>
+                        </FlexItem>
                   )}
                   
                   {/* Project Chips */}
@@ -2006,12 +2006,12 @@ const Dashboard: React.FunctionComponent = () => {
                       </div>
                     </FlexItem>
                   )}
-                </Flex>
+                  </Flex>
               </FlexItem>
             )}
 
             {/* Model Deployments Card */}
-            <FlexItem>
+                    <FlexItem>
               <Card id="model-deployments-card">
                 <CardTitle>
                   <Flex 
@@ -2026,9 +2026,9 @@ const Dashboard: React.FunctionComponent = () => {
                         <FlexItem>
                           <Content component={ContentVariants.small} className="pf-v6-u-color-200">
                             Active model deployments with real-time performance and resource metrics
-                          </Content>
-                        </FlexItem>
-                      </Flex>
+                      </Content>
+                    </FlexItem>
+                  </Flex>
                     </FlexItem>
                     <FlexItem>
                       <Button
@@ -2065,9 +2065,9 @@ const Dashboard: React.FunctionComponent = () => {
                         <Tr>
                           <Td colSpan={10}>
                             <Bullseye className="pf-v6-u-py-lg">
-                              <Content component={ContentVariants.p}>
+                            <Content component={ContentVariants.p}>
                                 No models match your current filters. Try adjusting your project or model filters.
-                              </Content>
+                            </Content>
                             </Bullseye>
                           </Td>
                         </Tr>
@@ -2089,9 +2089,9 @@ const Dashboard: React.FunctionComponent = () => {
                             >
                               <Td dataLabel="Model deployment">
                                 <Button variant="link" isInline>
-                                  {model.deployment}
-                                </Button>
-                              </Td>
+                                    {model.deployment}
+                                  </Button>
+                            </Td>
                               <Td dataLabel="Project">{model.project}</Td>
                               <Td dataLabel="Runtime">{model.runtime}</Td>
                               <Td dataLabel="Total requests">{model.requests}</Td>
@@ -2104,7 +2104,7 @@ const Dashboard: React.FunctionComponent = () => {
                                     {model.gpu}
                                   </span>
                                 </Tooltip>
-                              </Td>
+                          </Td>
                               <Td dataLabel="CPU utilization">
                                 <Tooltip content={model.cpuDetails}>
                                   <span className="pf-v6-u-text-decoration-underline-dotted" style={{ cursor: 'help' }}>
@@ -2113,15 +2113,15 @@ const Dashboard: React.FunctionComponent = () => {
                                 </Tooltip>
                               </Td>
                               <Td dataLabel="Status">
-                                {getStatusBadge(model.status)}
-                              </Td>
-                            </Tr>
+                              {getStatusBadge(model.status)}
+                            </Td>
+                          </Tr>
                           );
                         })
                       )}
                     </Tbody>
                   </Table>
-                  </CardBody>
+                </CardBody>
                 )}
               </Card>
             </FlexItem>
@@ -2185,7 +2185,7 @@ const Dashboard: React.FunctionComponent = () => {
                       </Flex>
                     </Bullseye>
                   ) : (
-                    <Grid hasGutter>
+              <Grid hasGutter>
                 {/* Request queue length chart */}
                 <GridItem span={12} lg={6}>
                   <Card isFullHeight id="request-queue-chart">
@@ -2222,8 +2222,8 @@ const Dashboard: React.FunctionComponent = () => {
                                 type: 'time',
                                 axisLabel: {
                                   formatter: (value: number) => new Date(value).toLocaleTimeString('en-US', { 
-                                    hour: 'numeric', 
-                                    hour12: true 
+                                hour: 'numeric', 
+                                hour12: true 
                                   })
                                 }
                               },
@@ -2294,8 +2294,8 @@ const Dashboard: React.FunctionComponent = () => {
                                 type: 'time',
                                 axisLabel: {
                                   formatter: (value: number) => new Date(value).toLocaleTimeString('en-US', { 
-                                    hour: 'numeric', 
-                                    hour12: true 
+                                hour: 'numeric', 
+                                hour12: true 
                                   })
                                 }
                               },
@@ -2366,8 +2366,8 @@ const Dashboard: React.FunctionComponent = () => {
                                 type: 'time',
                                 axisLabel: {
                                   formatter: (value: number) => new Date(value).toLocaleTimeString('en-US', { 
-                                    hour: 'numeric', 
-                                    hour12: true 
+                                hour: 'numeric', 
+                                hour12: true 
                                   })
                                 }
                               },
@@ -2441,8 +2441,8 @@ const Dashboard: React.FunctionComponent = () => {
                                 type: 'time',
                                 axisLabel: {
                                   formatter: (value: number) => new Date(value).toLocaleTimeString('en-US', { 
-                                    hour: 'numeric', 
-                                    hour12: true 
+                                hour: 'numeric', 
+                                hour12: true 
                                   })
                                 }
                               },
@@ -2483,10 +2483,10 @@ const Dashboard: React.FunctionComponent = () => {
                 {/* Token Generation Rate chart */}
                 <GridItem span={12} lg={6}>
                   <Card isFullHeight id="token-generation-rate-chart">
-                    <CardTitle>
+                <CardTitle>
                       <Title headingLevel="h3" size="md">Token Generation Rate</Title>
-                    </CardTitle>
-                    <CardBody>
+                </CardTitle>
+                <CardBody>
                       {filteredTokenGenerationRateData.length === 0 ? (
                         <Bullseye style={{ height: '200px' }}>
                           <Content component={ContentVariants.p}>
@@ -2549,19 +2549,19 @@ const Dashboard: React.FunctionComponent = () => {
                             }}
                             style={{ height: '100%', width: '100%' }}
                           />
-                        </div>
+                  </div>
                       )}
-                    </CardBody>
-                  </Card>
-                </GridItem>
+                </CardBody>
+              </Card>
+            </GridItem>
 
                 {/* Throughput chart */}
                 <GridItem span={12} lg={6}>
                   <Card isFullHeight id="throughput-chart">
-                    <CardTitle>
+                <CardTitle>
                       <Title headingLevel="h3" size="md">Throughput (requests/sec)</Title>
-                    </CardTitle>
-                    <CardBody>
+                </CardTitle>
+                <CardBody>
                       {filteredThroughputData.length === 0 ? (
                         <Bullseye style={{ height: '200px' }}>
                           <Content component={ContentVariants.p}>
@@ -2624,11 +2624,11 @@ const Dashboard: React.FunctionComponent = () => {
                             }}
                             style={{ height: '100%', width: '100%' }}
                           />
-                        </div>
+                  </div>
                       )}
-                    </CardBody>
-                  </Card>
-                </GridItem>
+                </CardBody>
+              </Card>
+            </GridItem>
 
                 {/* Response Time Distribution */}
                 <GridItem span={12}>
@@ -2636,7 +2636,7 @@ const Dashboard: React.FunctionComponent = () => {
                     <CardTitle>
                       <Title headingLevel="h3" size="md">Response Time Distribution</Title>
                     </CardTitle>
-                    <CardBody>
+              <CardBody>
                       <div style={{ height: '250px', width: '100%' }}>
                         <ReactECharts
                           option={{
@@ -2679,21 +2679,21 @@ const Dashboard: React.FunctionComponent = () => {
                           }}
                           style={{ height: '100%', width: '100%' }}
                         />
-                      </div>
-                    </CardBody>
+                </div>
+              </CardBody>
                   </Card>
                 </GridItem>
               </Grid>
                   )}
                   </CardBody>
                 )}
-              </Card>
-            </FlexItem>
+            </Card>
+          </FlexItem>
           </>
         )}
       </Flex>
-    </PageSection>
-  );
+  </PageSection>
+);
 };
 
 export { Dashboard };
