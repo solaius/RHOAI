@@ -565,7 +565,7 @@ const ModelCatalog: React.FunctionComponent = () => {
     if (showFilterChangedAlert) {
         setShowFilterChangedAlert(false);
       }
-  }, [showFilterChangedAlert, workload, latencyMetric, latencyPercentile, latencyValue, rpsValue, hardware, selectedTasks, selectedProviders, selectedLicenses, selectedLanguages, selectedTensorTypes, search]);
+  }, [showFilterChangedAlert, workload, latencyMetric, latencyPercentile, latencyValue, rpsValue, hardware, selectedTasks, selectedProviders, selectedLicenses, selectedLanguages, selectedTensorTypes, search, category]);
   
   // Search state for filter categories
   const [taskSearch, setTaskSearch] = React.useState('');
@@ -876,28 +876,6 @@ const ModelCatalog: React.FunctionComponent = () => {
   const galleryContainerRef = React.useRef<HTMLDivElement>(null);
   const [cardsPerRow, setCardsPerRow] = React.useState(3);
   
-  React.useEffect(() => {
-    const calculateCardsPerRow = () => {
-      if (galleryContainerRef.current) {
-        const containerWidth = galleryContainerRef.current.offsetWidth;
-        const cardMinWidth = 280; // matches Gallery minWidths
-        const gutter = 16; // PatternFly default gutter
-        // Calculate how many cards fit: (containerWidth + gutter) / (cardMinWidth + gutter)
-        const count = Math.floor((containerWidth + gutter) / (cardMinWidth + gutter));
-        setCardsPerRow(Math.max(1, count)); // At least 1 card
-      }
-    };
-    
-    calculateCardsPerRow();
-    
-    const resizeObserver = new ResizeObserver(calculateCardsPerRow);
-    if (galleryContainerRef.current) {
-      resizeObserver.observe(galleryContainerRef.current);
-    }
-    
-    return () => resizeObserver.disconnect();
-  }, []);
-  
   // Reset visible count when filters/category change
   React.useEffect(() => {
     setVisibleCount(10);
@@ -913,6 +891,40 @@ const ModelCatalog: React.FunctionComponent = () => {
            selectedTensorTypes.length > 0 ||
            performanceFiltersEnabled;
   }, [search, selectedTasks, selectedProviders, selectedLicenses, selectedLanguages, selectedTensorTypes, performanceFiltersEnabled]);
+
+  // Determine if grouped view should be shown (for dynamic cards per row calculation)
+  const shouldShowGroupedView = category === null && !hasActiveFiltersOrSearch;
+  
+  // Effect to calculate cards per row when grouped view is visible
+  React.useEffect(() => {
+    if (!shouldShowGroupedView) return;
+    
+    const calculateCardsPerRow = () => {
+      if (galleryContainerRef.current) {
+        const containerWidth = galleryContainerRef.current.offsetWidth;
+        const cardMinWidth = 280; // matches Gallery minWidths
+        const gutter = 16; // PatternFly default gutter
+        // Calculate how many cards fit: (containerWidth + gutter) / (cardMinWidth + gutter)
+        const count = Math.floor((containerWidth + gutter) / (cardMinWidth + gutter));
+        setCardsPerRow(Math.max(1, count)); // At least 1 card
+      }
+    };
+    
+    // Use requestAnimationFrame to ensure DOM is ready after navigation
+    const rafId = requestAnimationFrame(() => {
+      calculateCardsPerRow();
+    });
+    
+    const resizeObserver = new ResizeObserver(calculateCardsPerRow);
+    if (galleryContainerRef.current) {
+      resizeObserver.observe(galleryContainerRef.current);
+    }
+    
+    return () => {
+      cancelAnimationFrame(rafId);
+      resizeObserver.disconnect();
+    };
+  }, [shouldShowGroupedView]);
 
   // Filter functions using real Model type
   const filteredModels = React.useMemo(() => {
@@ -2512,7 +2524,7 @@ const ModelCatalog: React.FunctionComponent = () => {
             })()}
 
             {/* Models List - Grouped view when no category and no filters, single list otherwise */}
-            {category === null && !hasActiveFiltersOrSearch ? (
+            {shouldShowGroupedView ? (
               <div ref={galleryContainerRef}>
                 {/* Red Hat AI validated models section - Dynamic row based on screen width */}
                 {getValidatedModels.length > 0 && (

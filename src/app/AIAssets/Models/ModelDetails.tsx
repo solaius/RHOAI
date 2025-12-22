@@ -311,12 +311,28 @@ const ModelDetails: React.FunctionComponent<ModelDetailsProps> = () => {
     setTempVisibleColumns(defaults);
   };
 
-  // Table sort state - default to sorting by the current latency column
-  const [activeSortIndex, setActiveSortIndex] = React.useState<number | null>(null);
-  const [activeSortDirection, setActiveSortDirection] = React.useState<'asc' | 'desc' | null>(null);
+  // Compute the default sort column index based on current latency filter
+  const getDefaultSortIndex = React.useCallback(() => {
+    const latencyColId = `latency_${latencyMetric}_${latencyPercentile}`;
+    const colIndex = orderedVisibleColumns.findIndex(colId => colId === latencyColId);
+    // Column index is offset by 1 because Hardware is column 0
+    return colIndex !== -1 ? colIndex + 1 : null;
+  }, [latencyMetric, latencyPercentile, orderedVisibleColumns]);
 
-  // Initialize/update sort to the current latency column when filter changes
-  React.useEffect(() => {
+  // Table sort state - default to sorting by the current latency column
+  const [activeSortIndex, setActiveSortIndex] = React.useState<number | null>(() => {
+    // Try to compute initial sort index
+    const latencyColId = `latency_${latencyMetric}_${latencyPercentile}`;
+    const colIndex = orderedVisibleColumns.findIndex(colId => colId === latencyColId);
+    return colIndex !== -1 ? colIndex + 1 : null;
+  });
+  const [activeSortDirection, setActiveSortDirection] = React.useState<'asc' | 'desc' | null>(() => {
+    // Set initial direction based on metric type
+    return latencyMetric === 'TPS' ? 'desc' : 'asc';
+  });
+
+  // Update sort when latency filter changes or when orderedVisibleColumns updates
+  React.useLayoutEffect(() => {
     // Build the latency column ID from current filter (must match format in columnConfig.ts)
     const latencyColId = `latency_${latencyMetric}_${latencyPercentile}`;
     
