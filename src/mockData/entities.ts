@@ -142,7 +142,32 @@ entity_df = pd.DataFrame({
 
 features = store.get_online_features(
     entity_rows=entity_df.to_dict('records'),
-    features=["order:*"]
+      features=["order:*"]
+    ).to_df()`
+  },
+  {
+    id: 'entity-006',
+    name: 'VeryLongEntityNameThatWillTriggerTruncation',
+    description: 'A test entity with an extremely long name designed to trigger node truncation in the lineage graph visualization',
+    joinKey: 'long_entity_id',
+    valueType: 'STRING',
+    dataSource: 'customer_warehouse',
+    sourceType: 'Snowflake',
+    fileUrl: 'snowflake://prod.warehouse.db/long_entities',
+    created: '2024-06-01T10:00:00Z',
+    lastUpdated: '2024-12-10T12:00:00Z',
+    tags: ['env=production', 'team=testing', 'use_case=truncation-test'],
+    featureStore: 'Fraud detection',
+    usageCode: `from feast import FeatureStore
+
+store = FeatureStore(repo_path=".")
+entity_df = pd.DataFrame({
+    "long_entity_id": ["LONG-001", "LONG-002", "LONG-003"]
+})
+
+features = store.get_online_features(
+    entity_rows=entity_df.to_dict('records'),
+    features=["verylongentitynamethatwilltriggertruncation:*"]
 ).to_df()`
   }
 ];
