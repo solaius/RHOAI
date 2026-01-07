@@ -853,7 +853,9 @@ export const findConnectedEdges = (
   edges: LineageEdge[]
 ): Set<string> => {
   const connectedEdges = new Set<string>();
-  const allConnectedNodes = new Set([selectedNodeId, ...connectedNodeIds]);
+  const allConnectedNodes = new Set<string>();
+  allConnectedNodes.add(selectedNodeId);
+  connectedNodeIds.forEach(nodeId => allConnectedNodes.add(nodeId));
   
   edges.forEach(edge => {
     if (allConnectedNodes.has(edge.source) && allConnectedNodes.has(edge.target)) {
