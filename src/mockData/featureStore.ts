@@ -217,7 +217,7 @@ export const mockFeatureViews: FeatureView[] = [
     id: 'fv-001',
     name: 'user_transaction_aggregates',
     description: 'Aggregated transaction features for user behavior analysis',
-    entityIds: ['entity-001', 'entity-003'],
+    entityIds: ['entity-001', 'entity-003', 'entity-006'],
     featureCount: 12,
     dataSourceId: 'ds-001',
     created: '2024-02-01T08:00:00Z',

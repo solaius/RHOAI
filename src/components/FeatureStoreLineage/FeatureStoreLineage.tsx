@@ -87,6 +87,7 @@ const ELEMENT_GAP = 8; // Gap between Icon, Text, and Badge
 const ICON_SIZE = 24; // Icon size (standard PF icon size)
 const BADGE_HEIGHT = 24; // Fixed badge height
 const MAX_NODE_WIDTH = 184; // Maximum node width before truncation
+const WIDTH_BUFFER = 4; // Breathing room buffer to prevent CSS truncation for short text due to sub-pixel font rendering
 const ZOOM_THRESHOLD = 0.7; // Zoom threshold for condensed view (scale < 0.7)
 const CONDENSED_NODE_SIZE = 32; // Fixed size for condensed (circular) nodes
 
@@ -412,13 +413,20 @@ export const FeatureStoreLineage: React.FC<FeatureStoreLineageProps> = ({ select
                           textPixelWidth + (hasBadge ? textBadgeGap + badgePixelWidth : 0) + 
                           NODE_PADDING_HORIZONTAL;
       
-      // Case A: Short Text (contentWidth <= maxWidth - 5px buffer)
-      // Use 5px safety buffer to force tooltip if text is even close to the edge
+      // Case A: Short Text (contentWidth <= maxWidth - 12px buffer)
+      // Use 12px safety buffer to force tooltip if text is even close to the edge
       // This prevents "dead zones" where text is cut off without a tooltip
-      const TRUNCATION_BUFFER = 5; // 5px buffer to ensure tooltip appears
+      // Increased to 12px to account for font loading race conditions
+      // (Canvas may measure with Arial fallback before "Red Hat Text" loads, causing width mismatch)
+      const TRUNCATION_BUFFER = 12; // 12px buffer to ensure tooltip appears (aggressive for font loading)
       if (contentWidth <= (MAX_NODE_WIDTH - TRUNCATION_BUFFER)) {
+        // Add breathing room buffer to prevent CSS truncation for short text
+        // If math measures 100px but browser renders 101px (sub-pixel rendering),
+        // the 4px buffer ensures the container is wide enough to avoid CSS truncation
+        const idealWidth = contentWidth + WIDTH_BUFFER;
+        const finalNodeWidth = Math.min(idealWidth, MAX_NODE_WIDTH);
         return {
-          nodeWidth: contentWidth,
+          nodeWidth: finalNodeWidth,
           displayText: node.label,
           badgeWidth: badgePixelWidth,
           isTruncated: false,
