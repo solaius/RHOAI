@@ -30,7 +30,7 @@ export const mockDataSources: DataSource[] = [
     created: '2024-01-10T08:00:00Z',
     lastUpdated: '2024-12-05T14:22:00Z',
     tags: ['domain=demographics', 'env=production'],
-    featureStore: 'Fraud detection',
+    featureStore: 'Customer analytics', // Updated to Customer analytics to match Customer entity and customer_churn_indicators feature view
   },
   {
     id: 'ds-002',
@@ -219,7 +219,7 @@ export const mockFeatureViews: FeatureView[] = [
     description: 'Aggregated transaction features for user behavior analysis',
     entityIds: ['entity-001', 'entity-003', 'entity-006'],
     featureCount: 12,
-    dataSourceId: 'ds-001',
+    dataSourceId: 'ds-002', // Connected to loan_table
     created: '2024-02-01T08:00:00Z',
     lastUpdated: '2024-12-05T14:22:00Z',
     tags: ['domain=demographics', 'use_case=fraud'],
@@ -666,7 +666,49 @@ export const generateLineageData = (featureStore: string): LineageGraphData => {
   filteredFeatureViews.forEach(fv => {
     // Get features for this feature view
     const viewFeatures = filteredFeatures.filter(f => f.featureViewId === fv.id);
-    const featureNames = viewFeatures.map(f => f.name);
+    const realFeatureNames = viewFeatures.map(f => f.name);
+    
+    // Generate full feature list: use real feature names when available, fill rest with mock features
+    // Always generate exactly featureCount features
+    const allFeatures: string[] = [];
+    const usedNames = new Set<string>();
+    
+    // Add real feature names first
+    realFeatureNames.forEach(name => {
+      if (allFeatures.length < fv.featureCount && !usedNames.has(name)) {
+        allFeatures.push(name);
+        usedNames.add(name);
+      }
+    });
+    
+    // Fill remaining slots with mock features (avoid duplicates)
+    const mockFeatures = generateMockFeatures(20); // Generate enough mock features
+    for (const mockFeature of mockFeatures) {
+      if (allFeatures.length >= fv.featureCount) break;
+      if (!usedNames.has(mockFeature)) {
+        allFeatures.push(mockFeature);
+        usedNames.add(mockFeature);
+      }
+    }
+    
+    // If still not enough, add numbered features with descriptive names
+    let counter = 1;
+    while (allFeatures.length < fv.featureCount) {
+      const numberedFeature = `${fv.name}_feature_${counter}`;
+      if (!usedNames.has(numberedFeature)) {
+        allFeatures.push(numberedFeature);
+        usedNames.add(numberedFeature);
+      }
+      counter++;
+      // Safety check to prevent infinite loop
+      if (counter > 1000) break;
+    }
+    
+    // Ensure we have exactly featureCount features (this should always be true, but just in case)
+    while (allFeatures.length < fv.featureCount) {
+      allFeatures.push(`feature_${allFeatures.length + 1}`);
+    }
+    const finalFeatures = allFeatures.slice(0, fv.featureCount);
     
     // Determine view type (Batch vs On demand)
     const viewType = fv.dataSourceId ? 'Batch' : 'On demand';
@@ -678,7 +720,7 @@ export const generateLineageData = (featureStore: string): LineageGraphData => {
       data: {
         description: fv.description,
         featureCount: fv.featureCount,
-        features: featureNames.length > 0 ? featureNames : generateMockFeatures(fv.featureCount),
+        features: finalFeatures,
       },
     });
   });
@@ -730,11 +772,17 @@ export const generateLineageData = (featureStore: string): LineageGraphData => {
     }
     
     // Also create edges from entities to feature views (via entityIds)
+    // This creates direct connections showing which entities are used by each feature view
     fv.entityIds.forEach(entityId => {
       const entityNode = nodes.find(n => n.id === `entity-${entityId}`);
       if (entityNode) {
-        // Check if we should create a direct entity -> feature view edge
-        // This handles cases where there's no intermediate data source
+        // Create direct entity -> feature view edge
+        // This shows the relationship even if there's an intermediate data source
+        edges.push({
+          id: `edge-entity-${entityId}-fv-${fv.id}`,
+          source: `entity-${entityId}`,
+          target: `featureview-${fv.id}`,
+        });
       }
     });
   });

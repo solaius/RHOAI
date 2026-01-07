@@ -1,5 +1,7 @@
 import * as React from 'react';
-import { useState, useMemo, useCallback, useRef } from 'react';
+import { useState, useMemo, useCallback, useRef, useEffect, useLayoutEffect } from 'react';
+import ReactDOM from 'react-dom';
+import { useNavigate } from 'react-router-dom';
 import {
   EmptyState,
   EmptyStateBody,
@@ -264,6 +266,8 @@ interface FeatureStoreLineageProps {
 }
 
 export const FeatureStoreLineage: React.FC<FeatureStoreLineageProps> = ({ selectedFeatureStore }) => {
+  const navigate = useNavigate();
+  
   // State
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const [entityFilter, setEntityFilter] = useState<string>('all');
@@ -275,7 +279,11 @@ export const FeatureStoreLineage: React.FC<FeatureStoreLineageProps> = ({ select
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
   const containerRef = useRef<HTMLDivElement>(null);
-  const [popoverNode, setPopoverNode] = useState<LineageNodeType | null>(null);
+  // Popover state - only store the node ID, position calculated dynamically based on pan/zoom
+  const [popoverNodeId, setPopoverNodeId] = useState<string | null>(null);
+  // Popover position state - updated via useLayoutEffect for smooth positioning
+  const [popoverPosition, setPopoverPosition] = useState<{ x: number; y: number; showBelow: boolean } | null>(null);
+  
   const [hoveredNodeId, setHoveredNodeId] = useState<string | null>(null);
   const [tooltipPosition, setTooltipPosition] = useState({ x: 0, y: 0 });
   const [hoveredCondensedNodeId, setHoveredCondensedNodeId] = useState<string | null>(null);
@@ -454,6 +462,19 @@ export const FeatureStoreLineage: React.FC<FeatureStoreLineageProps> = ({ select
     const nodes: PositionedNode[] = [];
     const edges: PositionedEdge[] = [];
     
+    // Filter nodes: if hideUnconnected is true, only show nodes that have connections
+    let filteredNodes = lineageData.nodes;
+    if (hideUnconnected) {
+      // Build a set of node IDs that have connections (appear as source or target in edges)
+      const connectedNodeIds = new Set<string>();
+      lineageData.edges.forEach(edge => {
+        connectedNodeIds.add(edge.source);
+        connectedNodeIds.add(edge.target);
+      });
+      // Filter to only include nodes that have connections
+      filteredNodes = lineageData.nodes.filter(node => connectedNodeIds.has(node.id));
+    }
+    
     // Group nodes by type for column layout
     const columns: { [key: string]: LineageNodeType[] } = {
       entity: [],
@@ -462,7 +483,7 @@ export const FeatureStoreLineage: React.FC<FeatureStoreLineageProps> = ({ select
       featureService: [],
     };
     
-    lineageData.nodes.forEach(node => {
+    filteredNodes.forEach(node => {
       if (columns[node.type]) {
         columns[node.type].push(node);
       }
@@ -471,11 +492,15 @@ export const FeatureStoreLineage: React.FC<FeatureStoreLineageProps> = ({ select
     // Layout parameters - adjust spacing for condensed view
     // When zoomed out (condensed view), use tighter spacing to fit more nodes
     const isCondensedLayout = zoom < ZOOM_THRESHOLD;
-    const columnGap = isCondensedLayout ? 120 : 280; // Reduced gap for condensed view
-    const rowGap = isCondensedLayout ? 50 : 80; // Reduced row gap for condensed view
+    // Column gap for horizontal spacing between nodes (slightly increased for better readability)
+    const columnGap = isCondensedLayout ? 60 : 70; // Increased spacing for better edge readability
+    // Row gap for vertical spacing between nodes
+    const rowGap = isCondensedLayout ? 40 : 50; // Increased vertical spacing for better readability
     const nodeHeight = 29; // Fixed height (PatternFly standard)
-    const startX = 50;
-    const startY = 50;
+    // Set margins to 0 - centering will handle positioning with external padding
+    // This ensures the bounding box accurately reflects node positions
+    const startX = 0; // No internal left margin (centering handles positioning)
+    const startY = 0; // No internal top margin (centering handles positioning)
     
     // Position nodes by column
     const columnOrder = ['entity', 'dataSource', 'featureView', 'featureService'];
@@ -536,8 +561,14 @@ export const FeatureStoreLineage: React.FC<FeatureStoreLineageProps> = ({ select
     const canvasWidth = startX + totalColumnsWidth;
     const canvasHeight = maxHeight + startY;
     
-    // Create edges with positions
+    // Create edges with positions - only include edges between visible nodes
+    const visibleNodeIds = new Set(filteredNodes.map(n => n.id));
     lineageData.edges.forEach(edge => {
+      // Only create edge if both source and target nodes are visible
+      if (!visibleNodeIds.has(edge.source) || !visibleNodeIds.has(edge.target)) {
+        return;
+      }
+      
       const sourcePos = nodePositions[edge.source];
       const targetPos = nodePositions[edge.target];
       
@@ -555,7 +586,84 @@ export const FeatureStoreLineage: React.FC<FeatureStoreLineageProps> = ({ select
     });
     
     return { positionedNodes: nodes, positionedEdges: edges, canvasWidth, canvasHeight };
-  }, [lineageData, zoom, calculateNodeWidth]);
+  }, [lineageData, zoom, calculateNodeWidth, hideUnconnected]);
+  
+  // Calculate popover position using raw transform math - runs on every pan/zoom change
+  useLayoutEffect(() => {
+    if (!popoverNodeId || !containerRef.current) {
+      setPopoverPosition(null);
+      return;
+    }
+    
+    // Find the positioned node to get canvas coordinates
+    const positionedNode = positionedNodes.find(pn => pn.node.id === popoverNodeId);
+    if (!positionedNode) {
+      setPopoverPosition(null);
+      return;
+    }
+    
+    const containerRect = containerRef.current.getBoundingClientRect();
+    
+    // Node's center-top position in canvas coordinates
+    const nodeCanvasX = positionedNode.x + positionedNode.width / 2;
+    const nodeCanvasY = positionedNode.y;
+    
+    // Calculate absolute screen position using raw transform math
+    // Formula: containerOffset + pan + (nodePosition * zoom)
+    const absoluteX = containerRect.left + pan.x + (nodeCanvasX * zoom);
+    const absoluteY = containerRect.top + pan.y + (nodeCanvasY * zoom);
+    
+    // Safety check: If popover would go off-screen at top, show below instead
+    const headerHeight = 100; // Approximate header height
+    const showBelow = absoluteY < headerHeight;
+    
+    setPopoverPosition({ x: absoluteX, y: absoluteY, showBelow });
+  }, [popoverNodeId, pan, zoom, positionedNodes]);
+  
+  // Auto-center the graph when layout is calculated
+  // This ensures the graph is centered in the viewport with padding to account for the floating toolbar
+  // Similar to controller.getGraph().fit(80) - centers graph with 80px padding
+  const lastLayoutHashRef = useRef<string>('');
+  useEffect(() => {
+    if (positionedNodes.length === 0 || !containerRef.current) {
+      return;
+    }
+    
+    // Create a hash of the layout to detect actual layout changes (not just zoom)
+    const layoutHash = `${canvasWidth}-${canvasHeight}-${positionedNodes.length}`;
+    if (layoutHash === lastLayoutHashRef.current) {
+      return; // Layout hasn't actually changed, skip re-centering
+    }
+    lastLayoutHashRef.current = layoutHash;
+    
+    // Use requestAnimationFrame to ensure container dimensions are available
+    requestAnimationFrame(() => {
+      if (!containerRef.current) return;
+      
+      const container = containerRef.current;
+      const containerRect = container.getBoundingClientRect();
+      const containerWidth = containerRect.width;
+      const containerHeight = containerRect.height;
+      
+      // Calculate the center of the graph content (bounding box)
+      const graphCenterX = canvasWidth / 2;
+      const graphCenterY = canvasHeight / 2;
+      
+      // Calculate the center of the viewport
+      const viewportCenterX = containerWidth / 2;
+      const viewportCenterY = containerHeight / 2;
+      
+      // Calculate pan offset needed to center the graph
+      // Use 80px symmetric padding (mimics controller.getGraph().fit(80))
+      // This creates a safe zone around the graph and accounts for the floating toolbar
+      const padding = 80;
+      const panX = viewportCenterX - graphCenterX * zoom;
+      // Center vertically with symmetric padding (no extra offset needed since startY is 0)
+      const panY = viewportCenterY - graphCenterY * zoom;
+      
+      setPan({ x: panX, y: panY });
+    });
+  }, [positionedNodes.length, canvasWidth, canvasHeight, zoom]); // Auto-center when layout data changes
   
   // Handle mouse events for panning - allow dragging from anywhere on canvas
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
@@ -592,35 +700,150 @@ export const FeatureStoreLineage: React.FC<FeatureStoreLineageProps> = ({ select
     const target = e.target as SVGElement;
     if (target.tagName === 'svg' || target.tagName === 'rect' && target.getAttribute('data-canvas') === 'true') {
       setSelectedNodeId(null);
-      setPopoverNode(null);
+      setPopoverNodeId(null);
+      setPopoverPosition(null);
     }
   }, []);
   
   const handleMouseMove = useCallback((e: React.MouseEvent) => {
     if (isDragging) {
-      setPan({
+      const newPan = {
         x: e.clientX - dragStart.x,
         y: e.clientY - dragStart.y,
-      });
+      };
+      setPan(newPan);
+      
+      // Update popover position immediately during drag for smooth movement
+      // This hooks directly into the pan event loop to minimize lag
+      if (popoverNodeId && containerRef.current) {
+        const positionedNode = positionedNodes.find(pn => pn.node.id === popoverNodeId);
+        if (positionedNode) {
+          const containerRect = containerRef.current.getBoundingClientRect();
+          const nodeCanvasX = positionedNode.x + positionedNode.width / 2;
+          const nodeCanvasY = positionedNode.y;
+          const absoluteX = containerRect.left + newPan.x + (nodeCanvasX * zoom);
+          const absoluteY = containerRect.top + newPan.y + (nodeCanvasY * zoom);
+          const headerHeight = 100;
+          const showBelow = absoluteY < headerHeight;
+          setPopoverPosition({ x: absoluteX, y: absoluteY, showBelow });
+        }
+      }
+      
       e.preventDefault();
     }
-  }, [isDragging, dragStart]);
+  }, [isDragging, dragStart, popoverNodeId, positionedNodes, zoom]);
   
   const handleMouseUp = useCallback(() => {
     setIsDragging(false);
   }, []);
   
+  // Helper function to center the graph in the viewport
+  const centerGraph = useCallback((targetZoom: number = zoom) => {
+    if (!containerRef.current || positionedNodes.length === 0) return;
+    
+    requestAnimationFrame(() => {
+      if (!containerRef.current) return;
+      
+      const container = containerRef.current;
+      const containerRect = container.getBoundingClientRect();
+      const containerWidth = containerRect.width;
+      const containerHeight = containerRect.height;
+      
+      // Calculate the center of the graph content (bounding box)
+      const graphCenterX = canvasWidth / 2;
+      const graphCenterY = canvasHeight / 2;
+      
+      // Calculate the center of the viewport
+      const viewportCenterX = containerWidth / 2;
+      const viewportCenterY = containerHeight / 2;
+      
+      // Calculate pan offset needed to center the graph
+      // Use 80px symmetric padding (mimics controller.getGraph().fit(80))
+      const padding = 80;
+      const panX = viewportCenterX - graphCenterX * targetZoom;
+      const panY = viewportCenterY - graphCenterY * targetZoom;
+      
+      setPan({ x: panX, y: panY });
+    });
+  }, [canvasWidth, canvasHeight, positionedNodes.length, zoom]);
+  
+  // Helper function to handle node click and show popover with screen coordinates
+  const handleNodeClick = useCallback((e: React.MouseEvent, node: LineageNodeType) => {
+    e.stopPropagation();
+    if (isDragging) return;
+    
+    const isCurrentlySelected = node.id === selectedNodeId;
+    setSelectedNodeId(isCurrentlySelected ? null : node.id);
+    
+    if (isCurrentlySelected) {
+      // Close popover if clicking the same node
+      setPopoverNodeId(null);
+    } else {
+      // Store only the node ID - position will be calculated dynamically
+      setPopoverNodeId(node.id);
+    }
+  }, [isDragging, selectedNodeId]);
+  
   // Zoom controls
-  const handleZoomIn = () => setZoom(z => Math.min(z * 1.25, 3));
-  const handleZoomOut = () => setZoom(z => Math.max(z * 0.8, 0.25));
+  const handleZoomIn = () => {
+    const newZoom = Math.min(zoom * 1.25, 3);
+    setZoom(newZoom);
+    // Update popover position immediately during zoom for smooth movement
+    if (popoverNodeId && containerRef.current) {
+      const positionedNode = positionedNodes.find(pn => pn.node.id === popoverNodeId);
+      if (positionedNode) {
+        const containerRect = containerRef.current.getBoundingClientRect();
+        const nodeCanvasX = positionedNode.x + positionedNode.width / 2;
+        const nodeCanvasY = positionedNode.y;
+        const absoluteX = containerRect.left + pan.x + (nodeCanvasX * newZoom);
+        const absoluteY = containerRect.top + pan.y + (nodeCanvasY * newZoom);
+        const headerHeight = 100;
+        const showBelow = absoluteY < headerHeight;
+        setPopoverPosition({ x: absoluteX, y: absoluteY, showBelow });
+      }
+    }
+  };
+  
+  const handleZoomOut = () => {
+    const newZoom = Math.max(zoom * 0.8, 0.25);
+    setZoom(newZoom);
+    // Update popover position immediately during zoom for smooth movement
+    if (popoverNodeId && containerRef.current) {
+      const positionedNode = positionedNodes.find(pn => pn.node.id === popoverNodeId);
+      if (positionedNode) {
+        const containerRect = containerRef.current.getBoundingClientRect();
+        const nodeCanvasX = positionedNode.x + positionedNode.width / 2;
+        const nodeCanvasY = positionedNode.y;
+        const absoluteX = containerRect.left + pan.x + (nodeCanvasX * newZoom);
+        const absoluteY = containerRect.top + pan.y + (nodeCanvasY * newZoom);
+        const headerHeight = 100;
+        const showBelow = absoluteY < headerHeight;
+        setPopoverPosition({ x: absoluteX, y: absoluteY, showBelow });
+      }
+    }
+  };
   const handleFitToScreen = () => {
     setZoom(1);
-    setPan({ x: 0, y: 0 });
+    // Center the graph at zoom level 1
+    // Use double requestAnimationFrame to ensure layout has recalculated
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        centerGraph(1);
+      });
+    });
   };
   const handleReset = () => {
     setZoom(1);
-    setPan({ x: 0, y: 0 });
     setSelectedNodeId(null);
+    setPopoverNodeId(null);
+    setPopoverPosition(null);
+    // Center the graph at zoom level 1
+    // Use double requestAnimationFrame to ensure layout has recalculated
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        centerGraph(1);
+      });
+    });
   };
   
   // Get icon for node type
@@ -670,43 +893,116 @@ export const FeatureStoreLineage: React.FC<FeatureStoreLineageProps> = ({ select
     );
   }
   
-  // Render Feature View popover content
-  const renderPopoverContent = (node: LineageNodeType) => (
-    <div style={{ maxWidth: '320px' }}>
-      {node.data.description && (
-        <p style={{ fontSize: '14px', marginBottom: '12px', color: '#6a6e73' }}>
-          {node.data.description}
-        </p>
-      )}
-      {node.data.features && node.data.features.length > 0 && (
-        <>
-          <div style={{ fontWeight: 600, marginBottom: '4px' }}>Features:</div>
-          <List isPlain>
-            {node.data.features.slice(0, 6).map((feature: string, idx: number) => (
-              <ListItem key={idx} style={{ fontSize: '14px' }}>
-                <strong>Feature:</strong> {feature}
-              </ListItem>
-            ))}
-            {node.data.features.length > 6 && (
-              <ListItem style={{ fontSize: '14px', fontStyle: 'italic' }}>
-                ...and {node.data.features.length - 6} more
-              </ListItem>
-            )}
-          </List>
-        </>
-      )}
-      <div style={{ marginTop: '12px', display: 'flex', gap: '12px' }}>
-        <Button variant="link" isInline>View FeatureView detail page</Button>
-        <Button variant="link" isInline>View all features</Button>
+  // Render popover content for all node types
+  const renderPopoverContent = (node: LineageNodeType) => {
+    // Extract resource name from label (e.g., "Entity: Customer" -> "Customer")
+    const labelParts = node.label.split(': ');
+    const resourceName = labelParts.length > 1 ? labelParts.slice(1).join(': ') : node.label;
+    
+    // Handle navigation to detail page - only for entity nodes
+    const handleDetailPageClick = () => {
+      if (node.type === 'entity') {
+        // Extract entity ID from node.id (format: "entity-entity-001" -> "entity-001")
+        // node.id is "entity-entity-001", so we remove the first "entity-" prefix
+        const entityId = node.id.startsWith('entity-') ? node.id.substring('entity-'.length) : node.id;
+        navigate(`/develop-train/feature-store/entities/${entityId}?featureStore=${encodeURIComponent(selectedFeatureStore)}`);
+      }
+    };
+    
+    // Only make the button clickable for entity nodes
+    const isEntityNode = node.type === 'entity';
+    
+    return (
+      <div style={{ maxWidth: '320px' }}>
+        {node.data.description && (
+          <p style={{ fontSize: '14px', marginBottom: '12px', color: '#6a6e73' }}>
+            {node.data.description}
+          </p>
+        )}
+        {node.type === 'featureView' && node.data.features && node.data.features.length > 0 && (
+          <>
+            <div style={{ fontWeight: 600, marginBottom: '4px' }}>Features:</div>
+            <List>
+              {node.data.features.slice(0, 6).map((feature: string, idx: number) => (
+                <ListItem key={idx} style={{ fontSize: '14px' }}>
+                  {feature}
+                </ListItem>
+              ))}
+              {node.data.features.length > 6 && (
+                <ListItem style={{ fontSize: '14px', fontStyle: 'italic' }}>
+                  ...and {node.data.features.length - 6} more
+                </ListItem>
+              )}
+            </List>
+            <div style={{ marginTop: '8px' }}>
+              <Button variant="link" isInline isDisabled>
+                View all features
+              </Button>
+            </div>
+          </>
+        )}
+        <div style={{ marginTop: '12px' }}>
+          <Button 
+            variant="link" 
+            isInline 
+            onClick={isEntityNode ? handleDetailPageClick : undefined}
+            isDisabled={!isEntityNode}
+          >
+            View {resourceName} detail page
+          </Button>
+        </div>
       </div>
-    </div>
-  );
+    );
+  };
   
   return (
-    <div style={{ height: 'calc(100vh - 450px)', minHeight: '500px', display: 'flex', flexDirection: 'column' }}>
+    <div style={{ 
+      height: 'calc(100vh - 180px)', // Viewport-based height to prevent collapse
+      minHeight: '500px', // Safety minimum to ensure visibility
+      width: '100%',
+      margin: 0,
+      padding: 0,
+      display: 'flex', 
+      flexDirection: 'column',
+      overflow: 'hidden', // Prevent window scrollbars for full bleed
+    }}>
       
-      {/* Filter Toolbar */}
-      <Toolbar style={{ marginBottom: '16px' }}>
+      {/* Canvas Container - Full Bleed Layout */}
+      <div 
+        ref={containerRef}
+        style={{ 
+          flex: 1,
+          height: '100%',
+          width: '100%',
+          position: 'relative', 
+          overflow: 'hidden',
+          backgroundColor: 'var(--pf-t--global--background--color--secondary--default)',
+          borderRadius: 0, // Remove border radius for full bleed
+          cursor: isDragging ? 'grabbing' : 'grab',
+          userSelect: 'none',
+          margin: 0,
+          padding: 0,
+        }}
+        onMouseDown={handleMouseDown}
+        onMouseMove={handleMouseMove}
+        onMouseUp={handleMouseUp}
+        onMouseLeave={handleMouseUp}
+      >
+        {/* Filter Toolbar - Floating Panel */}
+        <div style={{
+          position: 'absolute',
+          top: '16px',
+          left: '16px',
+          zIndex: 10,
+          width: 'auto',
+          backgroundColor: 'var(--pf-v5-global--BackgroundColor--100)',
+          boxShadow: 'var(--pf-v5-global--BoxShadow--sm)',
+          borderRadius: '4px',
+          padding: '8px',
+          display: 'flex',
+          gap: '16px',
+        }}>
+          <Toolbar style={{ marginBottom: 0 }}>
         <ToolbarContent>
           <ToolbarItem>
             <Select
@@ -756,24 +1052,7 @@ export const FeatureStoreLineage: React.FC<FeatureStoreLineageProps> = ({ select
           </ToolbarItem>
         </ToolbarContent>
       </Toolbar>
-      
-      {/* Canvas Container */}
-      <div 
-        ref={containerRef}
-        style={{ 
-          flex: 1, 
-          position: 'relative', 
-          overflow: 'hidden',
-          backgroundColor: 'var(--pf-t--global--background--color--secondary--default)',
-          borderRadius: '8px',
-          cursor: isDragging ? 'grabbing' : 'grab',
-          userSelect: 'none',
-        }}
-        onMouseDown={handleMouseDown}
-        onMouseMove={handleMouseMove}
-        onMouseUp={handleMouseUp}
-        onMouseLeave={handleMouseUp}
-      >
+        </div>
         {/* SVG Canvas */}
         <svg
           width="100%"
@@ -899,14 +1178,14 @@ export const FeatureStoreLineage: React.FC<FeatureStoreLineageProps> = ({ select
               
               return (
                 <g key={edge.id} data-edge="true">
-                  <path
-                    d={path}
-                    stroke={isEdgeHighlighted ? '#0066cc' : '#d2d2d2'}
-                    strokeWidth={isEdgeHighlighted ? 2 : 1}
-                    fill="none"
-                    markerEnd={isEdgeHighlighted ? 'url(#arrow-highlighted)' : 'url(#arrow-default)'}
+                <path
+                  d={path}
+                  stroke={isEdgeHighlighted ? '#0066cc' : '#d2d2d2'}
+                  strokeWidth={isEdgeHighlighted ? 2 : 1}
+                  fill="none"
+                  markerEnd={isEdgeHighlighted ? 'url(#arrow-highlighted)' : 'url(#arrow-default)'}
                     style={{ pointerEvents: 'none' }}
-                  />
+                />
                 </g>
               );
             })}
@@ -959,17 +1238,7 @@ export const FeatureStoreLineage: React.FC<FeatureStoreLineageProps> = ({ select
                     data-node={node.id}
                     transform={`translate(${condensedX}, ${condensedY})`}
                     style={{ cursor: 'pointer' }}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      if (!isDragging) {
-                        setSelectedNodeId(node.id === selectedNodeId ? null : node.id);
-                        if (node.type === 'featureView') {
-                          setPopoverNode(node.id === selectedNodeId ? null : node);
-                        } else {
-                          setPopoverNode(null);
-                        }
-                      }
-                    }}
+                    onClick={(e) => handleNodeClick(e, node)}
                     onMouseDown={(e) => {
                       e.stopPropagation();
                     }}
@@ -1063,17 +1332,7 @@ export const FeatureStoreLineage: React.FC<FeatureStoreLineageProps> = ({ select
                     data-node={node.id}
                     transform={`translate(${condensedX}, ${condensedY})`}
                     style={{ cursor: 'pointer' }}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      if (!isDragging) {
-                        setSelectedNodeId(node.id === selectedNodeId ? null : node.id);
-                        if (node.type === 'featureView') {
-                          setPopoverNode(node.id === selectedNodeId ? null : node);
-                        } else {
-                          setPopoverNode(null);
-                        }
-                      }
-                    }}
+                    onClick={(e) => handleNodeClick(e, node)}
                     onMouseDown={(e) => {
                       e.stopPropagation();
                     }}
@@ -1126,12 +1385,7 @@ export const FeatureStoreLineage: React.FC<FeatureStoreLineageProps> = ({ select
                   onClick={(e) => {
                     e.stopPropagation(); // Prevent canvas click handler
                     if (!isDragging) { // Only select if we're not dragging
-                      setSelectedNodeId(node.id === selectedNodeId ? null : node.id);
-                      if (node.type === 'featureView') {
-                        setPopoverNode(node.id === selectedNodeId ? null : node);
-                      } else {
-                        setPopoverNode(null);
-                      }
+                      handleNodeClick(e, node);
                     }
                   }}
                   onMouseDown={(e) => {
@@ -1278,12 +1532,7 @@ export const FeatureStoreLineage: React.FC<FeatureStoreLineageProps> = ({ select
                   onClick={(e) => {
                     e.stopPropagation();
                     if (!isDragging) {
-                      setSelectedNodeId(node.id === selectedNodeId ? null : node.id);
-                      if (node.type === 'featureView') {
-                        setPopoverNode(node.id === selectedNodeId ? null : node);
-                      } else {
-                        setPopoverNode(null);
-                      }
+                      handleNodeClick(e, node);
                     }
                   }}
                   onMouseDown={(e) => {
@@ -1347,9 +1596,9 @@ export const FeatureStoreLineage: React.FC<FeatureStoreLineageProps> = ({ select
                     />
                   )}
                   {/* Main Container Outline - 29px height */}
-                  <rect
-                    x={0}
-                    y={0}
+                      <rect
+                        x={0}
+                        y={0}
                     width={finalNodeWidth}
                     height={29}
                     rx={29 / 2}
@@ -1461,35 +1710,118 @@ export const FeatureStoreLineage: React.FC<FeatureStoreLineageProps> = ({ select
             </div>
           );
         })()}
-        
-        {/* Feature View Popover */}
-        {popoverNode && popoverNode.type === 'featureView' && (
-          <div style={{
-            position: 'absolute',
-            top: '50%',
-            left: '50%',
-            transform: 'translate(-50%, -50%)',
-            backgroundColor: 'white',
-            borderRadius: '8px',
-            boxShadow: '0 4px 16px rgba(0,0,0,0.2)',
-            padding: '16px',
-            maxWidth: '400px',
-            zIndex: 100,
-          }}>
-            <Flex justifyContent={{ default: 'justifyContentSpaceBetween' }} alignItems={{ default: 'alignItemsFlexStart' }}>
-              <FlexItem>
-                <Title headingLevel="h4" size="md">{popoverNode.label}</Title>
-              </FlexItem>
-              <FlexItem>
-                <Button variant="plain" onClick={() => setPopoverNode(null)}>
-                  <TimesIcon />
-                </Button>
-              </FlexItem>
-            </Flex>
-            {renderPopoverContent(popoverNode)}
-          </div>
-        )}
       </div>
+      
+      {/* Popover rendered via Portal outside the graph container to avoid clipping */}
+      {popoverNodeId && popoverPosition && (() => {
+        const popoverNode = positionedNodes.find(pn => pn.node.id === popoverNodeId);
+        if (!popoverNode) return null;
+        
+        // Use pure transform for positioning to minimize reflows (no left/top)
+        // This ensures the browser can optimize the positioning without triggering layout reflows
+        const arrowOffset = popoverPosition.showBelow ? 12 : -12;
+        const translateY = popoverPosition.showBelow ? '0%' : '-100%';
+        
+        return ReactDOM.createPortal(
+          <div
+            style={{
+              position: 'fixed',
+              left: 0,
+              top: 0,
+              transform: `translate(${popoverPosition.x}px, ${popoverPosition.y}px) translate(-50%, ${translateY}) translateY(${arrowOffset}px)`,
+              backgroundColor: 'white',
+              borderRadius: '8px',
+              boxShadow: '0 4px 16px rgba(0,0,0,0.2)',
+              padding: '16px',
+              minWidth: '300px',
+              maxWidth: '400px',
+              zIndex: 9999,
+              pointerEvents: 'auto',
+            }}
+          >
+            {/* Arrow pointer - position based on showBelow */}
+            {popoverPosition.showBelow ? (
+              <div
+                style={{
+                  position: 'absolute',
+                  top: '-10px',
+                  left: '50%',
+                  transform: 'translateX(-50%)',
+                  width: 0,
+                  height: 0,
+                  borderLeft: '10px solid transparent',
+                  borderRight: '10px solid transparent',
+                  borderBottom: '10px solid white',
+                }}
+              />
+            ) : (
+              <div
+                style={{
+                  position: 'absolute',
+                  bottom: '-10px',
+                  left: '50%',
+                  transform: 'translateX(-50%)',
+                  width: 0,
+                  height: 0,
+                  borderLeft: '10px solid transparent',
+                  borderRight: '10px solid transparent',
+                  borderTop: '10px solid white',
+                }}
+              />
+            )}
+            
+            {/* Header with title and close button - Matched Height Alignment */}
+            <div style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'flex-start',
+              marginBottom: '8px',
+            }}>
+              <Title 
+                headingLevel="h4" 
+                size="md" 
+                style={{ 
+                  flex: 1,
+                  marginRight: '16px',
+                  whiteSpace: 'normal', 
+                  wordBreak: 'break-word',
+                  margin: 0,
+                  padding: 0,
+                  fontSize: '14px',
+                  lineHeight: '24px', // Match button height exactly
+                }}
+              >
+                {popoverNode.node.label}
+              </Title>
+              <Button 
+                variant="plain" 
+                onClick={() => {
+                  setPopoverNodeId(null);
+                  setPopoverPosition(null);
+                }}
+                style={{
+                  flexShrink: 0,
+                  height: '24px', // Match title line-height exactly
+                  width: '24px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  margin: 0,
+                  padding: 0,
+                  minWidth: 'auto',
+                  alignSelf: 'flex-start',
+                }}
+              >
+                <TimesIcon />
+              </Button>
+            </div>
+            
+            {/* Content */}
+            {renderPopoverContent(popoverNode.node)}
+          </div>,
+          document.body
+        );
+      })()}
     </div>
   );
 };

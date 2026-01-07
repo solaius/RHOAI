@@ -544,7 +544,7 @@ const Overview: React.FunctionComponent = () => {
   return (
     <>
       {/* Header Section */}
-  <PageSection>
+  <PageSection style={{ paddingBottom: 0 }}>
         <Flex justifyContent={{ default: 'justifyContentSpaceBetween' }} alignItems={{ default: 'alignItemsFlexStart' }}>
           <FlexItem>
             <Title headingLevel="h1" size="2xl" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
@@ -777,7 +777,7 @@ const Overview: React.FunctionComponent = () => {
         <Tabs
           activeKey={activeTabKey}
           onSelect={(_event, tabIndex) => setActiveTabKey(tabIndex)}
-          style={{ marginTop: '24px' }}
+          style={{ marginTop: '24px', marginBottom: 0 }}
         >
           <Tab eventKey={0} title={<TabTitleText>Metrics</TabTitleText>} />
           <Tab eventKey={1} title={<TabTitleText>Lineage</TabTitleText>} />
@@ -1010,11 +1010,18 @@ const Overview: React.FunctionComponent = () => {
         </PageSection>
       )}
       
-      {/* Lineage Tab Content */}
+      {/* Lineage Tab Content - Full Bleed Layout */}
       {activeTabKey === 1 && (
-        <PageSection style={{ backgroundColor: 'var(--pf-t--global--background--color--primary--default)', minHeight: 'calc(100vh - 350px)' }}>
+        <PageSection 
+          style={{ 
+            backgroundColor: 'var(--pf-t--global--background--color--primary--default)', 
+            minHeight: 'calc(100vh - 350px)',
+            padding: 0, // Remove default padding for full bleed
+            margin: 0, // Remove default margin
+          }}
+        >
           <FeatureStoreLineage selectedFeatureStore={selectedFeatureStore} />
-  </PageSection>
+        </PageSection>
       )}
     </>
 );
