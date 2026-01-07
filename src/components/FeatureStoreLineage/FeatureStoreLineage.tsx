@@ -22,6 +22,7 @@ import {
   Flex,
   FlexItem,
   Title,
+  Tooltip,
 } from '@patternfly/react-core';
 import { SearchIcon, TimesIcon, PlusIcon, MinusIcon, ExpandIcon, CompressIcon } from '@patternfly/react-icons';
 import {
@@ -79,6 +80,45 @@ const DEFAULT_NODE_BORDER = '#d2d2d2';
 const SELECTED_NODE_BORDER = '#0066cc';
 const HIGHLIGHTED_NODE_BORDER = '#0066cc';
 
+// Node layout constants - PatternFly strict standards
+const NODE_PADDING_HORIZONTAL = 8; // Edge padding (left and right)
+const NODE_PADDING_VERTICAL = 4; // Vertical padding (top and bottom)
+const ELEMENT_GAP = 8; // Gap between Icon, Text, and Badge
+const ICON_SIZE = 24; // Icon size (standard PF icon size)
+const BADGE_HEIGHT = 24; // Fixed badge height
+const MAX_NODE_WIDTH = 184; // Maximum node width before truncation
+const ZOOM_THRESHOLD = 0.7; // Zoom threshold for condensed view (scale < 0.7)
+const CONDENSED_NODE_SIZE = 32; // Fixed size for condensed (circular) nodes
+
+// Canvas for text measurement (created once and reused)
+let textMeasurementCanvas: HTMLCanvasElement | null = null;
+const getTextMeasurementCanvas = (): HTMLCanvasElement => {
+  if (!textMeasurementCanvas) {
+    textMeasurementCanvas = document.createElement('canvas');
+  }
+  return textMeasurementCanvas;
+};
+
+// Helper function to measure text width using canvas
+// CRITICAL: Must use PatternFly font family to match rendered UI
+const measureTextWidth = (text: string, fontSize: string, fontWeight: number): number => {
+  const canvas = getTextMeasurementCanvas();
+  const context = canvas.getContext('2d');
+  if (!context) return text.length * 7; // Fallback estimate
+  
+  // Use PatternFly font stack to match actual rendered text
+  // PatternFly uses "Red Hat Text" and "Red Hat Display" fonts
+  const fontFamily = '"Red Hat Text", "Red Hat Display", sans-serif';
+  context.font = `${fontWeight} ${fontSize} ${fontFamily}`;
+  return context.measureText(text).width;
+};
+
+// PatternFly typography classes
+// body-small-semibold: font-size: 12px, line-height: 18px, font-weight: 600
+// body-small-regular: font-size: 12px, line-height: 18px, font-weight: 400
+const BODY_SMALL_REGULAR_STYLE = { fontSize: '12px', lineHeight: '18px', fontWeight: 400 };
+const BODY_SMALL_SEMIBOLD_STYLE = { fontSize: '12px', lineHeight: '18px', fontWeight: 600 };
+
 // ============================================
 // Types for positioned nodes
 // ============================================
@@ -97,6 +137,123 @@ interface PositionedEdge {
   targetX: number;
   targetY: number;
 }
+
+// ============================================
+// Node Content Sub-Component (Unified Render Path)
+// ============================================
+interface NodeContentProps {
+  nodeType: string;
+  nodeWidth: number;
+  resourceType: string;
+  resourceName: string;
+  iconColor: string;
+  textColor: string;
+  hasBadge: boolean;
+  isSelected: boolean;
+  featureCount?: number;
+}
+
+// Unified node content component - used in both standard and hovered/selected views
+// This guarantees identical behavior for all node types including entities
+const NodeContent: React.FC<NodeContentProps> = ({
+  nodeType,
+  nodeWidth,
+  resourceType,
+  resourceName,
+  iconColor,
+  textColor,
+  hasBadge,
+  isSelected,
+  featureCount,
+}) => {
+  const getIcon = (type: string) => {
+    switch (type) {
+      case 'entity':
+        return <EntitiesIcon />;
+      case 'dataSource':
+        return <DataSourcesIcon />;
+      case 'featureView':
+        return <FeatureViewsIcon />;
+      case 'featureService':
+        return <FeatureServicesIcon />;
+      default:
+        return <EntitiesIcon />;
+    }
+  };
+
+  return (
+    <foreignObject 
+      width={nodeWidth} 
+      height={29} 
+      x={0} 
+      y={0}
+    >
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        height: '100%',
+        padding: '0 8px',
+        boxSizing: 'border-box',
+        width: '100%',
+        pointerEvents: 'auto', // Ensure pointer events work for tooltip
+      }}>
+        {/* Icon */}
+        <div style={{ 
+          flexShrink: 0, 
+          width: 24, 
+          height: 24,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          color: iconColor,
+          marginRight: '4px', // 4px gap between icon and text
+        }}> 
+          {getIcon(nodeType)} 
+        </div>
+
+        {/* Text Group - Unified render path for all node types */}
+        {/* Type span: Always 600 (Semi-Bold), Name span: Always 400 (Regular) for ALL node types */}
+        <div style={{
+          whiteSpace: 'nowrap',
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
+          flexGrow: 1,
+          fontSize: '12px',
+          lineHeight: '29px',
+          color: textColor,
+          // Ensure no font-weight is applied to parent - only to individual spans
+        }}>
+          {resourceType && (
+            <span style={{ fontWeight: 600 }}>{resourceType} </span>
+          )}
+          <span style={{ fontWeight: 400 }}>
+            {resourceName}
+          </span>
+        </div>
+
+        {/* Badge */}
+        {hasBadge && (
+          <div style={{
+            flexShrink: 0,
+            height: '16px',
+            padding: '0 8px',
+            backgroundColor: isSelected ? 'rgba(255, 255, 255, 0.2)' : '#d2d2d2',
+            color: isSelected ? 'white' : '#151515',
+            borderRadius: '8px',
+            fontSize: '10px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            lineHeight: '16px',
+            marginLeft: '8px', // 8px gap between text and badge
+          }}>
+            {featureCount} features
+          </div>
+        )}
+      </div>
+    </foreignObject>
+  );
+};
 
 // ============================================
 // Main Lineage Component
@@ -118,6 +275,13 @@ export const FeatureStoreLineage: React.FC<FeatureStoreLineageProps> = ({ select
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
   const containerRef = useRef<HTMLDivElement>(null);
   const [popoverNode, setPopoverNode] = useState<LineageNodeType | null>(null);
+  const [hoveredNodeId, setHoveredNodeId] = useState<string | null>(null);
+  const [tooltipPosition, setTooltipPosition] = useState({ x: 0, y: 0 });
+  const [hoveredCondensedNodeId, setHoveredCondensedNodeId] = useState<string | null>(null);
+  
+  // Derived state: determine if we're in condensed view based on zoom threshold
+  // Use explicit comparison to ensure all nodes switch when threshold is hit
+  const isCondensedView = zoom < ZOOM_THRESHOLD;
   
   // Generate lineage data
   const lineageData = useMemo(() => {
@@ -201,6 +365,82 @@ export const FeatureStoreLineage: React.FC<FeatureStoreLineageProps> = ({ select
     return { nodes: connectedNodes, edges: connectedEdgeIds };
   }, [selectedNodeId, lineageData.edges]);
   
+  // Helper function to measure badge width
+  const measureBadgeWidth = useCallback((featureCount: number): number => {
+    const badgeText = `${featureCount} features`;
+    // Badge text uses 10px font size
+    return measureTextWidth(badgeText, '10px', 400) + 16; // Add padding (8px each side)
+  }, []);
+  
+  // Helper function to calculate node width and truncation using strict PatternFly algorithm
+  const calculateNodeLayout = useCallback((node: LineageNodeType): {
+    nodeWidth: number;
+    displayText: string;
+    badgeWidth: number;
+    isTruncated: boolean;
+  } => {
+      const hasBadge = node.data.featureCount !== undefined;
+      
+      // Measure badge width if present
+      const badgePixelWidth = hasBadge ? measureBadgeWidth(node.data.featureCount!) : 0;
+      
+      // Measure full text width - MUST match rendering exactly
+      // Type label: Always fontWeight 600 (Semi-Bold)
+      // Name: Always fontWeight 400 (Regular) for ALL node types including entities
+      const labelParts = node.label.split(': ');
+      const resourceType = labelParts.length > 1 ? labelParts[0] + ':' : '';
+      const resourceName = labelParts.length > 1 ? labelParts.slice(1).join(': ') : node.label;
+      
+      // CRITICAL: Measure type and name separately with correct font weights
+      // The rendering shows: <span>{resourceType} </span><span>{resourceName}</span>
+      // resourceType already includes the colon (e.g., "Entity:"), so we add space to match rendering
+      // MUST include colon in measurement - it's part of resourceType
+      const typeText = resourceType ? resourceType + ' ' : ''; // Includes colon and space: "Entity: "
+      const typeWidth = typeText ? measureTextWidth(typeText, '12px', 600) : 0;
+      
+      // Name is ALWAYS 400 (Regular) for all node types
+      const nameWidth = measureTextWidth(resourceName, '12px', 400);
+      
+      // Total text width = type width + name width (no extra gap, they're adjacent)
+      const textPixelWidth = typeWidth + nameWidth;
+      
+      // Calculate content width: Padding(8) + Icon(24) + Gap(4) + text + Gap(8) + badge + Padding(8)
+      // Icon-text gap is 4px, text-badge gap is 8px
+      const iconTextGap = 4; // Gap between icon and text
+      const textBadgeGap = ELEMENT_GAP; // Gap between text and badge (8px)
+      const contentWidth = NODE_PADDING_HORIZONTAL + ICON_SIZE + iconTextGap + 
+                          textPixelWidth + (hasBadge ? textBadgeGap + badgePixelWidth : 0) + 
+                          NODE_PADDING_HORIZONTAL;
+      
+      // Case A: Short Text (contentWidth <= maxWidth - 5px buffer)
+      // Use 5px safety buffer to force tooltip if text is even close to the edge
+      // This prevents "dead zones" where text is cut off without a tooltip
+      const TRUNCATION_BUFFER = 5; // 5px buffer to ensure tooltip appears
+      if (contentWidth <= (MAX_NODE_WIDTH - TRUNCATION_BUFFER)) {
+        return {
+          nodeWidth: contentWidth,
+          displayText: node.label,
+          badgeWidth: badgePixelWidth,
+          isTruncated: false,
+        };
+      }
+      
+      // Case B: Long Text (contentWidth > 184px)
+      // CSS will handle truncation with ellipsis, so we just return max width
+      // The full label will be used in HTML rendering, and CSS text-overflow will truncate it
+      return {
+        nodeWidth: MAX_NODE_WIDTH,
+        displayText: node.label, // Full label - CSS handles truncation
+        badgeWidth: badgePixelWidth,
+        isTruncated: true,
+      };
+    }, [measureBadgeWidth]);
+  
+  // Legacy function for backward compatibility - now uses new layout calculation
+  const calculateNodeWidth = useCallback((node: LineageNodeType): number => {
+    return calculateNodeLayout(node).nodeWidth;
+  }, [calculateNodeLayout]);
+  
   // Calculate node positions using a simple left-to-right layout
   const { positionedNodes, positionedEdges, canvasWidth, canvasHeight } = useMemo(() => {
     const nodes: PositionedNode[] = [];
@@ -220,11 +460,12 @@ export const FeatureStoreLineage: React.FC<FeatureStoreLineageProps> = ({ select
       }
     });
     
-    // Layout parameters
-    const columnGap = 280;
-    const rowGap = 80;
-    const nodeWidth = 220;
-    const nodeHeight = 40;
+    // Layout parameters - adjust spacing for condensed view
+    // When zoomed out (condensed view), use tighter spacing to fit more nodes
+    const isCondensedLayout = zoom < ZOOM_THRESHOLD;
+    const columnGap = isCondensedLayout ? 120 : 280; // Reduced gap for condensed view
+    const rowGap = isCondensedLayout ? 50 : 80; // Reduced row gap for condensed view
+    const nodeHeight = 29; // Fixed height (PatternFly standard)
     const startX = 50;
     const startY = 50;
     
@@ -234,18 +475,45 @@ export const FeatureStoreLineage: React.FC<FeatureStoreLineageProps> = ({ select
     
     let maxHeight = 0;
     
+    // First pass: calculate all node widths
+    const nodeWidths: { [key: string]: number } = {};
+    columnOrder.forEach((colType) => {
+      const colNodes = columns[colType];
+      colNodes.forEach((node) => {
+        nodeWidths[node.id] = calculateNodeWidth(node);
+      });
+    });
+    
+    // Calculate max width per column for consistent column spacing
+    const maxWidthsPerColumn: { [key: number]: number } = {};
     columnOrder.forEach((colType, colIndex) => {
       const colNodes = columns[colType];
+      maxWidthsPerColumn[colIndex] = Math.max(
+        ...colNodes.map(node => nodeWidths[node.id]),
+        80 // Minimum column width
+      );
+    });
+    
+    // Second pass: position nodes with calculated widths
+    columnOrder.forEach((colType, colIndex) => {
+      const colNodes = columns[colType];
+      const currentColumnWidth = maxWidthsPerColumn[colIndex];
+      const previousColumnsWidth = columnOrder.slice(0, colIndex).reduce(
+        (sum, _, idx) => sum + maxWidthsPerColumn[idx] + columnGap,
+        0
+      );
+      
       colNodes.forEach((node, rowIndex) => {
-        const x = startX + colIndex * (nodeWidth + columnGap);
+        const x = startX + previousColumnsWidth;
         const y = startY + rowIndex * (nodeHeight + rowGap);
+        const width = nodeWidths[node.id];
         
         nodePositions[node.id] = { x, y };
         nodes.push({
           node,
           x,
           y,
-          width: nodeWidth,
+          width,
           height: nodeHeight,
         });
         
@@ -253,7 +521,11 @@ export const FeatureStoreLineage: React.FC<FeatureStoreLineageProps> = ({ select
       });
     });
     
-    const canvasWidth = startX + columnOrder.length * (nodeWidth + columnGap);
+    const totalColumnsWidth = columnOrder.reduce(
+      (sum, _, idx) => sum + maxWidthsPerColumn[idx] + (idx < columnOrder.length - 1 ? columnGap : 0),
+      0
+    );
+    const canvasWidth = startX + totalColumnsWidth;
     const canvasHeight = maxHeight + startY;
     
     // Create edges with positions
@@ -262,9 +534,11 @@ export const FeatureStoreLineage: React.FC<FeatureStoreLineageProps> = ({ select
       const targetPos = nodePositions[edge.target];
       
       if (sourcePos && targetPos) {
+        const sourceNode = nodes.find(n => n.node.id === edge.source);
+        const sourceWidth = sourceNode?.width || 80; // Minimum node width fallback
         edges.push({
           id: edge.id,
-          sourceX: sourcePos.x + nodeWidth,
+          sourceX: sourcePos.x + sourceWidth,
           sourceY: sourcePos.y + nodeHeight / 2,
           targetX: targetPos.x,
           targetY: targetPos.y + nodeHeight / 2,
@@ -273,13 +547,34 @@ export const FeatureStoreLineage: React.FC<FeatureStoreLineageProps> = ({ select
     });
     
     return { positionedNodes: nodes, positionedEdges: edges, canvasWidth, canvasHeight };
-  }, [lineageData]);
+  }, [lineageData, zoom, calculateNodeWidth]);
   
-  // Handle mouse events for panning
+  // Handle mouse events for panning - allow dragging from anywhere on canvas
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
-    if (e.target === e.currentTarget || (e.target as HTMLElement).tagName === 'svg') {
+    const target = e.target as HTMLElement;
+    
+    // Check if clicking on a node (prevent dragging when clicking nodes)
+    const isNodeElement = target.closest('g[data-node]') !== null;
+    if (isNodeElement) {
+      return; // Let node click handler take over
+    }
+    
+    // Allow dragging if clicking on canvas background, SVG, edges, or when holding spacebar/middle mouse
+    const isCanvasBackground = 
+      target === e.currentTarget || 
+      target.tagName === 'svg' || 
+      (target.tagName === 'rect' && target.getAttribute('data-canvas') === 'true') ||
+      (target.tagName === 'g' && target.getAttribute('data-edge') === 'true') ||
+      (target.tagName === 'path');
+    
+    // Also allow dragging when holding middle mouse button
+    const isMiddleButton = e.button === 1;
+    
+    if (isCanvasBackground || isMiddleButton) {
       setIsDragging(true);
       setDragStart({ x: e.clientX - pan.x, y: e.clientY - pan.y });
+      e.preventDefault();
+      e.stopPropagation();
     }
   }, [pan]);
   
@@ -299,6 +594,7 @@ export const FeatureStoreLineage: React.FC<FeatureStoreLineageProps> = ({ select
         x: e.clientX - dragStart.x,
         y: e.clientY - dragStart.y,
       });
+      e.preventDefault();
     }
   }, [isDragging, dragStart]);
   
@@ -463,6 +759,7 @@ export const FeatureStoreLineage: React.FC<FeatureStoreLineageProps> = ({ select
           backgroundColor: 'var(--pf-t--global--background--color--secondary--default)',
           borderRadius: '8px',
           cursor: isDragging ? 'grabbing' : 'grab',
+          userSelect: 'none',
         }}
         onMouseDown={handleMouseDown}
         onMouseMove={handleMouseMove}
@@ -512,6 +809,26 @@ export const FeatureStoreLineage: React.FC<FeatureStoreLineageProps> = ({ select
             >
               <path d="M 0 0 L 10 5 L 0 10 z" fill="#0066cc" />
             </marker>
+            {/* Clip paths for text truncation - one per node with badge */}
+            {positionedNodes
+              .filter(pn => pn.node.data.featureCount !== undefined)
+              .map(({ node, width, height }) => {
+                // ClipPath width: total width minus left padding, icon, gap, badge width, gap, and right padding
+                // Using new PatternFly constants: 8px padding, 24px icon, 8px gap
+                const layout = calculateNodeLayout(node);
+                const badgeWidth = layout.badgeWidth;
+                const clipWidth = width - NODE_PADDING_HORIZONTAL * 2 - ICON_SIZE - ELEMENT_GAP - badgeWidth - (badgeWidth > 0 ? ELEMENT_GAP : 0);
+                return (
+                  <clipPath key={`node-text-clip-${node.id}`} id={`node-text-clip-${node.id}`}>
+                    <rect
+                      x={0}
+                      y={0}
+                      width={clipWidth}
+                      height={height}
+                    />
+                  </clipPath>
+                );
+              })}
           </defs>
           
           <g transform={`translate(${pan.x}, ${pan.y}) scale(${zoom})`}>
@@ -519,27 +836,182 @@ export const FeatureStoreLineage: React.FC<FeatureStoreLineageProps> = ({ select
             {positionedEdges.map((edge) => {
               const isEdgeHighlighted = selectedNodeId ? highlightedPath.edges.has(edge.id) : false;
               
-              // Create a curved path
-              const midX = (edge.sourceX + edge.targetX) / 2;
-              const path = `M ${edge.sourceX} ${edge.sourceY} C ${midX} ${edge.sourceY}, ${midX} ${edge.targetY}, ${edge.targetX} ${edge.targetY}`;
+              // Get actual edge data to find source and target node IDs
+              const actualEdge = lineageData.edges.find(e => e.id === edge.id);
+              if (!actualEdge) return null;
+              
+              // Find source and target nodes
+              const sourceNode = positionedNodes.find(pn => pn.node.id === actualEdge.source);
+              const targetNode = positionedNodes.find(pn => pn.node.id === actualEdge.target);
+              
+              // Calculate connection points - adjust for condensed nodes
+              let sourceX = edge.sourceX;
+              let sourceY = edge.sourceY;
+              let targetX = edge.targetX;
+              let targetY = edge.targetY;
+              let isSourceCondensed = false;
+              let isTargetCondensed = false;
+              
+              if (isCondensedView && sourceNode) {
+                // Check if source node is condensed (not hovered and not selected)
+                isSourceCondensed = hoveredCondensedNodeId !== sourceNode.node.id && 
+                                   selectedNodeId !== sourceNode.node.id;
+                if (isSourceCondensed) {
+                  // Connect to center of condensed circular node
+                  const condensedX = sourceNode.x + sourceNode.width / 2;
+                  const condensedY = sourceNode.y + sourceNode.height / 2;
+                  sourceX = condensedX;
+                  sourceY = condensedY;
+                }
+              }
+              
+              if (isCondensedView && targetNode) {
+                // Check if target node is condensed (not hovered and not selected)
+                isTargetCondensed = hoveredCondensedNodeId !== targetNode.node.id && 
+                                   selectedNodeId !== targetNode.node.id;
+                if (isTargetCondensed) {
+                  // Connect to center of condensed circular node
+                  const condensedX = targetNode.x + targetNode.width / 2;
+                  const condensedY = targetNode.y + targetNode.height / 2;
+                  targetX = condensedX;
+                  targetY = condensedY;
+                }
+              }
+              
+              // Create a curved path with adjusted control points for condensed nodes
+              // When both nodes are condensed, use tighter control points to shorten the edge
+              const horizontalDistance = targetX - sourceX;
+              const controlPointOffset = (isSourceCondensed && isTargetCondensed) 
+                ? horizontalDistance * 0.15  // Shorter control points for condensed nodes (15% of distance)
+                : horizontalDistance * 0.5;   // Standard control points (50% of distance)
+              
+              const controlX1 = sourceX + controlPointOffset;
+              const controlX2 = targetX - controlPointOffset;
+              const path = `M ${sourceX} ${sourceY} C ${controlX1} ${sourceY}, ${controlX2} ${targetY}, ${targetX} ${targetY}`;
               
               return (
-                <path
-                  key={edge.id}
-                  d={path}
-                  stroke={isEdgeHighlighted ? '#0066cc' : '#d2d2d2'}
-                  strokeWidth={isEdgeHighlighted ? 2 : 1}
-                  fill="none"
-                  markerEnd={isEdgeHighlighted ? 'url(#arrow-highlighted)' : 'url(#arrow-default)'}
-                />
+                <g key={edge.id} data-edge="true">
+                  <path
+                    d={path}
+                    stroke={isEdgeHighlighted ? '#0066cc' : '#d2d2d2'}
+                    strokeWidth={isEdgeHighlighted ? 2 : 1}
+                    fill="none"
+                    markerEnd={isEdgeHighlighted ? 'url(#arrow-highlighted)' : 'url(#arrow-default)'}
+                    style={{ pointerEvents: 'none' }}
+                  />
+                </g>
               );
             })}
             
-            {/* Render Nodes */}
-            {positionedNodes.map(({ node, x, y, width, height }) => {
+            {/* Render Nodes - Split into regular nodes and hovered/selected condensed nodes for z-index */}
+            {/* First, render regular nodes (condensed or standard, but not hovered/selected in condensed view) */}
+            {positionedNodes
+              .filter(({ node }) => {
+                // In condensed view, exclude nodes that are hovered OR selected (they should show in regular view)
+                if (isCondensedView) {
+                  return hoveredCondensedNodeId !== node.id && selectedNodeId !== node.id;
+                }
+                return true;
+              })
+              .map(({ node, x, y, width, height }) => {
               const colors = NODE_COLORS[node.type as keyof typeof NODE_COLORS] || NODE_COLORS.entity;
               const isSelected = node.id === selectedNodeId;
               const isConnected = selectedNodeId ? highlightedPath.nodes.has(node.id) : false;
+              
+              // Determine if we should render condensed view
+              // In condensed view, ALL nodes that pass the filter (not hovered, not selected) should be condensed
+              // Since we already filtered out hovered/selected nodes, we can simply check isCondensedView
+              const shouldRenderCondensed = isCondensedView;
+              
+              // Render condensed view (circular, icon-only) - this applies to ALL nodes when zoom < threshold
+              if (shouldRenderCondensed) {
+                const condensedSize = CONDENSED_NODE_SIZE;
+                const condensedX = x + width / 2 - condensedSize / 2;
+                const condensedY = y + height / 2 - condensedSize / 2;
+                
+                // Determine styling for condensed nodes
+                let fillColor = 'white';
+                let borderColor = colors.iconColor;
+                let borderWidth = 1;
+                let iconColor = colors.iconColor;
+                
+                if (isSelected) {
+                  fillColor = '#0066cc';
+                  borderColor = '#0066cc';
+                  borderWidth = 2;
+                  iconColor = 'white';
+                } else if (isConnected) {
+                  borderColor = '#0066cc';
+                  borderWidth = 2;
+                }
+                
+                return (
+                  <g
+                    key={node.id}
+                    data-node={node.id}
+                    transform={`translate(${condensedX}, ${condensedY})`}
+                    style={{ cursor: 'pointer' }}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (!isDragging) {
+                        setSelectedNodeId(node.id === selectedNodeId ? null : node.id);
+                        if (node.type === 'featureView') {
+                          setPopoverNode(node.id === selectedNodeId ? null : node);
+                        } else {
+                          setPopoverNode(null);
+                        }
+                      }
+                    }}
+                    onMouseDown={(e) => {
+                      e.stopPropagation();
+                    }}
+                    onMouseEnter={() => {
+                      // When hovering in condensed view, expand this node
+                      setHoveredCondensedNodeId(node.id);
+                    }}
+                    onMouseLeave={() => {
+                      // Only clear hovered node if it's not selected (selected nodes stay expanded)
+                      if (!isSelected) {
+                        setHoveredCondensedNodeId(null);
+                      }
+                    }}
+                  >
+                    {/* Circular background with color theme border */}
+                    <circle
+                      cx={condensedSize / 2}
+                      cy={condensedSize / 2}
+                      r={condensedSize / 2}
+                      fill={fillColor}
+                      stroke={borderColor}
+                      strokeWidth={borderWidth}
+                    />
+                    {/* Icon centered */}
+                    <foreignObject 
+                      x={condensedSize / 2 - 8} 
+                      y={condensedSize / 2 - 8} 
+                      width={16} 
+                      height={16}
+                    >
+                      <div style={{ 
+                        display: 'flex', 
+                        alignItems: 'center', 
+                        justifyContent: 'center', 
+                        color: iconColor, 
+                        width: '100%', 
+                        height: '100%' 
+                      }}>
+                        {getIcon(node.type)}
+                      </div>
+                    </foreignObject>
+                  </g>
+                );
+              }
+              
+              // Render standard view (pill shape with icon, text, badge)
+              // Use strict PatternFly layout calculation
+              const layout = calculateNodeLayout(node);
+              const finalNodeWidth = layout.nodeWidth;
+              const hasBadge = node.data.featureCount !== undefined;
               
               // Determine styling based on state:
               // - Selected: Blue filled background, white text/icons (PatternFly selected state)
@@ -550,8 +1022,6 @@ export const FeatureStoreLineage: React.FC<FeatureStoreLineageProps> = ({ select
               let borderWidth = 1;
               let textColor = '#151515';
               let iconColor = colors.iconColor;
-              let badgeFill = '#f0f0f0';
-              let badgeTextColor = '#6a6e73';
               let showOuterGlow = false;
               
               if (isSelected) {
@@ -561,8 +1031,6 @@ export const FeatureStoreLineage: React.FC<FeatureStoreLineageProps> = ({ select
                 borderWidth = 2;
                 textColor = 'white';
                 iconColor = 'white';
-                badgeFill = 'rgba(255, 255, 255, 0.2)';
-                badgeTextColor = 'white';
               } else if (isConnected) {
                 // Connected state: Blue border outline (hover-like state)
                 borderColor = '#0066cc';
@@ -570,24 +1038,136 @@ export const FeatureStoreLineage: React.FC<FeatureStoreLineageProps> = ({ select
                 showOuterGlow = true;
               }
               
-              // Truncate label if too long
-              const maxLabelLength = 25;
-              const displayLabel = node.label.length > maxLabelLength 
-                ? node.label.slice(0, maxLabelLength) + '...' 
-                : node.label;
+              // Parse label to separate resource type and name (for HTML rendering)
+              const labelParts = node.label.split(': ');
+              const resourceType = labelParts.length > 1 ? labelParts[0] + ':' : '';
+              const resourceName = labelParts.length > 1 ? labelParts.slice(1).join(': ') : node.label;
               
+              // Render condensed view (circular, icon-only)
+              if (shouldRenderCondensed) {
+                const condensedSize = CONDENSED_NODE_SIZE;
+                const condensedX = x + width / 2 - condensedSize / 2;
+                const condensedY = y + height / 2 - condensedSize / 2;
+                
+                return (
+                  <g
+                    key={node.id}
+                    data-node={node.id}
+                    transform={`translate(${condensedX}, ${condensedY})`}
+                    style={{ cursor: 'pointer' }}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      if (!isDragging) {
+                        setSelectedNodeId(node.id === selectedNodeId ? null : node.id);
+                        if (node.type === 'featureView') {
+                          setPopoverNode(node.id === selectedNodeId ? null : node);
+                        } else {
+                          setPopoverNode(null);
+                        }
+                      }
+                    }}
+                    onMouseDown={(e) => {
+                      e.stopPropagation();
+                    }}
+                    onMouseEnter={() => {
+                      // When hovering in condensed view, expand this node
+                      setHoveredCondensedNodeId(node.id);
+                    }}
+                    onMouseLeave={() => {
+                      setHoveredCondensedNodeId(null);
+                    }}
+                  >
+                    {/* Circular background with color theme border */}
+                    <circle
+                      cx={condensedSize / 2}
+                      cy={condensedSize / 2}
+                      r={condensedSize / 2}
+                      fill={isSelected ? '#0066cc' : 'white'}
+                      stroke={isSelected ? '#0066cc' : (isConnected ? '#0066cc' : colors.iconColor)}
+                      strokeWidth={isSelected || isConnected ? 2 : 1}
+                    />
+                    {/* Icon centered */}
+                    <foreignObject 
+                      x={condensedSize / 2 - 8} 
+                      y={condensedSize / 2 - 8} 
+                      width={16} 
+                      height={16}
+                    >
+                      <div style={{ 
+                        display: 'flex', 
+                        alignItems: 'center', 
+                        justifyContent: 'center', 
+                        color: isSelected ? 'white' : colors.iconColor, 
+                        width: '100%', 
+                        height: '100%' 
+                      }}>
+                        {getIcon(node.type)}
+                      </div>
+                    </foreignObject>
+                  </g>
+                );
+              }
+              
+              // Render standard view (pill shape with icon, text, badge)
               const nodeContent = (
                 <g
                   key={node.id}
+                  data-node={node.id}
                   transform={`translate(${x}, ${y})`}
                   style={{ cursor: 'pointer' }}
                   onClick={(e) => {
                     e.stopPropagation(); // Prevent canvas click handler
-                    setSelectedNodeId(node.id === selectedNodeId ? null : node.id);
-                    if (node.type === 'featureView') {
-                      setPopoverNode(node.id === selectedNodeId ? null : node);
-                    } else {
-                      setPopoverNode(null);
+                    if (!isDragging) { // Only select if we're not dragging
+                      setSelectedNodeId(node.id === selectedNodeId ? null : node.id);
+                      if (node.type === 'featureView') {
+                        setPopoverNode(node.id === selectedNodeId ? null : node);
+                      } else {
+                        setPopoverNode(null);
+                      }
+                    }
+                  }}
+                  onMouseDown={(e) => {
+                    e.stopPropagation(); // Prevent canvas drag when clicking node
+                  }}
+                  onMouseEnter={(e) => {
+                    // Always check if node is truncated and show tooltip for all node types (including entities)
+                    // Recalculate layout to ensure accuracy - this is critical for entity nodes
+                    const nodeLayout = calculateNodeLayout(node);
+                    
+                    // Force tooltip to show if node is truncated (with safety buffer in calculation)
+                    if (nodeLayout.isTruncated) {
+                      setHoveredNodeId(node.id);
+                      // Calculate tooltip position relative to container - top-aligned above node
+                      if (containerRef.current) {
+                        const containerRect = containerRef.current.getBoundingClientRect();
+                        const svgElement = e.currentTarget.ownerSVGElement as SVGSVGElement;
+                        if (svgElement) {
+                          const svgRect = svgElement.getBoundingClientRect();
+                          // Calculate node top center in SVG coordinates, then transform to screen coordinates
+                          const nodeCenterX = (x + finalNodeWidth / 2) * zoom + pan.x;
+                          const nodeTopY = y * zoom + pan.y; // Use top Y position for top alignment
+                          // Convert to container-relative coordinates
+                          setTooltipPosition({
+                            x: nodeCenterX + (svgRect.left - containerRect.left),
+                            y: nodeTopY + (svgRect.top - containerRect.top), // Top of node
+                          });
+                        } else {
+                          // Fallback: use node position directly if SVG element not found
+                          const nodeCenterX = (x + finalNodeWidth / 2) * zoom + pan.x;
+                          const nodeTopY = y * zoom + pan.y;
+                          setTooltipPosition({
+                            x: nodeCenterX,
+                            y: nodeTopY,
+                          });
+                        }
+                      }
+                    }
+                  }}
+                  onMouseLeave={() => {
+                    setHoveredNodeId(null);
+                    // If in condensed view, clear hovered condensed node when leaving
+                    if (isCondensedView) {
+                      setHoveredCondensedNodeId(null);
                     }
                   }}
                 >
@@ -596,71 +1176,195 @@ export const FeatureStoreLineage: React.FC<FeatureStoreLineageProps> = ({ select
                     <rect
                       x={-3}
                       y={-3}
-                      width={width + 6}
-                      height={height + 6}
-                      rx={(height + 6) / 2}
-                      ry={(height + 6) / 2}
+                      width={finalNodeWidth + 6}
+                      height={29 + 6}
+                      rx={(29 + 6) / 2}
+                      ry={(29 + 6) / 2}
                       fill="none"
                       stroke="rgba(0, 102, 204, 0.3)"
                       strokeWidth={4}
                     />
                   )}
-                  {/* Pill background */}
+                  {/* Main Container Outline - 29px height */}
                   <rect
                     x={0}
                     y={0}
-                    width={width}
-                    height={height}
-                    rx={height / 2}
-                    ry={height / 2}
+                    width={finalNodeWidth}
+                    height={29}
+                    rx={29 / 2}
+                    ry={29 / 2}
                     fill={fillColor}
                     stroke={borderColor}
                     strokeWidth={borderWidth}
                   />
                   
-                  {/* Icon - uses iconColor based on state */}
-                  <foreignObject x={8} y={height / 2 - 10} width={20} height={20}>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', color: iconColor }}>
-                      {getIcon(node.type)}
-                    </div>
-                  </foreignObject>
-                  
-                  {/* Label */}
-                  <text
-                    x={32}
-                    y={height / 2}
-                    dominantBaseline="middle"
-                    style={{ fontSize: '12px', fill: textColor }}
-                  >
-                    {displayLabel}
-                  </text>
-                  
-                  {/* Feature count badge for Feature View nodes */}
-                  {node.data.featureCount !== undefined && (
-                    <g transform={`translate(${width - 65}, ${height / 2 - 10})`}>
-                      <rect
-                        x={0}
-                        y={0}
-                        width={55}
-                        height={20}
-                        rx={10}
-                        ry={10}
-                        fill={badgeFill}
-                      />
-                      <text
-                        x={27}
-                        y={14}
-                        textAnchor="middle"
-                        style={{ fontSize: '10px', fill: badgeTextColor }}
-                      >
-                        {node.data.featureCount} features
-                      </text>
-                    </g>
-                  )}
+                  {/* Content Container - Using unified NodeContent component */}
+                  <NodeContent
+                    nodeType={node.type}
+                    nodeWidth={finalNodeWidth}
+                    resourceType={resourceType}
+                    resourceName={resourceName}
+                    iconColor={iconColor}
+                    textColor={textColor}
+                    hasBadge={hasBadge}
+                    isSelected={isSelected}
+                    featureCount={node.data.featureCount}
+                  />
                 </g>
               );
               
               return nodeContent;
+            })}
+            
+            {/* Render hovered/selected condensed nodes on top (for z-index) */}
+            {/* These nodes should always show in regular view when hovered or selected */}
+            {isCondensedView && positionedNodes
+              .filter(({ node }) => hoveredCondensedNodeId === node.id || selectedNodeId === node.id)
+              .map(({ node, x, y, width, height }) => {
+              const colors = NODE_COLORS[node.type as keyof typeof NODE_COLORS] || NODE_COLORS.entity;
+              const isSelected = node.id === selectedNodeId;
+              const isConnected = selectedNodeId ? highlightedPath.nodes.has(node.id) : false;
+              
+              // Determine styling based on state
+              let fillColor = 'white';
+              let borderColor = DEFAULT_NODE_BORDER;
+              let borderWidth = 1;
+              let textColor = '#151515';
+              let iconColor = colors.iconColor;
+              let badgeFill = '#f0f0f0';
+              let badgeTextColor = '#6a6e73';
+              let showOuterGlow = false;
+              
+              if (isSelected) {
+                fillColor = '#0066cc';
+                borderColor = '#0066cc';
+                borderWidth = 2;
+                textColor = 'white';
+                iconColor = 'white';
+                badgeFill = 'rgba(255, 255, 255, 0.2)';
+                badgeTextColor = 'white';
+              } else if (isConnected) {
+                borderColor = '#0066cc';
+                borderWidth = 2;
+                showOuterGlow = true;
+              }
+              
+              // Use strict PatternFly layout calculation
+              const layout = calculateNodeLayout(node);
+              const finalNodeWidth = layout.nodeWidth;
+              const displayText = layout.displayText;
+              const badgePixelWidth = layout.badgeWidth;
+              const hasBadge = node.data.featureCount !== undefined;
+              
+              // Parse label to separate resource type and name (for HTML rendering)
+              const labelParts = node.label.split(': ');
+              const resourceType = labelParts.length > 1 ? labelParts[0] + ':' : '';
+              const resourceName = labelParts.length > 1 ? labelParts.slice(1).join(': ') : node.label;
+              
+              return (
+                <g
+                  key={`hovered-${node.id}`}
+                  data-node={node.id}
+                  transform={`translate(${x}, ${y})`}
+                  style={{ cursor: 'pointer', pointerEvents: 'all' }}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (!isDragging) {
+                      setSelectedNodeId(node.id === selectedNodeId ? null : node.id);
+                      if (node.type === 'featureView') {
+                        setPopoverNode(node.id === selectedNodeId ? null : node);
+                      } else {
+                        setPopoverNode(null);
+                      }
+                    }
+                  }}
+                  onMouseDown={(e) => {
+                    e.stopPropagation();
+                  }}
+                  onMouseLeave={() => {
+                    // Only clear hovered node if it's not selected (selected nodes stay expanded)
+                    if (selectedNodeId !== node.id) {
+                      setHoveredCondensedNodeId(null);
+                    }
+                    // Always clear tooltip on mouse leave
+                    setHoveredNodeId(null);
+                  }}
+                  onMouseEnter={(e) => {
+                    // Always check if node is truncated and show tooltip for all node types (including entities)
+                    // Recalculate layout to ensure accuracy - this is critical for entity nodes
+                    const nodeLayout = calculateNodeLayout(node);
+                    
+                    // Force tooltip to show if node is truncated (with safety buffer in calculation)
+                    if (nodeLayout.isTruncated) {
+                      setHoveredNodeId(node.id);
+                      // Calculate tooltip position relative to container - top-aligned above node
+                      if (containerRef.current) {
+                        const containerRect = containerRef.current.getBoundingClientRect();
+                        const svgElement = e.currentTarget.ownerSVGElement as SVGSVGElement;
+                        if (svgElement) {
+                          const svgRect = svgElement.getBoundingClientRect();
+                          // Calculate node top center in SVG coordinates, then transform to screen coordinates
+                          const nodeCenterX = (x + finalNodeWidth / 2) * zoom + pan.x;
+                          const nodeTopY = y * zoom + pan.y; // Use top Y position for top alignment
+                          // Convert to container-relative coordinates
+                          setTooltipPosition({
+                            x: nodeCenterX + (svgRect.left - containerRect.left),
+                            y: nodeTopY + (svgRect.top - containerRect.top), // Top of node
+                          });
+                        } else {
+                          // Fallback: use node position directly if SVG element not found
+                          const nodeCenterX = (x + finalNodeWidth / 2) * zoom + pan.x;
+                          const nodeTopY = y * zoom + pan.y;
+                          setTooltipPosition({
+                            x: nodeCenterX,
+                            y: nodeTopY,
+                          });
+                        }
+                      }
+                    }
+                  }}
+                >
+                  {/* Outer glow for connected nodes */}
+                  {showOuterGlow && (
+                    <rect
+                      x={-3}
+                      y={-3}
+                      width={finalNodeWidth + 6}
+                      height={29 + 6}
+                      rx={(29 + 6) / 2}
+                      ry={(29 + 6) / 2}
+                      fill="none"
+                      stroke="rgba(0, 102, 204, 0.3)"
+                      strokeWidth={4}
+                    />
+                  )}
+                  {/* Main Container Outline - 29px height */}
+                  <rect
+                    x={0}
+                    y={0}
+                    width={finalNodeWidth}
+                    height={29}
+                    rx={29 / 2}
+                    ry={29 / 2}
+                    fill={fillColor}
+                    stroke={borderColor}
+                    strokeWidth={borderWidth}
+                  />
+                  
+                  {/* Content Container - Using unified NodeContent component */}
+                  <NodeContent
+                    nodeType={node.type}
+                    nodeWidth={finalNodeWidth}
+                    resourceType={resourceType}
+                    resourceName={resourceName}
+                    iconColor={iconColor}
+                    textColor={textColor}
+                    hasBadge={hasBadge}
+                    isSelected={isSelected}
+                    featureCount={node.data.featureCount}
+                  />
+                </g>
+              );
             })}
           </g>
         </svg>
@@ -691,6 +1395,64 @@ export const FeatureStoreLineage: React.FC<FeatureStoreLineageProps> = ({ select
             <ExpandIcon />
           </Button>
         </div>
+        
+        {/* Tooltip for truncated node labels - top-aligned above node */}
+        {hoveredNodeId && (() => {
+          const hoveredNode = positionedNodes.find(pn => pn.node.id === hoveredNodeId);
+          if (!hoveredNode) return null;
+          
+          // Always recalculate layout to ensure accuracy for all node types (including entities)
+          const layout = calculateNodeLayout(hoveredNode.node);
+          if (!layout.isTruncated) return null;
+          
+          // Get full label for tooltip
+          const fullLabel = hoveredNode.node.label;
+          
+          // Calculate tooltip position: centered horizontally above the node
+          // Use fallback calculation if tooltipPosition wasn't set correctly
+          const tooltipGap = 8; // Gap between node top and tooltip bottom
+          
+          let tooltipX = tooltipPosition.x;
+          let tooltipY = tooltipPosition.y;
+          
+          // Fallback: calculate position from node position if tooltipPosition is invalid
+          if (!tooltipPosition || (tooltipPosition.x === 0 && tooltipPosition.y === 0)) {
+            if (containerRef.current) {
+              const containerRect = containerRef.current.getBoundingClientRect();
+              const svgElement = containerRef.current.querySelector('svg');
+              if (svgElement) {
+                const svgRect = svgElement.getBoundingClientRect();
+                const nodeCenterX = (hoveredNode.x + hoveredNode.width / 2) * zoom + pan.x;
+                const nodeTopY = hoveredNode.y * zoom + pan.y;
+                tooltipX = nodeCenterX + (svgRect.left - containerRect.left);
+                tooltipY = nodeTopY + (svgRect.top - containerRect.top);
+              }
+            }
+          }
+          
+          return (
+            <div
+              style={{
+                position: 'absolute',
+                left: `${tooltipX}px`,
+                top: `${tooltipY - tooltipGap}px`,
+                transform: 'translate(-50%, -100%)', // Center horizontally and position above
+                backgroundColor: '#151515',
+                color: 'white',
+                padding: '8px 12px',
+                borderRadius: '4px',
+                fontSize: '12px',
+                pointerEvents: 'none',
+                zIndex: 10000, // Increased z-index to ensure it's above everything
+                maxWidth: '300px',
+                boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              {fullLabel}
+            </div>
+          );
+        })()}
         
         {/* Feature View Popover */}
         {popoverNode && popoverNode.type === 'featureView' && (
