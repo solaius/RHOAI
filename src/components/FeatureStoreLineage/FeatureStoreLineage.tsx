@@ -1189,14 +1189,6 @@ export const FeatureStoreLineage: React.FC<FeatureStoreLineageProps> = ({ select
                 }
               }}
               selected={selectedResourceId}
-              onTypeaheadInputChange={(value) => {
-                setResourceSearchValue(value);
-                setIsResourceSelectOpen(true);
-              }}
-              onClear={() => {
-                setSelectedResourceId(null);
-                setResourceSearchValue('');
-              }}
               toggle={(toggleRef: React.Ref<MenuToggleElement>) => (
                 <MenuToggle
                   ref={toggleRef}
@@ -1269,7 +1261,7 @@ export const FeatureStoreLineage: React.FC<FeatureStoreLineageProps> = ({ select
             </Select>
           </ToolbarItem>
           
-          <ToolbarItem align={{ default: 'alignSelfCenter' }}>
+          <ToolbarItem align={{ default: 'alignCenter' }}>
             <Switch
               id="hide-unconnected-switch-lineage"
               label="Hide objects without relationships"
