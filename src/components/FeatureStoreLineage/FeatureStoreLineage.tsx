@@ -15,7 +15,9 @@ import {
   SelectList,
   MenuToggle,
   MenuToggleElement,
-  SearchInput,
+  TextInputGroup,
+  TextInputGroupMain,
+  TextInputGroupUtilities,
   Switch,
   Popover,
   Button,
@@ -30,7 +32,11 @@ import { SearchIcon, TimesIcon, PlusIcon, MinusIcon, ExpandIcon, CompressIcon } 
 import {
   generateLineageData,
   LineageNode as LineageNodeType,
+  mockDataSources,
+  mockFeatureViews,
+  mockFeatureServices,
 } from '../../mockData/featureStore';
+import { mockEntities } from '../../mockData/entities';
 
 // ============================================
 // Custom SVG Icons (matching Overview page)
@@ -270,9 +276,11 @@ export const FeatureStoreLineage: React.FC<FeatureStoreLineageProps> = ({ select
   
   // State
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
-  const [entityFilter, setEntityFilter] = useState<string>('all');
-  const [isEntityFilterOpen, setIsEntityFilterOpen] = useState(false);
-  const [searchValue, setSearchValue] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState<string>('Entity');
+  const [isCategorySelectOpen, setIsCategorySelectOpen] = useState(false);
+  const [selectedResourceId, setSelectedResourceId] = useState<string | null>(null);
+  const [isResourceSelectOpen, setIsResourceSelectOpen] = useState(false);
+  const [resourceSearchValue, setResourceSearchValue] = useState('');
   const [hideUnconnected, setHideUnconnected] = useState(false);
   const [zoom, setZoom] = useState(1);
   const [pan, setPan] = useState({ x: 0, y: 0 });
@@ -300,11 +308,133 @@ export const FeatureStoreLineage: React.FC<FeatureStoreLineageProps> = ({ select
     return generateLineageData(selectedFeatureStore);
   }, [selectedFeatureStore]);
   
-  // Get entity options for filter
-  const entityOptions = useMemo(() => {
-    const entities = lineageData.nodes.filter(n => n.type === 'entity');
-    return ['all', ...entities.map(e => e.label.replace('Entity: ', ''))];
-  }, [lineageData]);
+  // Calculate filtered nodes and edges based on selected resource
+  const filteredLineageData = useMemo(() => {
+    if (!selectedResourceId) {
+      return lineageData;
+    }
+    
+    // Find the selected node ID in the lineage graph
+    let selectedNodeIdInGraph: string | null = null;
+    
+    // Map resource ID to graph node ID based on category
+    switch (selectedCategory) {
+      case 'Entity':
+        selectedNodeIdInGraph = `entity-${selectedResourceId}`;
+        break;
+      case 'Data source':
+        selectedNodeIdInGraph = `datasource-${selectedResourceId}`;
+        break;
+      case 'Feature view':
+        selectedNodeIdInGraph = `featureview-${selectedResourceId}`;
+        break;
+      case 'Feature service':
+        selectedNodeIdInGraph = `featureservice-${selectedResourceId}`;
+        break;
+    }
+    
+    if (!selectedNodeIdInGraph) {
+      return lineageData;
+    }
+    
+    // Build adjacency maps for BFS
+    const forwardMap = new Map<string, string[]>();
+    const backwardMap = new Map<string, string[]>();
+    
+    lineageData.edges.forEach(edge => {
+      if (!forwardMap.has(edge.source)) {
+        forwardMap.set(edge.source, []);
+      }
+      forwardMap.get(edge.source)!.push(edge.target);
+      
+      if (!backwardMap.has(edge.target)) {
+        backwardMap.set(edge.target, []);
+      }
+      backwardMap.get(edge.target)!.push(edge.source);
+    });
+    
+    // BFS to find all connected nodes (ancestors and descendants)
+    const connectedNodeIds = new Set<string>([selectedNodeIdInGraph]);
+    const queue = [selectedNodeIdInGraph];
+    const visited = new Set<string>([selectedNodeIdInGraph]);
+    
+    // Find downstream (descendants)
+    while (queue.length > 0) {
+      const current = queue.shift()!;
+      const targets = forwardMap.get(current) || [];
+      targets.forEach(target => {
+        if (!visited.has(target)) {
+          visited.add(target);
+          connectedNodeIds.add(target);
+          queue.push(target);
+        }
+      });
+    }
+    
+    // Reset queue for upstream (ancestors)
+    queue.push(selectedNodeIdInGraph);
+    visited.clear();
+    visited.add(selectedNodeIdInGraph);
+    
+    // Find upstream (ancestors)
+    while (queue.length > 0) {
+      const current = queue.shift()!;
+      const sources = backwardMap.get(current) || [];
+      sources.forEach(source => {
+        if (!visited.has(source)) {
+          visited.add(source);
+          connectedNodeIds.add(source);
+          queue.push(source);
+        }
+      });
+    }
+    
+    // Filter nodes and edges
+    const filteredNodes = lineageData.nodes.filter(node => connectedNodeIds.has(node.id));
+    const filteredEdges = lineageData.edges.filter(edge => 
+      connectedNodeIds.has(edge.source) && connectedNodeIds.has(edge.target)
+    );
+    
+    return {
+      nodes: filteredNodes,
+      edges: filteredEdges,
+    };
+  }, [lineageData, selectedResourceId, selectedCategory]);
+  
+  // Get resource options based on selected category
+  const resourceOptions = useMemo(() => {
+    // Filter resources by selected feature store
+    const filteredResources: Array<{ id: string; name: string; description: string }> = [];
+    
+    switch (selectedCategory) {
+      case 'Entity':
+        filteredResources.push(...mockEntities.filter(e => e.featureStore === selectedFeatureStore));
+        break;
+      case 'Data source':
+        filteredResources.push(...mockDataSources.filter(ds => ds.featureStore === selectedFeatureStore));
+        break;
+      case 'Feature view':
+        filteredResources.push(...mockFeatureViews.filter(fv => fv.featureStore === selectedFeatureStore));
+        break;
+      case 'Feature service':
+        filteredResources.push(...mockFeatureServices.filter(fs => fs.featureStore === selectedFeatureStore));
+        break;
+    }
+    
+    return filteredResources;
+  }, [selectedCategory, selectedFeatureStore]);
+  
+  // Filter resource options based on search value
+  const filteredResourceOptions = useMemo(() => {
+    if (!resourceSearchValue) return resourceOptions;
+    
+    const searchLower = resourceSearchValue.toLowerCase();
+    return resourceOptions.filter(resource => {
+      const name = resource.name?.toLowerCase() || '';
+      const description = resource.description?.toLowerCase() || '';
+      return name.includes(searchLower) || description.includes(searchLower);
+    });
+  }, [resourceOptions, resourceSearchValue]);
   
   // Calculate connected paths - this is the highlighted path when a node is selected
   // Inline implementation for proper path finding
@@ -313,7 +443,7 @@ export const FeatureStoreLineage: React.FC<FeatureStoreLineageProps> = ({ select
       return { nodes: new Set<string>(), edges: new Set<string>() };
     }
     
-    const edges = lineageData.edges;
+    const edges = filteredLineageData.edges;
     const connectedNodes = new Set<string>();
     const connectedEdgeIds = new Set<string>();
     
@@ -372,7 +502,7 @@ export const FeatureStoreLineage: React.FC<FeatureStoreLineageProps> = ({ select
     }
     
     return { nodes: connectedNodes, edges: connectedEdgeIds };
-  }, [selectedNodeId, lineageData.edges]);
+  }, [selectedNodeId, filteredLineageData.edges]);
   
   // Helper function to measure badge width
   const measureBadgeWidth = useCallback((featureCount: number): number => {
@@ -462,17 +592,19 @@ export const FeatureStoreLineage: React.FC<FeatureStoreLineageProps> = ({ select
     const nodes: PositionedNode[] = [];
     const edges: PositionedEdge[] = [];
     
-    // Filter nodes: if hideUnconnected is true, only show nodes that have connections
-    let filteredNodes = lineageData.nodes;
+    // Use filtered lineage data
+    let filteredNodes = filteredLineageData.nodes;
+    
+    // Additional filter: if hideUnconnected is true, only show nodes that have connections
     if (hideUnconnected) {
       // Build a set of node IDs that have connections (appear as source or target in edges)
       const connectedNodeIds = new Set<string>();
-      lineageData.edges.forEach(edge => {
+      filteredLineageData.edges.forEach(edge => {
         connectedNodeIds.add(edge.source);
         connectedNodeIds.add(edge.target);
       });
       // Filter to only include nodes that have connections
-      filteredNodes = lineageData.nodes.filter(node => connectedNodeIds.has(node.id));
+      filteredNodes = filteredLineageData.nodes.filter(node => connectedNodeIds.has(node.id));
     }
     
     // Group nodes by type for column layout
@@ -563,7 +695,7 @@ export const FeatureStoreLineage: React.FC<FeatureStoreLineageProps> = ({ select
     
     // Create edges with positions - only include edges between visible nodes
     const visibleNodeIds = new Set(filteredNodes.map(n => n.id));
-    lineageData.edges.forEach(edge => {
+    filteredLineageData.edges.forEach(edge => {
       // Only create edge if both source and target nodes are visible
       if (!visibleNodeIds.has(edge.source) || !visibleNodeIds.has(edge.target)) {
         return;
@@ -586,7 +718,7 @@ export const FeatureStoreLineage: React.FC<FeatureStoreLineageProps> = ({ select
     });
     
     return { positionedNodes: nodes, positionedEdges: edges, canvasWidth, canvasHeight };
-  }, [lineageData, zoom, calculateNodeWidth, hideUnconnected]);
+  }, [filteredLineageData, zoom, calculateNodeWidth, hideUnconnected]);
   
   // Calculate popover position using raw transform math - runs on every pan/zoom change
   useLayoutEffect(() => {
@@ -1004,45 +1136,140 @@ export const FeatureStoreLineage: React.FC<FeatureStoreLineageProps> = ({ select
         }}>
           <Toolbar style={{ marginBottom: 0 }}>
         <ToolbarContent>
+          {/* Attribute Selector */}
           <ToolbarItem>
             <Select
-              id="entity-filter-lineage"
-              isOpen={isEntityFilterOpen}
-              onOpenChange={setIsEntityFilterOpen}
+              id="attribute-selector-lineage"
+              isOpen={isCategorySelectOpen}
+              onOpenChange={setIsCategorySelectOpen}
               onSelect={(_e, value) => {
-                setEntityFilter(value as string);
-                setIsEntityFilterOpen(false);
+                setSelectedCategory(value as string);
+                setIsCategorySelectOpen(false);
+                // Clear resource selection when category changes
+                setSelectedResourceId(null);
+                setResourceSearchValue('');
               }}
-              selected={entityFilter}
+              selected={selectedCategory}
               toggle={(toggleRef: React.Ref<MenuToggleElement>) => (
                 <MenuToggle
                   ref={toggleRef}
-                  onClick={() => setIsEntityFilterOpen(!isEntityFilterOpen)}
-                  isExpanded={isEntityFilterOpen}
+                  onClick={() => setIsCategorySelectOpen(!isCategorySelectOpen)}
+                  isExpanded={isCategorySelectOpen}
                   style={{ minWidth: '150px' }}
                 >
-                  Entity {entityFilter !== 'all' ? `• ${entityFilter}` : ''}
+                  {selectedCategory}
                 </MenuToggle>
               )}
             >
               <SelectList>
-                <SelectOption value="all">All Entities</SelectOption>
-                {entityOptions.filter(e => e !== 'all').map(entity => (
-                  <SelectOption key={entity} value={entity}>{entity}</SelectOption>
-                ))}
+                <SelectOption value="Entity">Entity</SelectOption>
+                <SelectOption value="Data source">Data source</SelectOption>
+                <SelectOption value="Feature view">Feature view</SelectOption>
+                <SelectOption value="Feature service">Feature service</SelectOption>
               </SelectList>
             </Select>
           </ToolbarItem>
+          
+          {/* Value Selector (Typeahead) */}
           <ToolbarItem>
-            <SearchInput
-              placeholder="Find by entity"
-              value={searchValue}
-              onChange={(_e, value) => setSearchValue(value)}
-              onClear={() => setSearchValue('')}
-              style={{ width: '200px' }}
-            />
+            <Select
+              id="resource-selector-lineage"
+              variant="typeahead"
+              isOpen={isResourceSelectOpen}
+              onOpenChange={setIsResourceSelectOpen}
+              onSelect={(_e, value) => {
+                const resourceId = value as string;
+                if (resourceId === 'no-results') return;
+                setSelectedResourceId(resourceId);
+                setIsResourceSelectOpen(false);
+                // Set search value to the selected resource name
+                const selectedResource = resourceOptions.find(r => r.id === resourceId);
+                if (selectedResource) {
+                  setResourceSearchValue(selectedResource.name);
+                }
+              }}
+              selected={selectedResourceId}
+              onTypeaheadInputChange={(value) => {
+                setResourceSearchValue(value);
+                setIsResourceSelectOpen(true);
+              }}
+              onClear={() => {
+                setSelectedResourceId(null);
+                setResourceSearchValue('');
+              }}
+              toggle={(toggleRef: React.Ref<MenuToggleElement>) => (
+                <MenuToggle
+                  ref={toggleRef}
+                  onClick={() => setIsResourceSelectOpen(true)}
+                  isExpanded={isResourceSelectOpen}
+                  style={{ minWidth: '250px' }}
+                  variant="typeahead"
+                >
+                  <TextInputGroup isPlain>
+                    <TextInputGroupMain
+                      value={resourceSearchValue}
+                      onChange={(_e, value) => {
+                        setResourceSearchValue(value);
+                        setIsResourceSelectOpen(true);
+                      }}
+                      onClick={() => setIsResourceSelectOpen(true)}
+                      onFocus={() => setIsResourceSelectOpen(true)}
+                      placeholder={`Find by ${selectedCategory.toLowerCase()}`}
+                      autoComplete="off"
+                    />
+                    {resourceSearchValue && (
+                      <TextInputGroupUtilities>
+                        <Button
+                          variant="plain"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setResourceSearchValue('');
+                            setSelectedResourceId(null);
+                            setIsResourceSelectOpen(false);
+                          }}
+                          aria-label="Clear input value"
+                        >
+                          <TimesIcon />
+                        </Button>
+                      </TextInputGroupUtilities>
+                    )}
+                  </TextInputGroup>
+                </MenuToggle>
+              )}
+            >
+              <SelectList
+                style={{
+                  maxHeight: '300px',
+                  overflowY: 'auto',
+                }}
+              >
+                {filteredResourceOptions.length === 0 ? (
+                  <SelectOption value="no-results" isDisabled>
+                    No results found
+                  </SelectOption>
+                ) : (
+                  filteredResourceOptions.map((resource) => (
+                    <SelectOption key={resource.id} value={resource.id}>
+                      <div style={{ display: 'flex', flexDirection: 'column' }}>
+                        <div style={{ fontWeight: 600, fontSize: '14px' }}>
+                          {resource.name}
+                        </div>
+                        <div style={{ 
+                          fontSize: '12px', 
+                          color: '#6a6e73',
+                          marginTop: '2px',
+                        }}>
+                          {resource.description || 'No description'}
+                        </div>
+                      </div>
+                    </SelectOption>
+                  ))
+                )}
+              </SelectList>
+            </Select>
           </ToolbarItem>
-          <ToolbarItem>
+          
+          <ToolbarItem align={{ default: 'alignSelfCenter' }}>
             <Switch
               id="hide-unconnected-switch-lineage"
               label="Hide objects without relationships"
@@ -1124,7 +1351,7 @@ export const FeatureStoreLineage: React.FC<FeatureStoreLineageProps> = ({ select
               const isEdgeHighlighted = selectedNodeId ? highlightedPath.edges.has(edge.id) : false;
               
               // Get actual edge data to find source and target node IDs
-              const actualEdge = lineageData.edges.find(e => e.id === edge.id);
+              const actualEdge = filteredLineageData.edges.find(e => e.id === edge.id);
               if (!actualEdge) return null;
               
               // Find source and target nodes
@@ -1639,18 +1866,38 @@ export const FeatureStoreLineage: React.FC<FeatureStoreLineageProps> = ({ select
           boxShadow: '0 2px 4px rgba(0,0,0,0.15)',
           padding: '4px',
         }}>
-          <Button variant="plain" onClick={handleZoomIn} title="Zoom in">
-            <PlusIcon />
-          </Button>
-          <Button variant="plain" onClick={handleZoomOut} title="Zoom out">
-            <MinusIcon />
-          </Button>
-          <Button variant="plain" onClick={handleFitToScreen} title="Fit to screen">
-            <CompressIcon />
-          </Button>
-          <Button variant="plain" onClick={handleReset} title="Reset view">
-            <ExpandIcon />
-          </Button>
+          <Tooltip 
+            content={<div style={{ maxWidth: '200px', wordWrap: 'break-word', whiteSpace: 'normal' }}>Zoom in</div>} 
+            position="top"
+          >
+            <Button variant="plain" onClick={handleZoomIn} aria-label="Zoom in">
+              <PlusIcon />
+            </Button>
+          </Tooltip>
+          <Tooltip 
+            content={<div style={{ maxWidth: '200px', wordWrap: 'break-word', whiteSpace: 'normal' }}>Zoom out</div>} 
+            position="top"
+          >
+            <Button variant="plain" onClick={handleZoomOut} aria-label="Zoom out">
+              <MinusIcon />
+            </Button>
+          </Tooltip>
+          <Tooltip 
+            content={<div style={{ maxWidth: '200px', wordWrap: 'break-word', whiteSpace: 'normal' }}>Fit to screen</div>} 
+            position="top"
+          >
+            <Button variant="plain" onClick={handleFitToScreen} aria-label="Fit to screen">
+              <CompressIcon />
+            </Button>
+          </Tooltip>
+          <Tooltip 
+            content={<div style={{ maxWidth: '200px', wordWrap: 'break-word', whiteSpace: 'normal' }}>Reset view</div>} 
+            position="top"
+          >
+            <Button variant="plain" onClick={handleReset} aria-label="Reset view">
+              <ExpandIcon />
+            </Button>
+          </Tooltip>
         </div>
         
         {/* Tooltip for truncated node labels - top-aligned above node */}
@@ -1702,11 +1949,29 @@ export const FeatureStoreLineage: React.FC<FeatureStoreLineageProps> = ({ select
                 pointerEvents: 'none',
                 zIndex: 10000, // Increased z-index to ensure it's above everything
                 maxWidth: '300px',
+                minWidth: '100px',
                 boxShadow: '0 2px 8px rgba(0,0,0,0.3)',
-                whiteSpace: 'nowrap',
+                whiteSpace: 'normal',
+                wordWrap: 'break-word',
+                wordBreak: 'break-word',
+                lineHeight: '1.4',
               }}
             >
               {fullLabel}
+              {/* Polygon pointer (arrow) pointing down to the node */}
+              <div
+                style={{
+                  position: 'absolute',
+                  bottom: '-8px',
+                  left: '50%',
+                  transform: 'translateX(-50%)',
+                  width: 0,
+                  height: 0,
+                  borderLeft: '8px solid transparent',
+                  borderRight: '8px solid transparent',
+                  borderTop: '8px solid #151515',
+                }}
+              />
             </div>
           );
         })()}
