@@ -52,6 +52,12 @@ const AppLayout: React.FunctionComponent<IAppLayout> = ({ children }) => {
   const location = useLocation();
   const [searchParams] = useSearchParams();
   
+  // Track expanded navigation groups - stores group IDs that are expanded
+  // We'll auto-expand groups containing the current route, but respect user's manual collapses
+  const [expandedGroups, setExpandedGroups] = React.useState<Set<string>>(new Set());
+  // Track manually collapsed groups - if user manually collapses, don't auto-expand again
+  const [manuallyCollapsedGroups, setManuallyCollapsedGroups] = React.useState<Set<string>>(new Set());
+  
   // Environment variable controls for prototype appearance
   const useGenericLogo = process.env.GENERIC_LOGO === 'true';
   const hidePrototypeBar = process.env.PROTOTYPE_BAR === 'false';
@@ -98,6 +104,90 @@ const AppLayout: React.FunctionComponent<IAppLayout> = ({ children }) => {
       }
     }
   }, [fidelity, location.pathname, location.search, navigate]);
+
+  // Helper function to find all group IDs that contain the current route
+  // This function mirrors the structure of renderNavGroup to ensure group IDs match exactly
+  const findGroupsContainingRoute = React.useCallback((routes: AppRouteConfig[], currentPath: string, parentGroupId?: string): string[] => {
+    const groupIds: string[] = [];
+    let groupIndex = 0; // Track group index separately (only increment for groups with labels)
+    
+    routes.forEach((route) => {
+      // Skip routes without labels (they won't be rendered, same as renderNavigationItem)
+      if (!('label' in route) || !route.label) {
+        return;
+      }
+      
+      // Check if this is a group (has routes property)
+      if ('routes' in route && route.routes) {
+        const groupId = parentGroupId 
+          ? `${parentGroupId}_nav-group-${groupIndex}`
+          : `nav-group-${groupIndex}`;
+        
+        // Check if this group or any of its children contain the current route
+        const containsRoute = route.routes.some((r) => {
+          if ('routes' in r && r.routes) {
+            // Nested group - recursively check (will use idx from map in renderNavGroup)
+            const nestedGroupIds = findGroupsContainingRoute([r], currentPath, groupId);
+            return nestedGroupIds.length > 0;
+          }
+          // Regular route - check if path matches
+          if ('path' in r) {
+            return r.path === currentPath || currentPath.startsWith(r.path + '/');
+          }
+          return false;
+        });
+        
+        if (containsRoute) {
+          groupIds.push(groupId);
+          // Recursively find nested groups within this group
+          // For nested groups, we need to find the index within the parent's routes array
+          let nestedIndex = 0;
+          route.routes.forEach((nestedRoute) => {
+            if (!('label' in nestedRoute) || !nestedRoute.label) {
+              return;
+            }
+            if ('routes' in nestedRoute && nestedRoute.routes) {
+              const nestedGroupId = `${groupId}_nav-group-${nestedIndex}`;
+              // Check if this nested group contains the route
+              const nestedContainsRoute = nestedRoute.routes.some((nr) => {
+                if ('path' in nr) {
+                  return nr.path === currentPath || currentPath.startsWith(nr.path + '/');
+                }
+                return false;
+              });
+              if (nestedContainsRoute) {
+                groupIds.push(nestedGroupId);
+              }
+              nestedIndex++;
+            }
+          });
+        }
+        
+        groupIndex++; // Only increment for groups with labels
+      }
+    });
+    
+    return groupIds;
+  }, []);
+
+  // Auto-expand navigation groups containing the current route
+  React.useEffect(() => {
+    const filteredRoutes = filterRoutesByFlags(routes, flags);
+    const groupsToExpand = findGroupsContainingRoute(filteredRoutes, location.pathname);
+    
+    if (groupsToExpand.length > 0) {
+      setExpandedGroups((prev) => {
+        const newExpanded = new Set(prev);
+        groupsToExpand.forEach((groupId) => {
+          // Only auto-expand if user hasn't manually collapsed it
+          if (!manuallyCollapsedGroups.has(groupId)) {
+            newExpanded.add(groupId);
+          }
+        });
+        return newExpanded;
+      });
+    }
+  }, [location.pathname, flags, findGroupsContainingRoute, manuallyCollapsedGroups]);
   
   // Clear local storage handler
   const handleClearLocalStorage = () => {
@@ -444,6 +534,34 @@ const AppLayout: React.FunctionComponent<IAppLayout> = ({ children }) => {
       });
     };
     
+    // Check if this group should be expanded
+    const isExpanded = expandedGroups.has(groupId);
+    
+    // Handle toggle - track manual collapses
+    const handleToggle = (isExpanded: boolean) => {
+      setExpandedGroups((prev) => {
+        const newExpanded = new Set(prev);
+        if (isExpanded) {
+          newExpanded.add(groupId);
+          // Remove from manually collapsed if user expands it
+          setManuallyCollapsedGroups((prevCollapsed) => {
+            const newCollapsed = new Set(prevCollapsed);
+            newCollapsed.delete(groupId);
+            return newCollapsed;
+          });
+        } else {
+          newExpanded.delete(groupId);
+          // Track that user manually collapsed this group
+          setManuallyCollapsedGroups((prevCollapsed) => {
+            const newCollapsed = new Set(prevCollapsed);
+            newCollapsed.add(groupId);
+            return newCollapsed;
+          });
+        }
+        return newExpanded;
+      });
+    };
+    
     return (
       <NavExpandable
         key={groupId}
@@ -456,6 +574,8 @@ const AppLayout: React.FunctionComponent<IAppLayout> = ({ children }) => {
           </span>
         }
         isActive={isGroupActive(group.routes)}
+        isExpanded={isExpanded}
+        onToggle={(_event, isExpanded) => handleToggle(isExpanded)}
         style={(group as any).disabled ? { 
           color: '#6a6e73', 
           opacity: 0.5, 

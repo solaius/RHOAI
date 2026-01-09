@@ -76,3 +76,39 @@ Refer to `lineage_selected_featureview.png` for exact styling.
     * **Body:** Description text.
     * **List:** Bullet points of features (from mock data).
     * **Footer:** Links "View FeatureView details" and "View all features".
+
+
+## 6. Toolbar & Filtering Specifications
+
+The toolbar consists of a two-part filtering mechanism allowing users to isolate specific lineage paths based on resource type and name. Refer to `lineage_toolbar_filters.png` for exact styling.
+
+### A. Attribute Selector (Dropdown)
+* **Component:** PatternFly Select (Single selection).
+* **Icon:** Filter icon (`<FilterIcon />`) inside the toggle.
+* **Options:** The dropdown must contain the following Feature Store resource types:
+    * Entity
+    * Data source
+    * Feature view
+    * Feature service
+* **Behavior:** Changing this selection updates the context for the adjacent "Value Selector" and clears any currently selected value.
+
+### B. Value Selector (Typeahead Search)
+* **Component:** PatternFly SearchInput or Select with Typeahead variant.
+* **Placeholder:** Dynamic text: "Find by [Selected Attribute]" (e.g., "Find by feature service").
+* **Content source:** Lists all existing resources that match the type selected in the Attribute Selector. 
+* **Dropdown Layout:**
+    * Each option must display two lines of text:
+        1.  **Resource Name:** (Primary text)
+        2.  **Description:** (Secondary/Subtle text, smaller font size)
+* **Scroll Behavior:**
+    * If the list of options is long, limit the maximum height of the dropdown menu.
+    * Implement a vertical scrollbar (`overflow-y: auto`) to handle large lists, ensuring the UI remains compact (similar to the Notebook image selection dropdown).
+* **Input Behavior:**
+    * Users can type to filter the list of options.
+    * Users can click the dropdown arrow to view all available options.
+
+### C. Filtering Interaction
+* **Trigger:** The lineage graph updates automatically immediately upon selecting a specific resource from the Value Selector.
+* **Graph Behavior:**
+    * The graph should filter to display **only** the selected node and its relevant connections (ancestors and descendants).
+    * Unrelated nodes should be hidden or faded out to focus on the selected resource's lineage.

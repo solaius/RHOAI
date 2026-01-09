@@ -1,17 +1,5 @@
-import * as React from 'react';
-import {
-  PageSection,
-  Content,
-  ContentVariants,
-} from '@patternfly/react-core';
+// Re-export the DatasetsListPage as the DataSets component
+export { DatasetsListPage as DataSets } from '../../../../pages/feature-store/datasets/DatasetsListPage';
 
-const DataSets: React.FunctionComponent = () => (
-  <PageSection>
-    <Content component={ContentVariants.h1}>Feature Store - Data Sets</Content>
-    <Content component={ContentVariants.p}>
-      Manage data sets used in the feature store for feature engineering.
-    </Content>
-  </PageSection>
-);
-
-export { DataSets };
+// Re-export the DatasetDetailPage
+export { DatasetDetailPage } from '../../../../pages/feature-store/datasets/DatasetDetailPage';

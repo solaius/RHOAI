@@ -1027,22 +1027,74 @@ export const FeatureStoreLineage: React.FC<FeatureStoreLineageProps> = ({ select
   
   // Render popover content for all node types
   const renderPopoverContent = (node: LineageNodeType) => {
-    // Extract resource name from label (e.g., "Entity: Customer" -> "Customer")
+    // Extract resource type from label (e.g., "Entity: Customer" -> "Entity")
     const labelParts = node.label.split(': ');
-    const resourceName = labelParts.length > 1 ? labelParts.slice(1).join(': ') : node.label;
+    const resourceType = labelParts.length > 1 ? labelParts[0] : node.type;
     
-    // Handle navigation to detail page - only for entity nodes
+    // Helper function to extract resource ID from node.id
+    const extractResourceId = (nodeId: string, nodeType: string): string => {
+      const prefixMap: Record<string, string> = {
+        'entity': 'entity-',
+        'dataSource': 'datasource-',
+        'featureView': 'featureview-',
+        'featureService': 'featureservice-',
+      };
+      const prefix = prefixMap[nodeType] || '';
+      if (prefix && nodeId.startsWith(prefix)) {
+        return nodeId.substring(prefix.length);
+      }
+      return nodeId;
+    };
+    
+    // Handle navigation to detail page for all resource types
     const handleDetailPageClick = () => {
-      if (node.type === 'entity') {
-        // Extract entity ID from node.id (format: "entity-entity-001" -> "entity-001")
-        // node.id is "entity-entity-001", so we remove the first "entity-" prefix
-        const entityId = node.id.startsWith('entity-') ? node.id.substring('entity-'.length) : node.id;
-        navigate(`/develop-train/feature-store/entities/${entityId}?featureStore=${encodeURIComponent(selectedFeatureStore)}`);
+      const resourceId = extractResourceId(node.id, node.type);
+      
+      switch (node.type) {
+        case 'entity':
+          navigate(`/develop-train/feature-store/entities/${resourceId}?featureStore=${encodeURIComponent(selectedFeatureStore)}`);
+          break;
+        case 'dataSource':
+          navigate(`/develop-train/feature-store/data-sources/${resourceId}?featureStore=${encodeURIComponent(selectedFeatureStore)}`);
+          break;
+        case 'featureView':
+          navigate(`/develop-train/feature-store/feature-views/${resourceId}?featureStore=${encodeURIComponent(selectedFeatureStore)}`);
+          break;
+        case 'featureService':
+          navigate(`/develop-train/feature-store/feature-services/${resourceId}?featureStore=${encodeURIComponent(selectedFeatureStore)}`);
+          break;
       }
     };
     
-    // Only make the button clickable for entity nodes
-    const isEntityNode = node.type === 'entity';
+    // Handle navigation to Features list with Feature view filter
+    const handleViewAllFeaturesClick = () => {
+      if (node.type === 'featureView') {
+        // Extract feature view name from label (e.g., "Batch FeatureView: user_transaction_aggregates" -> "user_transaction_aggregates")
+        // The label format is: "Batch FeatureView: name" or "On demand FeatureView: name"
+        // So we need to get everything after the first colon and space
+        const featureViewName = labelParts.length > 1 ? labelParts.slice(1).join(': ') : node.label;
+        // Navigate to Features list with feature view name as filter
+        navigate(`/develop-train/feature-store/features?featureStore=${encodeURIComponent(selectedFeatureStore)}&filterFeatureView=${encodeURIComponent(featureViewName)}`);
+      }
+    };
+    
+    // Get resource type display name
+    const getResourceTypeDisplayName = (type: string): string => {
+      switch (type) {
+        case 'entity':
+          return 'Entity';
+        case 'dataSource':
+          return 'Data source';
+        case 'featureView':
+          return 'Feature view';
+        case 'featureService':
+          return 'Feature service';
+        default:
+          return 'Resource';
+      }
+    };
+    
+    const resourceTypeDisplayName = getResourceTypeDisplayName(node.type);
     
     return (
       <div style={{ maxWidth: '320px' }}>
@@ -1066,22 +1118,38 @@ export const FeatureStoreLineage: React.FC<FeatureStoreLineageProps> = ({ select
                 </ListItem>
               )}
             </List>
-            <div style={{ marginTop: '8px' }}>
-              <Button variant="link" isInline isDisabled>
-                View all features
-              </Button>
-            </div>
           </>
         )}
         <div style={{ marginTop: '12px' }}>
-          <Button 
-            variant="link" 
-            isInline 
-            onClick={isEntityNode ? handleDetailPageClick : undefined}
-            isDisabled={!isEntityNode}
-          >
-            View {resourceName} detail page
-          </Button>
+          {node.type === 'featureView' ? (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+              <Button 
+                variant="secondary" 
+                size="sm"
+                onClick={handleDetailPageClick}
+                style={{ paddingLeft: '8px', paddingRight: '8px' }}
+              >
+                View {resourceTypeDisplayName} detail page
+              </Button>
+              {node.data.features && node.data.features.length > 0 && (
+                <Button 
+                  variant="link" 
+                  isInline 
+                  onClick={handleViewAllFeaturesClick}
+                >
+                  View all features
+                </Button>
+              )}
+            </div>
+          ) : (
+            <Button 
+              variant="link" 
+              isInline 
+              onClick={handleDetailPageClick}
+            >
+              View {resourceTypeDisplayName} detail page
+            </Button>
+          )}
         </div>
       </div>
     );

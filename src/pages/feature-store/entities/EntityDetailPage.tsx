@@ -194,7 +194,7 @@ interface SearchResult {
   id: string;
   name: string;
   description: string;
-  category: 'Data Sources' | 'Features' | 'Feature Views' | 'Entities';
+  category: 'Data Sources' | 'Features' | 'Feature Views' | 'Entities' | 'Datasets' | 'Feature Services';
   featureStore?: string;
   tags: string[];
 }
@@ -377,14 +377,25 @@ export const EntityDetailPage: React.FC = () => {
 
   // Handle search result click
   const handleSearchResultClick = (result: SearchResult) => {
-    if (result.category === 'Entities') {
-      navigate(`/develop-train/feature-store/entities/${result.id}`);
-    } else if (result.category === 'Feature Views') {
-      navigate(`/develop-train/feature-store/feature-views/${result.id}`);
-    } else if (result.category === 'Data Sources') {
-      navigate(`/develop-train/feature-store/data-sources/${result.id}`);
-    } else if (result.category === 'Features') {
-      navigate(`/develop-train/feature-store/features/${result.id}`);
+    switch (result.category) {
+      case 'Entities':
+        navigate(`/develop-train/feature-store/entities/${result.id}`);
+        break;
+      case 'Feature Views':
+        navigate(`/develop-train/feature-store/feature-views/${result.id}`);
+        break;
+      case 'Data Sources':
+        navigate(`/develop-train/feature-store/data-sources/${result.id}`);
+        break;
+      case 'Features':
+        navigate(`/develop-train/feature-store/features/${result.id}`);
+        break;
+      case 'Datasets':
+        navigate(`/develop-train/feature-store/data-sets/${result.id}`);
+        break;
+      case 'Feature Services':
+        navigate(`/develop-train/feature-store/feature-services/${result.id}`);
+        break;
     }
     setIsSearchDropdownOpen(false);
     setGlobalSearchValue('');
