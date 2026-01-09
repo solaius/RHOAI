@@ -68,7 +68,7 @@ interface SearchResult {
   id: string;
   name: string;
   description: string;
-  category: 'Data Sources' | 'Features' | 'Feature Views' | 'Entities';
+  category: 'Data Sources' | 'Features' | 'Feature Views' | 'Entities' | 'Datasets' | 'Feature Services';
   featureStore?: string;
   tags: string[];
 }
