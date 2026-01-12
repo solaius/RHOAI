@@ -47,7 +47,6 @@ import {
   Divider,
   List,
   ListItem,
-  Icon,
 } from '@patternfly/react-core';
 import {
   Table,
@@ -63,7 +62,6 @@ import {
   WrenchIcon, 
   ExternalLinkAltIcon,
   OutlinedQuestionCircleIcon,
-  CubesIcon,
 } from '@patternfly/react-icons';
 import { mockEntities, Entity } from '../../../mockData/entities';
 
@@ -207,24 +205,32 @@ const mockSearchResults: SearchResult[] = [
     name: 'dependents_registry_source',
     description: 'External or internal registry containing dependent-related data.',
     category: 'Data Sources',
-    featureStore: 'Banking',
-    tags: ['team=analytics'],
+    featureStore: 'Fraud detection',
+    tags: ['domain=demographics', 'env=production'],
   },
   {
     id: 'f-001',
     name: 'local_type',
     description: 'Categorical indicator of the borrower\'s residential area type',
     category: 'Features',
-    featureStore: 'Customer churn',
-    tags: ['team=analytics'],
+    featureStore: 'Customer analytics',
+    tags: ['domain=demographics', 'type=numeric'],
+  },
+  {
+    id: 'f-002',
+    name: 'social_media_usage_hours_per_day',
+    description: 'Average number of hours per day the borrower spends on social media.',
+    category: 'Features',
+    featureStore: 'Product recommendations',
+    tags: ['term=credit', 'type=numeric', 'env=production'],
   },
   {
     id: 'fv-001',
     name: 'personal_profile_view',
     description: 'Aggregated features from the user\'s personal and demographic data.',
     category: 'Feature Views',
-    featureStore: 'Banking',
-    tags: ['team=analytics'],
+    featureStore: 'Fraud detection',
+    tags: ['domain=demographics', 'use_case=fraud'],
   },
 ];
 
@@ -348,7 +354,7 @@ export const EntityDetailPage: React.FC = () => {
         name: entity.name,
         description: entity.description,
         category: 'Entities' as const,
-        featureStore: 'Fraud detection',
+        featureStore: entity.featureStore,
         tags: entity.tags,
       }));
     
@@ -596,14 +602,32 @@ export const EntityDetailPage: React.FC = () => {
           <FlexItem>
             <Breadcrumb>
               <BreadcrumbItem>
-                <Button 
-                  variant="link" 
-                  isInline 
+                <span
                   onClick={() => navigate(`/develop-train/feature-store/entities?featureStore=${encodeURIComponent(selectedFeatureStore)}`)}
-                  style={{ textDecoration: 'underline' }}
+                  style={{ 
+                    color: 'var(--pf-t--global--text--color--link--default)',
+                    borderBottom: '1px solid var(--pf-t--global--text--color--link--default)',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '4px',
+                    cursor: 'pointer',
+                    paddingBottom: '1px'
+                  }}
                 >
-                  Entities - <Icon isInline style={{ marginLeft: '4px', marginRight: '4px', textDecoration: 'underline' }}><CubesIcon /></Icon> {selectedFeatureStore}
-                </Button>
+                  Entities -
+                  <svg 
+                    className="pf-v6-svg" 
+                    viewBox="0 0 40 40" 
+                    fill="currentColor" 
+                    aria-hidden="true" 
+                    role="img" 
+                    width="1.2em" 
+                    height="1.2em"
+                  >
+                    <path d="M28.5,25.375c-.63568,0-1.22626.19312-1.72021.52051l-4.38898-4.38898c.77032-.96265,1.23419-2.18066,1.23419-3.50653s-.46387-2.54388-1.23419-3.50653l3.25592-3.25592c.39655.24078.85651.38745,1.35327.38745,1.44727,0,2.625-1.17773,2.625-2.625s-1.17773-2.625-2.625-2.625-2.625,1.17773-2.625,2.625c0,.49677.14667.95673.38745,1.35327l-3.25592,3.25592c-.96265-.77032-2.18066-1.23419-3.50653-1.23419s-2.54388.46387-3.50653,1.23419l-4.38898-4.38898c.32745-.49402.52051-1.08459.52051-1.72021,0-1.72266-1.40186-3.125-3.125-3.125s-3.125,1.40234-3.125,3.125,1.40186,3.125,3.125,3.125c.63568,0,1.22626-.19312,1.72021-.52051l4.38898,4.38898c-.77032.96265-1.23419,2.18066-1.23419,3.50653s.46387,2.54388,1.23419,3.50653l-3.25586,3.25586c-.39655-.24078-.85657-.38739-1.35333-.38739-1.44727,0-2.625,1.17773-2.625,2.625s1.17773,2.625,2.625,2.625,2.625-1.17773,2.625-2.625c0-.49677-.14661-.95679-.38739-1.35333l3.25586-3.25586c.96265.77032,2.18066,1.23419,3.50653,1.23419s2.54388-.46387,3.50653-1.23419l4.38898,4.38898c-.32745.49402-.52051,1.08459-.52051,1.72021,0,1.72266,1.40186,3.125,3.125,3.125s3.125-1.40234,3.125-3.125-1.40186-3.125-3.125-3.125ZM27,7.625c.7583,0,1.375.61719,1.375,1.375s-.6167,1.375-1.375,1.375-1.375-.61719-1.375-1.375.6167-1.375,1.375-1.375ZM5.625,7.5c0-1.03418.84131-1.875,1.875-1.875s1.875.84082,1.875,1.875-.84131,1.875-1.875,1.875-1.875-.84082-1.875-1.875ZM9,28.375c-.7583,0-1.375-.61719-1.375-1.375s.6167-1.375,1.375-1.375,1.375.61719,1.375,1.375-.6167,1.375-1.375,1.375ZM13.625,18c0-2.41211,1.9624-4.375,4.375-4.375s4.375,1.96289,4.375,4.375-1.9624,4.375-4.375,4.375-4.375-1.96289-4.375-4.375ZM28.5,30.375c-1.03369,0-1.875-.84082-1.875-1.875s.84131-1.875,1.875-1.875,1.875.84082,1.875,1.875-.84131,1.875-1.875,1.875Z" />
+                  </svg>
+                  {selectedFeatureStore}
+                </span>
               </BreadcrumbItem>
               <BreadcrumbItem isActive>{entity.name}</BreadcrumbItem>
             </Breadcrumb>
@@ -641,6 +665,7 @@ export const EntityDetailPage: React.FC = () => {
               </Tooltip>
               
               {/* Search Dropdown */}
+              {/* Search Dropdown - matching Entities list page style */}
               {isSearchDropdownOpen && globalSearchValue.trim().length > 0 && (
                 <Panel
                   variant="raised"
@@ -658,10 +683,11 @@ export const EntityDetailPage: React.FC = () => {
                 >
                   <PanelMain>
                     <PanelMainBody style={{ padding: '16px 0' }}>
+                      {/* Results count - centered */}
                       <div style={{ textAlign: 'center', marginBottom: '16px', padding: '0 16px' }}>
-                        <Button variant="link" isInline>
-                          {globalSearchResults.total} results from All feature stores
-                        </Button>
+                        <span style={{ color: 'var(--pf-t--global--text--color--link--default)', textDecoration: 'none' }}>
+                          {globalSearchResults.total} results from {selectedFeatureStore}
+                        </span>
                       </div>
                       
                       <Divider />
@@ -706,6 +732,23 @@ export const EntityDetailPage: React.FC = () => {
                                   <Content component="small" style={{ color: '#6a6e73', display: 'block', marginTop: '4px' }}>
                                     {highlightMatch(result.description, globalSearchValue)}
                                   </Content>
+                                  {result.tags.length > 0 && (() => {
+                                    // Only show tags that match the search query
+                                    const matchingTags = result.tags.filter(tag => 
+                                      tag.toLowerCase().includes(globalSearchValue.toLowerCase())
+                                    );
+                                    return matchingTags.length > 0 ? (
+                                      <Flex spaceItems={{ default: 'spaceItemsXs' }} style={{ marginTop: '8px' }}>
+                                        {matchingTags.map((tag, idx) => (
+                                          <FlexItem key={idx}>
+                                            <Label color="blue" isCompact>
+                                              {highlightMatch(tag, globalSearchValue)}
+                                            </Label>
+                                          </FlexItem>
+                                        ))}
+                                      </Flex>
+                                    ) : null;
+                                  })()}
                                 </div>
                               ))}
                             </div>
@@ -731,62 +774,48 @@ export const EntityDetailPage: React.FC = () => {
             <Content component="p">{entity.description}</Content>
           </FlexItem>
           <FlexItem>
-            {/* View Connected Workbenches Link with Icon */}
+            {/* View Connected Workbenches Link with Icon - matching Overview page */}
             <Popover
               position="right"
               aria-label="Connected workbenches"
               headerContent="Connected workbenches"
+              showClose
+              minWidth="460px"
               bodyContent={
-                <Flex direction={{ default: 'column' }} spaceItems={{ default: 'spaceItemsMd' }}>
-                  {/* Connected workbenches section */}
-                  <FlexItem>
-                    <Content component="p" style={{ fontSize: '14px', margin: 0 }}>
-                      Workbenches already connected to{' '}
-                      {selectedFeatureStore === 'All feature stores' ? (
-                        <strong>All feature stores</strong>
-                      ) : (
-                        <>the <strong>{selectedFeatureStore}</strong> feature store</>
-                      )}:
-                    </Content>
-                    <List isPlain style={{ fontSize: '14px', marginTop: 0 }}>
+                <div>
+                  {/* First section - Connected workbenches */}
+                  <div style={{ marginBottom: '16px' }}>
+                    <div style={{ fontSize: '14px', marginBottom: '8px' }}>
+                      Workbenches already connected to the {selectedFeatureStore === 'All feature stores' ? <strong>All feature stores</strong> : <strong>{selectedFeatureStore}</strong>} feature store:
+                    </div>
+                    <List style={{ marginLeft: '8px' }}>
                       {mockConnectedWorkbenches.map((wb, idx) => (
-                        <ListItem key={idx} style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                          •{' '}
-                          <Button variant="link" isInline style={{ fontWeight: 600 }}>
-                            {wb.name} <ExternalLinkAltIcon style={{ marginLeft: '4px' }} />
-                          </Button>
+                        <ListItem key={idx} style={{ fontSize: '14px' }}>
+                          <Button variant="link" isInline icon={<ExternalLinkAltIcon />} iconPosition="end" style={{ fontWeight: 600 }}>{wb.name}</Button>
                           {' '}in{' '}
                           <Button variant="link" isInline style={{ fontWeight: 600 }}>{wb.project}</Button>
                           {' '}project
                         </ListItem>
                       ))}
                     </List>
-                  </FlexItem>
+                  </div>
                   
-                  {/* Projects without workbenches section */}
-                  <FlexItem>
-                    <Content component="p" style={{ fontSize: '14px', margin: 0 }}>
-                      Projects that can access{' '}
-                      {selectedFeatureStore === 'All feature stores' ? (
-                        <strong>All feature stores</strong>
-                      ) : (
-                        <>the <strong>{selectedFeatureStore}</strong> feature store</>
-                      )}{' '}
-                      but do not have connected workbenches:
-                    </Content>
-                    <List isPlain style={{ fontSize: '14px', marginTop: 0 }}>
+                  {/* Second section - Projects without workbenches */}
+                  <div>
+                    <div style={{ fontSize: '14px', marginBottom: '8px' }}>
+                      Projects that can access the {selectedFeatureStore === 'All feature stores' ? <strong>All feature stores</strong> : <strong>{selectedFeatureStore}</strong>} feature store but do not have connected workbenches:
+                    </div>
+                    <List style={{ marginLeft: '8px' }}>
                       {mockProjectsWithoutWorkbenches.map((project, idx) => (
-                        <ListItem key={idx}>
-                          •{' '}
+                        <ListItem key={idx} style={{ fontSize: '14px' }}>
                           <Button variant="link" isInline style={{ fontWeight: 600 }}>{project.name}</Button>
                           {' '}project
                         </ListItem>
                       ))}
                     </List>
-                  </FlexItem>
-                </Flex>
+                  </div>
+                </div>
               }
-              minWidth="400px"
             >
               <Button variant="link" icon={<WrenchIcon />}>
                 View connected workbenches
