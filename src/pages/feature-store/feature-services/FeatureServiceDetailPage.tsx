@@ -732,11 +732,11 @@ ${featureViews.map(fv => `        ${fv.name}_features,`).join('\n')}
                     </Title>
                     {entities.length > 0 ? (
                       <DescriptionList isCompact style={{ maxWidth: '600px' }}>
-                        {entities.map((entity, index) => (
+                        {entities.map((entity) => (
                           <DescriptionListGroup 
                             key={entity.id}
                             style={{ 
-                              borderBottom: index < entities.length - 1 ? '1px solid var(--pf-t--global--border--color--default)' : 'none' 
+                              borderBottom: '1px solid var(--pf-t--global--border--color--default)'
                             }}
                           >
                             <DescriptionListTerm></DescriptionListTerm>
