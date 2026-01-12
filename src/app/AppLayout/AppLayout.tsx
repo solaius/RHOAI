@@ -575,7 +575,7 @@ const AppLayout: React.FunctionComponent<IAppLayout> = ({ children }) => {
         }
         isActive={isGroupActive(group.routes)}
         isExpanded={isExpanded}
-        onToggle={(_event, isExpanded) => handleToggle(isExpanded)}
+        onToggle={(_event: React.MouseEvent<HTMLLIElement, MouseEvent>, isExpanded: boolean) => handleToggle(isExpanded)}
         style={(group as any).disabled ? { 
           color: '#6a6e73', 
           opacity: 0.5, 
