@@ -775,19 +775,27 @@ feature_view = FeatureView(
                       <Title headingLevel="h3" size="md" style={{ marginBottom: 'var(--pf-t--global--spacer--sm)' }}>
                         Entities
                       </Title>
-                      <List>
-                        {entities.map((entity) => (
-                          <ListItem key={entity.id}>
-                            <Button
-                              variant="link"
-                              isInline
-                              onClick={() => navigate(`/develop-train/feature-store/entities/${entity.id}`)}
-                            >
-                              {entity.name}
-                            </Button>
-                          </ListItem>
+                      <DescriptionList isCompact style={{ maxWidth: '600px' }}>
+                        {entities.map((entity, index) => (
+                          <DescriptionListGroup 
+                            key={entity.id}
+                            style={{ 
+                              borderBottom: index < entities.length - 1 ? '1px solid var(--pf-t--global--border--color--default)' : 'none' 
+                            }}
+                          >
+                            <DescriptionListTerm></DescriptionListTerm>
+                            <DescriptionListDescription>
+                              <Button
+                                variant="link"
+                                isInline
+                                onClick={() => navigate(`/develop-train/feature-store/entities/${entity.id}`)}
+                              >
+                                {entity.name}
+                              </Button>
+                            </DescriptionListDescription>
+                          </DescriptionListGroup>
                         ))}
-                      </List>
+                      </DescriptionList>
                     </StackItem>
                   )}
 
