@@ -538,7 +538,7 @@ const AppLayout: React.FunctionComponent<IAppLayout> = ({ children }) => {
     const isExpanded = expandedGroups.has(groupId);
     
     // Handle toggle - track manual collapses
-    const handleToggle = (isExpanded: boolean) => {
+    const handleToggle = (_event: any, isExpanded: boolean, _groupId?: string) => {
       setExpandedGroups((prev) => {
         const newExpanded = new Set(prev);
         if (isExpanded) {
@@ -575,7 +575,7 @@ const AppLayout: React.FunctionComponent<IAppLayout> = ({ children }) => {
         }
         isActive={isGroupActive(group.routes)}
         isExpanded={isExpanded}
-        onToggle={(_event: React.MouseEvent<HTMLLIElement, MouseEvent>, isExpanded: boolean) => handleToggle(isExpanded)}
+        onToggle={handleToggle as any}
         style={(group as any).disabled ? { 
           color: '#6a6e73', 
           opacity: 0.5, 

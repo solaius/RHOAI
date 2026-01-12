@@ -783,7 +783,7 @@ feature_view = FeatureView(
                               borderBottom: '1px solid var(--pf-t--global--border--color--default)'
                             }}
                           >
-                            <DescriptionListTerm></DescriptionListTerm>
+                            <DescriptionListTerm>{''}</DescriptionListTerm>
                             <DescriptionListDescription>
                               <Button
                                 variant="link"

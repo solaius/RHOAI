@@ -739,7 +739,7 @@ ${featureViews.map(fv => `        ${fv.name}_features,`).join('\n')}
                               borderBottom: '1px solid var(--pf-t--global--border--color--default)'
                             }}
                           >
-                            <DescriptionListTerm></DescriptionListTerm>
+                            <DescriptionListTerm>{''}</DescriptionListTerm>
                             <DescriptionListDescription>
                               <Button
                                 variant="link"
