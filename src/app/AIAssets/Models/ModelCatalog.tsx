@@ -26,6 +26,7 @@ import {
   Label,
   LabelGroup,
   MenuToggle,
+  MenuToggleElement,
   Modal,
   ModalBody,
   ModalFooter,
@@ -55,6 +56,8 @@ import {
   MenuContent,
   MenuList,
   MenuItem,
+  MenuSearch,
+  MenuSearchInput,
 } from '@patternfly/react-core';
 import {
   AngleLeftIcon,
@@ -163,6 +166,14 @@ const scrollbarStyles = `
   }
 `;
 
+// Workload labels for scenario display
+const WORKLOAD_LABELS: Record<string, string> = {
+  chat: "Chatbot (512 input / 256 output)",
+  rag: "RAG (4096 input / 512 output)",
+  code_fixing: "Code fixing (1024 input / 1024 output)",
+  long_rag: "Long RAG (10240 input / 1536 output)",
+};
+
 const ModelCatalog: React.FunctionComponent = () => {
   useDocumentTitle('Model Catalog');
   const { flags } = useFeatureFlags();
@@ -242,6 +253,18 @@ const ModelCatalog: React.FunctionComponent = () => {
     return [];
   });
   
+  // Read model name from sessionStorage during initialization (before it gets cleared)
+  const initialModelName = React.useMemo(() => {
+    try {
+      const stored = sessionStorage.getItem("catalogPerfFilters");
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        return parsed.modelName ?? '';
+      }
+    } catch { /* ignore */ }
+    return '';
+  }, []);
+  
   // Clear sessionStorage after reading (one-time restore)
   React.useEffect(() => {
     sessionStorage.removeItem("catalogPerfFilters");
@@ -293,6 +316,9 @@ const ModelCatalog: React.FunctionComponent = () => {
   const [selectedLanguages, setSelectedLanguages] = React.useState<string[]>(() => 
     searchParams.get("languages")?.split(",").filter(Boolean) || []
   );
+  const [selectedTensorTypes, setSelectedTensorTypes] = React.useState<string[]>(() => 
+    searchParams.get("tensorTypes")?.split(",").filter(Boolean) || []
+  );
 
   // Search state
   const [search, setSearchState] = React.useState(() => searchParams.get("search") || "");
@@ -340,7 +366,27 @@ const ModelCatalog: React.FunctionComponent = () => {
   
   // Hardware dropdown state (hardware values come from usePerformanceFilters hook)
   const [isHardwareOpen, setIsHardwareOpen] = React.useState(false);
+  const [hardwareSearchValue, setHardwareSearchValue] = React.useState('');
+  const hardwareMenuRef = React.useRef<HTMLDivElement>(null);
   const hardwareOptions = ['H100 x 1', 'H100 x 2', 'H100 x 4', 'A100 x 1', 'A100 x 2', 'A100 x 4', 'L40S x 2', 'L40S x 4'];
+  const filteredHardwareOptions = hardwareOptions.filter(hw => 
+    hw.toLowerCase().includes(hardwareSearchValue.toLowerCase())
+  );
+  
+  // Close hardware menu on click outside
+  React.useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (hardwareMenuRef.current && !hardwareMenuRef.current.contains(event.target as Node)) {
+        setIsHardwareOpen(false);
+      }
+    };
+    if (isHardwareOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isHardwareOpen]);
   
   // Latency and RPS panel dropdown state
   const [isLatencyOpen, setIsLatencyOpen] = React.useState(false);
@@ -445,8 +491,10 @@ const ModelCatalog: React.FunctionComponent = () => {
   const [showAllLicenses, setShowAllLicenses] = React.useState(false);
   const [showAllLanguages, setShowAllLanguages] = React.useState(false);
   
+  
   // Alert state for filter changes
   const [showFilterChangedAlert, setShowFilterChangedAlert] = React.useState(false);
+  const [alertModelName, setAlertModelName] = React.useState<string>('');
   const mountTime = React.useRef<number>(Date.now());
   
   // Column preferences for performance table
@@ -484,7 +532,9 @@ const ModelCatalog: React.FunctionComponent = () => {
           JSON.stringify(stored.hardware || []) !== JSON.stringify(hardware);
         
         if (filtersChanged) {
-        setShowFilterChangedAlert(true);
+          // Use model name read during initialization (before sessionStorage was cleared)
+          setAlertModelName(initialModelName);
+          setShowFilterChangedAlert(true);
           // Reset mount time for grace period
           mountTime.current = Date.now();
         }
@@ -515,7 +565,7 @@ const ModelCatalog: React.FunctionComponent = () => {
     if (showFilterChangedAlert) {
         setShowFilterChangedAlert(false);
       }
-  }, [showFilterChangedAlert, workload, latencyMetric, latencyPercentile, latencyValue, rpsValue, hardware, selectedTasks, selectedProviders, selectedLicenses, selectedLanguages, search]);
+  }, [showFilterChangedAlert, workload, latencyMetric, latencyPercentile, latencyValue, rpsValue, hardware, selectedTasks, selectedProviders, selectedLicenses, selectedLanguages, selectedTensorTypes, search, category]);
   
   // Search state for filter categories
   const [taskSearch, setTaskSearch] = React.useState('');
@@ -542,7 +592,7 @@ const ModelCatalog: React.FunctionComponent = () => {
       workload, latencyMetric, latencyPercentile, 
       latencyValue, rpsValue, hardware,
       tasks: selectedTasks, providers: selectedProviders, licenses: selectedLicenses,
-      languages: selectedLanguages, search
+      languages: selectedLanguages, tensorTypes: selectedTensorTypes, search
     });
     sessionStorage.setItem("catalogFilterState", filterState);
     
@@ -568,6 +618,7 @@ const ModelCatalog: React.FunctionComponent = () => {
     if (selectedProviders.length > 0) params.set("providers", selectedProviders.join(","));
     if (selectedLicenses.length > 0) params.set("licenses", selectedLicenses.join(","));
     if (selectedLanguages.length > 0) params.set("languages", selectedLanguages.join(","));
+    if (selectedTensorTypes.length > 0) params.set("tensorTypes", selectedTensorTypes.join(","));
     params.set("workload", workload);
     params.set("latencyMetric", latencyMetric);
     params.set("latencyPercentile", latencyPercentile);
@@ -783,6 +834,9 @@ const ModelCatalog: React.FunctionComponent = () => {
     return Array.from(new Set(allLanguages)).sort();
   }, []);
 
+  // Tensor type options - fixed order
+  const tensorTypeOptions = ['FP8', 'FP16', 'INT4', 'INT8'];
+
   // Helper functions to filter options based on search
   const FILTER_COLLAPSE_THRESHOLD = 5;
 
@@ -818,10 +872,14 @@ const ModelCatalog: React.FunctionComponent = () => {
   // Pagination state for "Load more" functionality
   const [visibleCount, setVisibleCount] = React.useState(10);
   
+  // Dynamic cards per row calculation
+  const galleryContainerRef = React.useRef<HTMLDivElement>(null);
+  const [cardsPerRow, setCardsPerRow] = React.useState(3);
+  
   // Reset visible count when filters/category change
   React.useEffect(() => {
     setVisibleCount(10);
-  }, [search, category, selectedTasks, selectedProviders, selectedLicenses, selectedLanguages, performanceFiltersEnabled]);
+  }, [search, category, selectedTasks, selectedProviders, selectedLicenses, selectedLanguages, selectedTensorTypes, performanceFiltersEnabled]);
 
   // Check if any filters or search are active (including performance toggle)
   const hasActiveFiltersOrSearch = React.useMemo(() => {
@@ -830,8 +888,43 @@ const ModelCatalog: React.FunctionComponent = () => {
            selectedProviders.length > 0 || 
            selectedLicenses.length > 0 || 
            selectedLanguages.length > 0 ||
+           selectedTensorTypes.length > 0 ||
            performanceFiltersEnabled;
-  }, [search, selectedTasks, selectedProviders, selectedLicenses, selectedLanguages, performanceFiltersEnabled]);
+  }, [search, selectedTasks, selectedProviders, selectedLicenses, selectedLanguages, selectedTensorTypes, performanceFiltersEnabled]);
+
+  // Determine if grouped view should be shown (for dynamic cards per row calculation)
+  const shouldShowGroupedView = category === null && !hasActiveFiltersOrSearch;
+  
+  // Effect to calculate cards per row when grouped view is visible
+  React.useEffect(() => {
+    if (!shouldShowGroupedView) return;
+    
+    const calculateCardsPerRow = () => {
+      if (galleryContainerRef.current) {
+        const containerWidth = galleryContainerRef.current.offsetWidth;
+        const cardMinWidth = 280; // matches Gallery minWidths
+        const gutter = 16; // PatternFly default gutter
+        // Calculate how many cards fit: (containerWidth + gutter) / (cardMinWidth + gutter)
+        const count = Math.floor((containerWidth + gutter) / (cardMinWidth + gutter));
+        setCardsPerRow(Math.max(1, count)); // At least 1 card
+      }
+    };
+    
+    // Use requestAnimationFrame to ensure DOM is ready after navigation
+    const rafId = requestAnimationFrame(() => {
+      calculateCardsPerRow();
+    });
+    
+    const resizeObserver = new ResizeObserver(calculateCardsPerRow);
+    if (galleryContainerRef.current) {
+      resizeObserver.observe(galleryContainerRef.current);
+    }
+    
+    return () => {
+      cancelAnimationFrame(rafId);
+      resizeObserver.disconnect();
+    };
+  }, [shouldShowGroupedView]);
 
   // Filter functions using real Model type
   const filteredModels = React.useMemo(() => {
@@ -870,6 +963,9 @@ const ModelCatalog: React.FunctionComponent = () => {
         return modelLang.some(l => selectedLanguages.includes(l));
       });
     }
+    if (selectedTensorTypes.length > 0) {
+      filtered = filtered.filter(model => model.tensorType && selectedTensorTypes.includes(model.tensorType));
+    }
     
     // Performance filters (only when toggle is ON) - use local state for instant reactivity
     if (performanceFiltersEnabled) {
@@ -899,21 +995,29 @@ const ModelCatalog: React.FunctionComponent = () => {
     if (performanceFiltersEnabled) {
       // When performance toggle is ON, use sortOption
       if (sortOption === 'latency') {
-        // Sort by latency (lowest first) - get latency from first benchmark (already sorted by lowest latency)
+        // Sort by latency/TPS - get value from first benchmark (already sorted by filterBenchmarks)
         filtered.sort((a, b) => {
           const benchmarksA = generateModelBenchmarks(a);
           const benchmarksB = generateModelBenchmarks(b);
           const filteredA = filterBenchmarks(benchmarksA, { workload: workload, hardware: hardware, latencyValue: latencyValue, rpsValue: rpsValue, latencyMetric: latencyMetric, latencyPercentile: latencyPercentile });
           const filteredB = filterBenchmarks(benchmarksB, { workload: workload, hardware: hardware, latencyValue: latencyValue, rpsValue: rpsValue, latencyMetric: latencyMetric, latencyPercentile: latencyPercentile });
           
-          // Get latency from first benchmark (filterBenchmarks already sorts by lowest latency)
-          const getFirstBenchmarkLatency = (benchmarks: any[]) => {
-            if (benchmarks.length === 0) return Infinity;
+          // Get value from first benchmark (filterBenchmarks already sorts appropriately)
+          const getFirstBenchmarkValue = (benchmarks: any[]) => {
+            if (benchmarks.length === 0) return latencyMetric === 'TPS' ? 0 : Infinity;
             // Use the latency field which is set based on current filter's metric/percentile
-            return benchmarks[0].latency || Infinity;
+            return benchmarks[0].latency || (latencyMetric === 'TPS' ? 0 : Infinity);
           };
           
-          return getFirstBenchmarkLatency(filteredA) - getFirstBenchmarkLatency(filteredB);
+          const valueA = getFirstBenchmarkValue(filteredA);
+          const valueB = getFirstBenchmarkValue(filteredB);
+          
+          // For TPS: higher is better, so sort descending (b - a)
+          // For latency metrics: lower is better, so sort ascending (a - b)
+          if (latencyMetric === 'TPS') {
+            return valueB - valueA; // Descending for TPS (highest first)
+          }
+          return valueA - valueB; // Ascending for latency (lowest first)
         });
       } else {
         // Sort by recent publish (createdAt descending)
@@ -933,7 +1037,7 @@ const ModelCatalog: React.FunctionComponent = () => {
     }
     
     return filtered;
-  }, [search, category, selectedTasks, selectedProviders, selectedLicenses, selectedLanguages, 
+  }, [search, category, selectedTasks, selectedProviders, selectedLicenses, selectedLanguages, selectedTensorTypes,
       performanceFiltersEnabled, workload, hardware, latencyValue, rpsValue, latencyMetric, latencyPercentile, sortOption]);
 
   const getValidatedModels = React.useMemo(() => 
@@ -1046,6 +1150,22 @@ const ModelCatalog: React.FunctionComponent = () => {
     });
   }, [setSearchParams]);
 
+  const handleTensorTypeFilter = React.useCallback((tensorType: string, checked: boolean) => {
+    setSelectedTensorTypes(prev => {
+      const newTensorTypes = checked ? [...prev, tensorType] : prev.filter(t => t !== tensorType);
+      setSearchParams(prevParams => {
+        const next = new URLSearchParams(prevParams);
+        if (newTensorTypes.length > 0) {
+          next.set("tensorTypes", newTensorTypes.join(","));
+      } else {
+          next.delete("tensorTypes");
+        }
+        return next;
+      });
+      return newTensorTypes;
+    });
+  }, [setSearchParams]);
+
 
   // Helper to get filtered benchmarks for a model - same logic as details page
   // Uses local state for instant reactivity
@@ -1110,27 +1230,24 @@ const ModelCatalog: React.FunctionComponent = () => {
     return (
     <GalleryItem key={cardKey}>
       <Card style={{ height: '100%' }}>
-        <CardHeader style={{ paddingBottom: '1rem' }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            {model.validated ? (
-              <div 
-                style={{ width: '20px', height: '20px' }}
-                dangerouslySetInnerHTML={{ __html: ValidatedModelIcon }}
-              />
-            ) : model.provider === 'Red Hat' ? (
-              <div 
-                style={{ width: '20px', height: '20px' }}
-                dangerouslySetInnerHTML={{ __html: RedHatIcon }}
-              />
-            ) : (
-              <div 
-                style={{ width: '20px', height: '20px' }}
-                dangerouslySetInnerHTML={{ __html: GenericModelSvgIcon }}
-              />
-            )}
+        <CardHeader style={{ paddingBottom: '0.5rem' }}>
+          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
+            <div 
+              style={{ 
+                width: '56px', 
+                height: '56px', 
+                display: 'flex', 
+                alignItems: 'center', 
+                justifyContent: 'center',
+                flexShrink: 0,
+                padding: (!model.validated && model.provider !== 'Red Hat') ? '4px' : 0,
+                boxSizing: 'border-box'
+              }}
+              dangerouslySetInnerHTML={{ __html: model.validated ? ValidatedModelIcon : (model.provider === 'Red Hat' ? RedHatIcon : GenericModelSvgIcon) }}
+            />
             {model.validated ? (
               <Popover bodyContent="Validated models are benchmarked for performance and quality using leading open source evaluation datasets.">
-                <Label variant="filled" color="purple" style={{ cursor: 'pointer' }}>
+                <Label variant="filled" color="purple" style={{ cursor: 'pointer' }} icon={<FontAwesomeIcon icon={faChartColumn} />}>
                   Validated
                 </Label>
               </Popover>
@@ -1143,7 +1260,7 @@ const ModelCatalog: React.FunctionComponent = () => {
             ) : null}
           </div>
         </CardHeader>
-          <CardBody style={{ paddingTop: '1.5rem', display: 'flex', flexDirection: 'column' }}>
+          <CardBody style={{ paddingTop: '0.5rem', display: 'flex', flexDirection: 'column' }}>
           {/* Title area with min-height for B-2 layout alignment */}
           <div style={{ 
             minHeight: model.validated && performanceFiltersEnabled ? '3rem' : 'auto',
@@ -1190,8 +1307,8 @@ const ModelCatalog: React.FunctionComponent = () => {
           {model.validated && !performanceFiltersEnabled && (
             <div style={{ marginBottom: '1rem' }}>
               <Button 
-                variant="link" 
-                isInline 
+                variant="link"
+                isInline
                 style={{ fontSize: '0.875rem', padding: 0 }}
                 onClick={() => {
                   storeFilterStateForAlert();
@@ -1203,11 +1320,12 @@ const ModelCatalog: React.FunctionComponent = () => {
                   if (selectedProviders.length > 0) params.set("providers", selectedProviders.join(","));
                   if (selectedLicenses.length > 0) params.set("licenses", selectedLicenses.join(","));
                   if (selectedLanguages.length > 0) params.set("languages", selectedLanguages.join(","));
+                  if (selectedTensorTypes.length > 0) params.set("tensorTypes", selectedTensorTypes.join(","));
                   params.set("tab", "performance");
                   navigate(`/ai-assets/models/${model.id}?${params.toString()}`);
                 }}
               >
-                View {model.benchmarks} benchmarks →
+                {`View ${model.benchmarks} benchmarks →`}
               </Button>
                 </div>
           )}
@@ -1244,9 +1362,12 @@ const ModelCatalog: React.FunctionComponent = () => {
             
             // Get latency based on current filter metric/percentile (use local state)
             const latencyDisplayValue = currentBenchmark.latencyData[latencyMetric][latencyPercentile];
-            const latencyLabel = latencyMetric === 'TTFT' ? 'Time To First Token - measures the time until the first response token is generated.' : 
-                                 latencyMetric === 'ITL' ? 'Inter-Token Latency - measures the average time between consecutive tokens.' : 
-                                 'End-to-End Latency - measures the total time from request to complete response.';
+            const latencyLabel = latencyMetric === 'TTFT' 
+              ? <span><b>TTFT (time to first token):</b> Time until the model starts responding. Best for interactive experiences.</span>
+              : latencyMetric === 'ITL' 
+                ? <span><b>ITL (inter-token latency):</b> Average time between consecutive tokens. Best for streaming experiences.</span>
+                : <span><b>E2E (end-to-end latency):</b> Total time from request to complete response. Best for batch processing.</span>;
+            const latencyUnit = latencyMetric === 'TPS' ? 'tok/s' : 'ms';
             
             return (
               <>
@@ -1260,12 +1381,12 @@ const ModelCatalog: React.FunctionComponent = () => {
                     <span style={{ flex: '1', minWidth: '60px', fontWeight: '500' }}>{currentBenchmark.replicas}</span>
                     <span style={{ flex: '1', minWidth: '80px', textAlign: 'right' }}>
                       <span style={{ fontWeight: '500' }}>{latencyDisplayValue}</span>
-                      <span style={{ color: 'var(--pf-t--global--text--color--subtle)' }}> ms</span>
+                      <span style={{ color: 'var(--pf-t--global--text--color--subtle)' }}> {latencyUnit}</span>
                     </span>
                   </div>
                   <div style={{ display: 'flex', fontSize: '0.75rem', color: 'var(--pf-t--global--text--color--subtle)' }}>
                     <span style={{ flex: '1', minWidth: '80px' }}>Hardware</span>
-                    <span style={{ flex: '1', minWidth: '60px' }}>Replica</span>
+                    <span style={{ flex: '1', minWidth: '60px' }}>Replicas</span>
                     <span style={{ flex: '1', minWidth: '80px', textAlign: 'right', display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '0.25rem' }}>
                       {latencyMetric}
                       <Popover bodyContent={latencyLabel}>
@@ -1288,6 +1409,7 @@ const ModelCatalog: React.FunctionComponent = () => {
                     if (selectedProviders.length > 0) params.set("providers", selectedProviders.join(","));
                     if (selectedLicenses.length > 0) params.set("licenses", selectedLicenses.join(","));
                     if (selectedLanguages.length > 0) params.set("languages", selectedLanguages.join(","));
+                    if (selectedTensorTypes.length > 0) params.set("tensorTypes", selectedTensorTypes.join(","));
                     params.set("workload", workload);
                     params.set("latencyMetric", latencyMetric);
                     params.set("latencyPercentile", latencyPercentile);
@@ -1354,6 +1476,7 @@ const ModelCatalog: React.FunctionComponent = () => {
       <PageSection isFilled style={{ padding: 0, minHeight: '100%' }}>
       {/* Header */}
         <div style={{ padding: '1.5rem', paddingBottom: '0' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
         <Title headingLevel="h1" size="2xl" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
           <div style={{ background: '#daf2f2', borderRadius: '20px', padding: '4px', width: '40px', height: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <div 
@@ -1363,6 +1486,7 @@ const ModelCatalog: React.FunctionComponent = () => {
           </div>
           Catalog
         </Title>
+        </div>
         <p style={{ color: '#6A6E73', fontSize: '0.875rem', marginBottom: '1.5rem' }}>
           Discover models provided by Red Hat and other providers that are available for your organization to register, deploy, and customize.
         </p>
@@ -1559,6 +1683,25 @@ const ModelCatalog: React.FunctionComponent = () => {
                     </Button>
                   )}
                 </div>
+
+                <Divider style={{ marginBottom: '1rem' }} />
+
+            {/* Tensor Type Filter */}
+                <div style={{ marginBottom: '1.5rem' }}>
+                  <div style={{ marginBottom: '0.5rem', fontWeight: '500', fontSize: '0.875rem' }}>
+                Tensor type
+                    </div>
+              {tensorTypeOptions.map(tensorType => (
+                <div key={tensorType} style={{ marginBottom: '0.5rem' }}>
+                      <Checkbox
+                    id={`tensorType-${tensorType}`}
+                        label={tensorType}
+                    isChecked={selectedTensorTypes.includes(tensorType)}
+                    onChange={(_event, checked) => handleTensorTypeFilter(tensorType, checked)}
+                      />
+                    </div>
+                  ))}
+                </div>
                     </div>
                 </div>
 
@@ -1576,7 +1719,7 @@ const ModelCatalog: React.FunctionComponent = () => {
           {/* Main Content */}
           <div style={{ padding: '1.5rem' }}>
             {/* Search Input - always visible */}
-            <div style={{ marginBottom: (!performanceFiltersEnabled && (selectedTasks.length > 0 || selectedProviders.length > 0 || selectedLicenses.length > 0 || selectedLanguages.length > 0)) ? '0' : '1rem' }}>
+            <div style={{ marginBottom: (!performanceFiltersEnabled && (selectedTasks.length > 0 || selectedProviders.length > 0 || selectedLicenses.length > 0 || selectedLanguages.length > 0 || selectedTensorTypes.length > 0)) ? '0' : '1rem' }}>
               <SearchInput
                 placeholder="Filter by name or description"
                 value={searchInput}
@@ -1595,7 +1738,7 @@ const ModelCatalog: React.FunctionComponent = () => {
             </div>
 
             {/* Filter chips toolbar - when performance toggle is OFF and has filters */}
-            {(!performanceFiltersEnabled && (selectedTasks.length > 0 || selectedProviders.length > 0 || selectedLicenses.length > 0 || selectedLanguages.length > 0)) && (
+            {(!performanceFiltersEnabled && (selectedTasks.length > 0 || selectedProviders.length > 0 || selectedLicenses.length > 0 || selectedLanguages.length > 0 || selectedTensorTypes.length > 0)) && (
             <div key="filter-chips-off" style={{ marginTop: '1rem' }}>
               <Toolbar id="search-toolbar">
               {/* First row: All chips */}
@@ -1641,6 +1784,16 @@ const ModelCatalog: React.FunctionComponent = () => {
                       </LabelGroup>
                     </ToolbarItem>
                   )}
+                  {/* Tensor type chips */}
+                  {selectedTensorTypes.length > 0 && (
+                    <ToolbarItem>
+                      <LabelGroup categoryName="Tensor type" isClosable onClick={() => setSelectedTensorTypes([])}>
+                        {selectedTensorTypes.map(tensorType => (
+                          <Label key={tensorType} onClose={() => handleTensorTypeFilter(tensorType, false)}>{tensorType}</Label>
+                        ))}
+                      </LabelGroup>
+                    </ToolbarItem>
+                  )}
                 </ToolbarGroup>
               </ToolbarContent>
               {/* Second row: Reset all filters button */}
@@ -1653,6 +1806,7 @@ const ModelCatalog: React.FunctionComponent = () => {
                     setSelectedProviders([]);
                     setSelectedLicenses([]);
                     setSelectedLanguages([]);
+                    setSelectedTensorTypes([]);
                   }}>
                     Reset all filters
                   </Button>
@@ -1665,7 +1819,7 @@ const ModelCatalog: React.FunctionComponent = () => {
             {/* Performance Toolbar - use display instead of conditional rendering to prevent blink */}
             <div style={{ display: performanceFiltersEnabled ? 'block' : 'none', marginTop: '0.5rem' }}>
                 <Title headingLevel="h3" size="lg" style={{ marginBottom: '0.5rem' }}>
-                  Set performance criteria to find the best model
+                  Workload and performance constraints
                 </Title>
                 <Toolbar>
                   <ToolbarContent>
@@ -1679,7 +1833,7 @@ const ModelCatalog: React.FunctionComponent = () => {
                               isExpanded={isWorkloadOpen}
                               style={{ height: '56px' }}
                             >
-                              <span style={{ fontWeight: 500 }}>Workload:</span> {WORKLOAD_OPTIONS.find(o => o.value === workload)?.label || workload}
+                              <><span style={{ fontWeight: 500 }}>Scenario:</span> {WORKLOAD_LABELS[workload] || workload}</>
                             </MenuToggle>
                             {isWorkloadOpen && (
                               <Menu 
@@ -1692,7 +1846,7 @@ const ModelCatalog: React.FunctionComponent = () => {
                                   <MenuList>
                                     {WORKLOAD_OPTIONS.map((option) => (
                                       <MenuItem key={option.value} itemId={option.value}>
-                                        {option.label}
+                                        {WORKLOAD_LABELS[option.value]}
                                       </MenuItem>
                                     ))}
                                   </MenuList>
@@ -1701,7 +1855,7 @@ const ModelCatalog: React.FunctionComponent = () => {
                             )}
                           </div>
                           <Popover
-                            bodyContent="Sets the input and output token lengths used for generating the benchmark. Different scenarios (e.g. Chatbot) use different token counts, which impacts performance results below."
+                            bodyContent={<span>Select a predefined scenario used to measure and compare model performance.<br /><br />Each scenario uses fixed input and output token lengths. Scenario names approximate common use cases and do not describe model capabilities.</span>}
                           >
                             <Button variant="plain" aria-label="Workload help" style={{ padding: '0.25rem' }}>
                               <OutlinedQuestionCircleIcon />
@@ -1720,7 +1874,7 @@ const ModelCatalog: React.FunctionComponent = () => {
                               isExpanded={isLatencyOpen}
                               style={{ height: '56px' }}
                             >
-                              <span style={{ fontWeight: 500 }}>Latency:</span> {latencyMetric} | {latencyPercentile} | Under {latencyValue}ms
+                              <><span style={{ fontWeight: 500 }}>Latency:</span> {isLatencyOpen ? pendingLatencyMetric : latencyMetric} at {isLatencyOpen ? pendingLatencyPercentile : latencyPercentile} ≤ {isLatencyOpen ? pendingLatencyValue : latencyValue}ms</>
                                     </MenuToggle>
                             {isLatencyOpen && (
                               <Panel 
@@ -1748,26 +1902,39 @@ const ModelCatalog: React.FunctionComponent = () => {
                                         {isMetricSelectOpen && (
                                           <Menu 
                                             role="listbox" 
-                                            onSelect={(_, itemId) => { setPendingLatencyMetric(itemId as any); setIsMetricSelectOpen(false); }}
+                                            onSelect={(_, itemId) => { 
+                                              const previousMetric = pendingLatencyMetric;
+                                              setPendingLatencyMetric(itemId as any); 
+                                              setIsMetricSelectOpen(false);
+                                              // Reset slider when switching between TPS and other metrics
+                                              // For TPS: higher is better, so start with low threshold (min)
+                                              // For latency metrics: lower is better, so start with high threshold (max)
+                                              if (itemId === 'TPS' && previousMetric !== 'TPS') {
+                                                setPendingLatencyValue(20); // min value for TPS
+                                              } else if (itemId !== 'TPS' && previousMetric === 'TPS') {
+                                                setPendingLatencyValue(893); // max value for latency metrics
+                                              }
+                                            }}
                                             selected={pendingLatencyMetric}
-                                            style={{ position: 'absolute', top: '100%', left: 0, zIndex: 9999, minWidth: '100%' }}
+                                            style={{ position: 'absolute', top: '100%', left: 0, zIndex: 9999, minWidth: '320px' }}
                                           >
                                             <MenuContent>
                                               <MenuList>
-                                                <MenuItem itemId="TTFT">TTFT</MenuItem>
-                                                <MenuItem itemId="ITL">ITL</MenuItem>
-                                                <MenuItem itemId="E2E">E2E</MenuItem>
+                                                <MenuItem itemId="TTFT" description="Time until the model starts responding. Best for interactive experiences.">
+                                                  TTFT (time to first token)
+                                                </MenuItem>
+                                                <MenuItem itemId="E2E" description="Total time to generate the full response. Best for summarization, batch jobs, and code generation.">
+                                                  E2E (end-to-end)
+                                                </MenuItem>
+                                                <MenuItem itemId="ITL" description="Time between tokens during generation. Important for smooth streaming and audio.">
+                                                  ITL (inter-token latency)
+                                                </MenuItem>
                                               </MenuList>
                                             </MenuContent>
                                           </Menu>
                                         )}
                                       </div>
-                                      <Popover bodyContent={<div>Choose the specific aspect of speed that matters most for your use case:<br/><br/><strong>TTFT (Time To First Token):</strong> How quickly the model starts responding. Important for perceived responsiveness.<br/><br/><strong>E2E (End-To-End):</strong> The total time to generate the full response. Important for completion tasks.<br/><br/><strong>ITL (Inter-Token Latency):</strong> The time gap between generating each new token. Consistent ITL ensures smooth streaming.<br/><br/><strong>TPS (Tokens Per Second):</strong> The speed of text generation. Higher TPS is better.</div>}>
-                                        <Button variant="plain" aria-label="Metric help" style={{ padding: '0.25rem', marginRight: '0.5rem' }}>
-                                          <OutlinedQuestionCircleIcon />
-                                        </Button>
-                                      </Popover>
-                                      <div ref={percentileMenuRef} style={{ position: 'relative', flex: 1 }}>
+                                      <div ref={percentileMenuRef} style={{ position: 'relative', flex: 1, marginLeft: '0.5rem' }}>
                                         <MenuToggle 
                                           onClick={() => { setIsPercentileSelectOpen(!isPercentileSelectOpen); setIsMetricSelectOpen(false); }}
                                           isExpanded={isPercentileSelectOpen}
@@ -1793,7 +1960,7 @@ const ModelCatalog: React.FunctionComponent = () => {
                                           </Menu>
                                         )}
                               </div>
-                                      <Popover bodyContent="Defines how consistently the model must perform. For example, P90 means 90% of requests must meet your target, Mean represents the average performance across all requests.">
+                                      <Popover bodyContent={<span>Select the latency measure used for benchmarking - percentile or mean.<br /><br /><b>P90, P95, P99:</b> The selected percentage of requests must meet the latency threshold.<br /><b>Mean:</b> The average latency across all requests.</span>}>
                                         <Button variant="plain" aria-label="Percentile help" style={{ padding: '0.25rem' }}>
                                           <OutlinedQuestionCircleIcon />
                                         </Button>
@@ -1822,14 +1989,14 @@ const ModelCatalog: React.FunctionComponent = () => {
                                             }}
                                             style={{ width: '80px' }}
                                           />
-                                          <span style={{ padding: '0.5rem', backgroundColor: '#f3f4f6', borderRadius: '4px', fontSize: '0.875rem' }}>ms</span>
+                                          <span style={{ padding: '0.5rem', backgroundColor: '#f3f4f6', borderRadius: '4px', fontSize: '0.875rem' }}>{pendingLatencyMetric === 'TPS' ? 'tok/s' : 'ms'}</span>
                                 </div>
                               </div>
                                     </div>
                                     {/* Row 3: Apply and Reset buttons */}
                                     <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
                                       <Button variant="primary" onClick={handleApplyLatency}>
-                                  Apply filter
+                                  Apply
                                 </Button>
                                       <Button variant="link" onClick={handleResetLatency}>
                                   Reset
@@ -1841,7 +2008,14 @@ const ModelCatalog: React.FunctionComponent = () => {
                             )}
                             </div>
                           <Popover
-                            bodyContent="Filters out configurations that do not meet your specific speed requirements."
+                            bodyContent={<span>
+                                  Filter performance benchmarks by measured latency.<br /><br />
+                                  <ul style={{ margin: '0 0 0 1.25rem', padding: 0, listStyleType: 'disc' }}>
+                                    <li><b>Metric:</b> Select the latency metric (TTFT, E2E, or ITL) to evaluate.</li>
+                                    <li><b>Percentile:</b> Choose how strictly the model must meet the target. For example, P90 means 90% of requests must meet the selected threshold.</li>
+                                    <li><b>Threshold:</b> Set the maximum latency in milliseconds. Models exceeding this value are excluded.</li>
+                                  </ul>
+                                </span>}
                           >
                             <Button variant="plain" aria-label="Latency help" style={{ padding: '0.25rem' }}>
                               <OutlinedQuestionCircleIcon />
@@ -1859,7 +2033,7 @@ const ModelCatalog: React.FunctionComponent = () => {
                               isExpanded={isRpsOpen}
                               style={{ height: '56px' }}
                             >
-                              <span style={{ fontWeight: 500 }}>Max RPS:</span> {rpsValue}
+                              <span style={{ fontWeight: 500 }}>Max RPS:</span> {isRpsOpen ? pendingRpsValue : rpsValue}
                             </MenuToggle>
                             {isRpsOpen && (
                               <Panel 
@@ -1903,7 +2077,7 @@ const ModelCatalog: React.FunctionComponent = () => {
                                     {/* Row 2: Apply and Reset buttons */}
                                     <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
                                       <Button variant="primary" onClick={handleApplyRps}>
-                                  Apply filter
+                                  Apply
                                 </Button>
                                       <Button variant="link" onClick={handleResetRps}>
                                   Reset
@@ -1915,7 +2089,7 @@ const ModelCatalog: React.FunctionComponent = () => {
                             )}
                             </div>
                           <Popover
-                            bodyContent="Sets your target traffic load (Requests Per Second). This value is used to calculate the optimal deployment size (number of replicas) required to handle this volume."
+                            bodyContent="Set your target traffic load in requests per second (RPS). This value is used to calculate the optimal deployment size (number of replicas) for reliable performance."
                           >
                             <Button variant="plain" aria-label="RPS help" style={{ padding: '0.25rem' }}>
                               <OutlinedQuestionCircleIcon />
@@ -1928,45 +2102,70 @@ const ModelCatalog: React.FunctionComponent = () => {
                       {/* Hardware */}
                       <ToolbarItem>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '0.125rem' }}>
-                          <Dropdown
-                            isOpen={isHardwareOpen}
-                            onOpenChange={(isOpen) => setIsHardwareOpen(isOpen)}
-                            toggle={(toggleRef: React.Ref<HTMLButtonElement>) => (
+                          <div ref={hardwareMenuRef} style={{ position: 'relative' }}>
                           <MenuToggle
-                                ref={toggleRef}
-                                onClick={() => setIsHardwareOpen(!isHardwareOpen)}
-                                isExpanded={isHardwareOpen}
-                                style={{ height: '56px' }}
+                              onClick={() => setIsHardwareOpen(!isHardwareOpen)}
+                              isExpanded={isHardwareOpen}
+                              style={{ height: '56px' }}
                           >
-                                Hardware {hardware.length > 0 && <Badge isRead>{hardware.length}</Badge>}
+                              Hardware {hardware.length > 0 && <Badge isRead>{hardware.length}</Badge>}
                           </MenuToggle>
+                            {isHardwareOpen && (
+                              <Menu
+                                onSelect={(_event, itemId) => {
+                                  const hw = itemId as string;
+                                  if (hardware.includes(hw)) {
+                                    setHardware(hardware.filter(h => h !== hw));
+                                  } else {
+                                    setHardware([...hardware, hw]);
+                                  }
+                                }}
+                                selected={hardware}
+                                style={{ 
+                                  position: 'absolute', 
+                                  top: '100%', 
+                                  left: 0, 
+                                  zIndex: 9999,
+                                  minWidth: '300px',
+                                  boxShadow: 'var(--pf-t--global--box-shadow--md)',
+                                  backgroundColor: 'var(--pf-t--global--background--color--primary--default)'
+                                }}
+                              >
+                                <MenuSearch>
+                                  <MenuSearchInput>
+                                    <SearchInput
+                                      placeholder="Search hardware"
+                                      value={hardwareSearchValue}
+                                      aria-label="Filter hardware options"
+                                      onChange={(_event, value) => setHardwareSearchValue(value)}
+                                      onClear={() => setHardwareSearchValue('')}
+                                    />
+                                  </MenuSearchInput>
+                                </MenuSearch>
+                                <Divider />
+                                <MenuContent>
+                                  <MenuList>
+                                    {filteredHardwareOptions.length === 0 ? (
+                                      <MenuItem isDisabled>No results found</MenuItem>
+                                    ) : (
+                                      filteredHardwareOptions.map((hw) => (
+                                        <MenuItem 
+                                          key={hw}
+                                          itemId={hw}
+                                          hasCheckbox
+                                          isSelected={hardware.includes(hw)}
+                                        >
+                                          {hw}
+                                        </MenuItem>
+                                      ))
+                                    )}
+                                  </MenuList>
+                                </MenuContent>
+                              </Menu>
                             )}
-                            popperProps={{ position: 'left' }}
-                          >
-                            <DropdownList>
-                              {hardwareOptions.map((hw) => (
-                                <DropdownItem 
-                                  key={hw}
-                                  onClick={() => {
-                                    if (hardware.includes(hw)) {
-                                      setHardware(hardware.filter(h => h !== hw));
-                                    } else {
-                                      setHardware([...hardware, hw]);
-                                    }
-                                  }}
-                                >
-                                  <Checkbox
-                                    id={`hw-${hw}`}
-                                    label={hw}
-                                    isChecked={hardware.includes(hw)}
-                                    onChange={() => {}}
-                                  />
-                                </DropdownItem>
-                              ))}
-                            </DropdownList>
-                          </Dropdown>
+                          </div>
                           <Popover
-                            bodyContent="Filters by the hardware used to generate the benchmark. This is defined by the GPU type (e.g., A100) and the number of GPUs used for a single replica."
+                            bodyContent="Select the desired hardware configuration used for benchmarking. The format of hardware is [GPU type] x [number of GPUs per replica]. Example, A100 x 1"
                           >
                             <Button variant="plain" aria-label="Hardware help" style={{ padding: '0.25rem' }}>
                               <OutlinedQuestionCircleIcon />
@@ -2027,6 +2226,16 @@ const ModelCatalog: React.FunctionComponent = () => {
                       </LabelGroup>
                     </ToolbarItem>
                   )}
+                  {/* Tensor type chips */}
+                  {selectedTensorTypes.length > 0 && (
+                    <ToolbarItem>
+                      <LabelGroup categoryName="Tensor type" isClosable onClick={() => setSelectedTensorTypes([])}>
+                        {selectedTensorTypes.map(tensorType => (
+                          <Label key={tensorType} onClose={() => handleTensorTypeFilter(tensorType, false)}>{tensorType}</Label>
+                        ))}
+                      </LabelGroup>
+                    </ToolbarItem>
+                  )}
                   {/* Workload Chip with undo icon */}
                     {workload !== DEFAULT_WORKLOAD && (
                     <ToolbarItem>
@@ -2044,7 +2253,7 @@ const ModelCatalog: React.FunctionComponent = () => {
                             </button>
                           }
                         >
-                          Workload: {WORKLOAD_OPTIONS.find(o => o.value === workload)?.label || workload}
+                          {`Scenario: ${WORKLOAD_LABELS[workload] || workload}`}
                       </Label>
                       </LabelGroup>
                     </ToolbarItem>
@@ -2058,7 +2267,7 @@ const ModelCatalog: React.FunctionComponent = () => {
                           <ul className="pf-v6-c-label-group__list" role="list">
                             <li className="pf-v6-c-label-group__list-item"><Label>Metric: {latencyMetric}</Label></li>
                             <li className="pf-v6-c-label-group__list-item"><Label>Percentile: {latencyPercentile}</Label></li>
-                            <li className="pf-v6-c-label-group__list-item"><Label>Under {latencyValue}ms</Label></li>
+                            <li className="pf-v6-c-label-group__list-item"><Label>{latencyMetric === 'TPS' ? `≥ ${latencyValue} tok/s` : `≤ ${latencyValue}ms`}</Label></li>
                           </ul>
                         </div>
                         <div className="pf-v6-c-label-group__close" style={{ marginLeft: '0.25rem', paddingLeft: 0, alignSelf: 'center' }}>
@@ -2114,7 +2323,7 @@ const ModelCatalog: React.FunctionComponent = () => {
                 </ToolbarGroup>
               </ToolbarContent>
               {/* Second row: Reset all filters button */}
-              {(selectedTasks.length > 0 || selectedProviders.length > 0 || selectedLicenses.length > 0 || selectedLanguages.length > 0 ||
+              {(selectedTasks.length > 0 || selectedProviders.length > 0 || selectedLicenses.length > 0 || selectedLanguages.length > 0 || selectedTensorTypes.length > 0 ||
                 workload !== DEFAULT_WORKLOAD || latencyMetric !== DEFAULT_LATENCY_METRIC || latencyPercentile !== DEFAULT_LATENCY_PERCENTILE || 
                 latencyValue !== DEFAULT_LATENCY_VALUE || rpsValue !== DEFAULT_RPS_VALUE || hardware.length > 0) && (
                 <ToolbarContent style={{ paddingTop: '0.5rem' }}>
@@ -2126,27 +2335,15 @@ const ModelCatalog: React.FunctionComponent = () => {
                   setSelectedProviders([]);
                   setSelectedLicenses([]);
                   setSelectedLanguages([]);
+                  setSelectedTensorTypes([]);
                     resetPerformanceFilters();
                 }}>
                   Reset all filters
                 </Button>
                   </ToolbarItem>
                 </ToolbarContent>
-              )}
-            </Toolbar>
-
-            {/* Filter Changed Alert */}
-            {showFilterChangedAlert && performanceFiltersEnabled && (
-              <Alert
-                variant="info"
-                isInline
-                title="The results list has been updated to match the latest performance criteria set on the details page."
-                actionClose={
-                  <AlertActionCloseButton onClose={() => setShowFilterChangedAlert(false)} />
-                }
-                style={{ marginBottom: '1.5rem' }}
-              />
             )}
+            </Toolbar>
 
             {/* Category Tabs and Sort in same row */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
@@ -2191,7 +2388,9 @@ const ModelCatalog: React.FunctionComponent = () => {
                       onClick={() => setIsSortOpen(!isSortOpen)}
                       isExpanded={isSortOpen}
                     >
-                      Sort: {sortOption === 'latency' ? 'Lowest latency' : 'Recent publish'}
+                      Sort: {sortOption === 'latency' 
+                        ? 'Latency (Lowest → Highest)'
+                        : 'Publish date (Newest → Oldest)'}
                     </MenuToggle>
                   )}
                   selected={sortOption}
@@ -2202,18 +2401,31 @@ const ModelCatalog: React.FunctionComponent = () => {
                   popperProps={{ position: 'right' }}
                 >
                   <SelectList>
-                    <SelectOption value="latency">Lowest latency</SelectOption>
-                    <SelectOption value="updated">Recent publish</SelectOption>
+                    <SelectOption value="latency">Latency (Lowest → Highest)</SelectOption>
+                    <SelectOption value="updated">Publish date (Newest → Oldest)</SelectOption>
                   </SelectList>
                 </Select>
               )}
             </div>
 
+            {/* Filter Changed Alert */}
+            {showFilterChangedAlert && performanceFiltersEnabled && (
+              <Alert
+                variant="info"
+                isInline
+                title={`The performance constraints and results have been updated to match the constraints you applied to the ${alertModelName} model details page.`}
+                actionClose={
+                  <AlertActionCloseButton onClose={() => setShowFilterChangedAlert(false)} />
+                }
+                style={{ marginTop: '1.5rem', marginBottom: '1.5rem' }}
+              />
+            )}
+
             {/* Empty States */}
             {(() => {
               const hasFilters = search.trim() !== '' || selectedTasks.length > 0 || 
                 selectedProviders.length > 0 || selectedLicenses.length > 0 || 
-                selectedLanguages.length > 0 || (performanceFiltersEnabled && (
+                selectedLanguages.length > 0 || selectedTensorTypes.length > 0 || (performanceFiltersEnabled && (
                   latencyValue !== DEFAULT_LATENCY_VALUE || rpsValue !== DEFAULT_RPS_VALUE || 
                   hardware.length > 0
                 ));
@@ -2228,6 +2440,13 @@ const ModelCatalog: React.FunctionComponent = () => {
               );
 
               if (showPerformanceEmpty) {
+                // Get the display name for the current category
+                // Note: Inside this block, category can only be 'redhat' or 'other' 
+                // since showPerformanceEmpty requires categoryHasNoBenchmarkedModels
+                const categoryDisplayName = category === 'redhat' 
+                  ? 'Red Hat AI models' 
+                  : 'Other models';
+                
                 return (
                   <div style={{ 
                     width: 'calc(100vw - 320px - 240px - 6rem)',
@@ -2237,12 +2456,12 @@ const ModelCatalog: React.FunctionComponent = () => {
                   }}>
                     <EmptyState 
                       variant={EmptyStateVariant.lg} 
-                      titleText="No performance data available in selected category" 
+                      titleText="No models with performance data" 
                       headingLevel="h4" 
                       icon={ChartColumnIcon}
                     >
                     <EmptyStateBody>
-                        Select the All models category to view all models with performance data, or turn Model performance view off to view models in the selected category.
+                        No models in the {categoryDisplayName} category have performance data. Select another model category, or turn off Model performance view to see models in the selected category.
                       </EmptyStateBody>
                       <EmptyStateFooter>
                         <EmptyStateActions>
@@ -2252,7 +2471,7 @@ const ModelCatalog: React.FunctionComponent = () => {
                         </EmptyStateActions>
                         <EmptyStateActions>
                         <Button variant="link" onClick={() => setPerformanceFiltersEnabled(false)}>
-                          Turn Model performance view off
+                          Turn off Model performance view
                         </Button>
                         </EmptyStateActions>
                       </EmptyStateFooter>
@@ -2287,6 +2506,7 @@ const ModelCatalog: React.FunctionComponent = () => {
                           setSelectedProviders([]);
                           setSelectedLicenses([]);
                           setSelectedLanguages([]);
+                          setSelectedTensorTypes([]);
                           if (performanceFiltersEnabled) {
                             resetPerformanceFilters();
                           }
@@ -2304,9 +2524,9 @@ const ModelCatalog: React.FunctionComponent = () => {
             })()}
 
             {/* Models List - Grouped view when no category and no filters, single list otherwise */}
-            {category === null && !hasActiveFiltersOrSearch ? (
-              <>
-                {/* Red Hat AI validated models section - One row (4 models) */}
+            {shouldShowGroupedView ? (
+              <div ref={galleryContainerRef}>
+                {/* Red Hat AI validated models section - Dynamic row based on screen width */}
                 {getValidatedModels.length > 0 && (
                   <div style={{ marginBottom: '2rem' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -2321,7 +2541,7 @@ const ModelCatalog: React.FunctionComponent = () => {
                       Third-party models benchmarked for performance and quality by Red Hat using leading open-source evaluation datasets.
                     </p>
                     <Gallery hasGutter minWidths={{ default: '280px' }} maxWidths={{ default: '1fr' }}>
-                      {getValidatedModels.slice(0, 4).map(model => {
+                      {getValidatedModels.slice(0, cardsPerRow).map(model => {
                         const modelCard = getFilteredModels().find(m => m.id === model.id);
                         return modelCard ? renderModelCard(modelCard) : null;
                       })}
@@ -2329,7 +2549,7 @@ const ModelCatalog: React.FunctionComponent = () => {
                   </div>
                 )}
 
-                {/* Red Hat AI models section - One row (4 models) */}
+                {/* Red Hat AI models section - Dynamic row based on screen width */}
                 {getRedHatModels.length > 0 && (
                   <div style={{ marginBottom: '2rem' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -2344,7 +2564,7 @@ const ModelCatalog: React.FunctionComponent = () => {
                       Red Hat models with full support and legal indemnification.
                     </p>
                     <Gallery hasGutter minWidths={{ default: '280px' }} maxWidths={{ default: '1fr' }}>
-                      {getRedHatModels.slice(0, 4).map(model => {
+                      {getRedHatModels.slice(0, cardsPerRow).map(model => {
                         const modelCard = getFilteredModels().find(m => m.id === model.id);
                         return modelCard ? renderModelCard(modelCard) : null;
                       })}
@@ -2352,7 +2572,7 @@ const ModelCatalog: React.FunctionComponent = () => {
                   </div>
                 )}
 
-                {/* Other models section - One row (4 models) */}
+                {/* Other models section - Dynamic row based on screen width */}
                 {getCommunityModels.length > 0 && (
                   <div style={{ marginBottom: '2rem' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -2367,14 +2587,14 @@ const ModelCatalog: React.FunctionComponent = () => {
                       Admin-configured and externally sourced models.
                     </p>
                     <Gallery hasGutter minWidths={{ default: '280px' }} maxWidths={{ default: '1fr' }}>
-                      {getCommunityModels.slice(0, 4).map(model => {
+                      {getCommunityModels.slice(0, cardsPerRow).map(model => {
                         const modelCard = getFilteredModels().find(m => m.id === model.id);
                         return modelCard ? renderModelCard(modelCard) : null;
                       })}
                     </Gallery>
                   </div>
                 )}
-              </>
+              </div>
             ) : (
               /* Single combined list when category is selected OR when filtering/searching */
               filteredModels.length > 0 && (
@@ -2449,14 +2669,18 @@ const ModelCatalog: React.FunctionComponent = () => {
         </ModalHeader>
         <ModalBody>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-            {(['hardware', 'metadata', 'latency', 'requestProfile'] as const).map(group => {
+            {(['hardware', 'metadata', 'latency', 'throughput', 'requestProfile'] as const).map(group => {
               const groupColumns = COLUMN_DEFINITIONS.filter(col => col.group === group);
               if (groupColumns.length === 0) return null;
+              
+              const groupLabel = group === 'requestProfile' ? 'Request Profile' 
+                : group === 'throughput' ? 'Throughput' 
+                : group;
               
               return (
                 <div key={group}>
                   <Title headingLevel="h4" size="md" style={{ marginBottom: '0.75rem', textTransform: 'capitalize' }}>
-                    {group === 'requestProfile' ? 'Request Profile' : group}
+                    {groupLabel}
                   </Title>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
                     {groupColumns.map(col => (

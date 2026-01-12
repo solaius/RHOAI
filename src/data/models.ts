@@ -15,6 +15,7 @@ export const MODELS: Model[] = [
     updatedAt: '2025-05-30',
     metrics: { accuracy: 89, quality: 91 },
     performance: { workload: 'chat', latency: '85ms', rps: '2', hardware: ['H100', 'A100'] },
+    tensorType: 'INT4',
     modelCard: `# DeepSeek-R1-0528-quantized.w4a16
 
 ## Model Overview
@@ -46,6 +47,7 @@ This optimization reduces the number of bits used to represent weights from 8 to
     updatedAt: '2025-12-06',
     metrics: { accuracy: 95, quality: 94 },
     performance: { workload: 'chat', latency: '120ms', rps: '1', hardware: ['H100', 'A100'] },
+    tensorType: 'INT4',
   },
   {
     id: 'llama-3.1-8b-instruct',
@@ -60,6 +62,7 @@ This optimization reduces the number of bits used to represent weights from 8 to
     updatedAt: '2025-04-17',
     metrics: { accuracy: 86, quality: 88 },
     performance: { workload: 'chat', latency: '65ms', rps: '3', hardware: ['H100', 'A100', 'L40S'] },
+    tensorType: 'FP16',
   },
   {
     id: 'llama-3.1-nemotron-70b-instruct-hf',
@@ -74,6 +77,7 @@ This optimization reduces the number of bits used to represent weights from 8 to
     updatedAt: '2025-05-08',
     metrics: { accuracy: 93, quality: 94 },
     performance: { workload: 'chat', latency: '200ms', rps: '1', hardware: ['H100', 'H200'] },
+    tensorType: 'FP16',
   },
   {
     id: 'llama-3.1-nemotron-70b-instruct-hf-fp8-dynamic',
@@ -88,6 +92,7 @@ This optimization reduces the number of bits used to represent weights from 8 to
     updatedAt: '2025-03-01',
     metrics: { accuracy: 92, quality: 93 },
     performance: { workload: 'chat', latency: '180ms', rps: '1', hardware: ['H100', 'H200'] },
+    tensorType: 'FP8',
   },
   {
     id: 'llama-3.3-70b-instruct',
@@ -102,6 +107,7 @@ This optimization reduces the number of bits used to represent weights from 8 to
     updatedAt: '2025-04-17',
     metrics: { accuracy: 94, quality: 95 },
     performance: { workload: 'chat', latency: '220ms', rps: '1', hardware: ['H100', 'H200'] },
+    tensorType: 'FP16',
   },
   {
     id: 'qwen2.5-7b-instruct',
@@ -116,6 +122,7 @@ This optimization reduces the number of bits used to represent weights from 8 to
     updatedAt: '2025-04-18',
     metrics: { accuracy: 89, quality: 91 },
     performance: { workload: 'chat', latency: '70ms', rps: '2', hardware: ['H100', 'A100'] },
+    tensorType: 'FP16',
   },
   {
     id: 'qwen2.5-7b-instruct-fp8-dynamic',
@@ -130,6 +137,7 @@ This optimization reduces the number of bits used to represent weights from 8 to
     updatedAt: '2024-11-27',
     metrics: { accuracy: 88, quality: 90 },
     performance: { workload: 'chat', latency: '60ms', rps: '3', hardware: ['H100', 'A100'] },
+    tensorType: 'FP8',
   },
   {
     id: 'granite-3.1-8b-instruct',
@@ -144,6 +152,7 @@ This optimization reduces the number of bits used to represent weights from 8 to
     updatedAt: '2025-04-18',
     metrics: { accuracy: 87, quality: 89 },
     performance: { workload: 'chat', latency: '65ms', rps: '3', hardware: ['H100', 'A100'] },
+    tensorType: 'FP16',
   },
   {
     id: 'granite-3.1-8b-instruct-fp8-dynamic',
@@ -158,6 +167,7 @@ This optimization reduces the number of bits used to represent weights from 8 to
     updatedAt: '2025-01-08',
     metrics: { accuracy: 86, quality: 88 },
     performance: { workload: 'chat', latency: '55ms', rps: '4', hardware: ['H100', 'A100', 'L40S'] },
+    tensorType: 'FP8',
   },
   {
     id: 'phi-4',
@@ -172,6 +182,7 @@ This optimization reduces the number of bits used to represent weights from 8 to
     updatedAt: '2025-04-18',
     metrics: { accuracy: 88, quality: 90 },
     performance: { workload: 'chat', latency: '45ms', rps: '5', hardware: ['H100', 'A100', 'L40S'] },
+    tensorType: 'FP16',
   },
   {
     id: 'phi-4-fp8-dynamic',
@@ -186,6 +197,7 @@ This optimization reduces the number of bits used to represent weights from 8 to
     updatedAt: '2025-03-03',
     metrics: { accuracy: 87, quality: 89 },
     performance: { workload: 'chat', latency: '40ms', rps: '6', hardware: ['H100', 'A100', 'L40S'] },
+    tensorType: 'FP8',
   },
   {
     id: 'gemma-2-9b-it',
@@ -200,6 +212,7 @@ This optimization reduces the number of bits used to represent weights from 8 to
     updatedAt: '2025-05-19',
     metrics: { accuracy: 86, quality: 88 },
     performance: { workload: 'chat', latency: '70ms', rps: '2', hardware: ['H100', 'A100'] },
+    tensorType: 'FP16',
   },
   {
     id: 'gemma-2-9b-it-fp8',
@@ -214,6 +227,7 @@ This optimization reduces the number of bits used to represent weights from 8 to
     updatedAt: '2024-02-17',
     metrics: { accuracy: 85, quality: 87 },
     performance: { workload: 'chat', latency: '60ms', rps: '3', hardware: ['H100', 'A100'] },
+    tensorType: 'FP8',
   },
   {
     id: 'mixtral-8x7b-instruct-v0.1',
@@ -228,6 +242,7 @@ This optimization reduces the number of bits used to represent weights from 8 to
     updatedAt: '2024-02-17',
     metrics: { accuracy: 90, quality: 91 },
     performance: { workload: 'chat', latency: '150ms', rps: '1', hardware: ['H100', 'A100'] },
+    tensorType: 'FP16',
   },
   {
     id: 'nvidia-nemotron-nano-9b-v2-fp8-dynamic',
@@ -242,6 +257,7 @@ This optimization reduces the number of bits used to represent weights from 8 to
     updatedAt: '2025-04-01',
     metrics: { accuracy: 88, quality: 89 },
     performance: { workload: 'chat', latency: '55ms', rps: '4', hardware: ['H100', 'A100', 'L40S'] },
+    tensorType: 'FP8',
   },
 
   // Red Hat AI models (category: 'redhat') - from models-catalog.yaml
