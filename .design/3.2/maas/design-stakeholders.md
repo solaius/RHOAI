@@ -6,8 +6,9 @@ Note: RACIs are approximate and unofficial.
 
 Responsible: Jonathan Zarecki
 Accountable: Jonathan Zarecki
+Consulted: Jenny Yi (Dashboard PM)
 Consulted: Rob Greenberg (AI Assets, closely-related)
-Informed: Adam Bellusci (model serving)
+Consulted: Adam Bellusci (model serving PM)
 
 ## Engineering
 
