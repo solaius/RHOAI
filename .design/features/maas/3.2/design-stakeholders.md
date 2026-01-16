@@ -20,8 +20,9 @@ Accountable: Lindani Phiri (architect)
 Accountable: Yuan Tang (staff)
 Consulted: Jamie Land
 Consulted: Bartosz Majsak
-Consulted: Edgar Hernandez Garcia (BFF)
+Consulted: Edgar Hernandez Garcia (3.2 BFF)
 Consulted: Wen Liang (3.4 BFF)
+Consulted: Jason Madigan (RHCL)
 
 ### UI
 Responsible: Andrew Ballantyne (Zaffre UI Dev Lead)
