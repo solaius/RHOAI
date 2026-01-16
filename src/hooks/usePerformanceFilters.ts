@@ -1,6 +1,6 @@
 import { SetURLSearchParams } from "react-router-dom";
 
-export type LatencyMetric = "TTFT" | "ITL" | "E2E";
+export type LatencyMetric = "TTFT" | "ITL" | "E2E" | "TPS";
 export type LatencyPercentile = "Mean" | "P90" | "P95" | "P99";
 export type Workload = "chat" | "rag" | "code_fixing" | "long_rag";
 

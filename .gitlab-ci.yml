@@ -32,6 +32,7 @@ build:
   rules:
     - if: $CI_COMMIT_BRANCH == "feature-store-overview"
     - if: $CI_COMMIT_BRANCH == "resources-table-lists"
+    - if: $CI_COMMIT_BRANCH == "3.2"
   script:
     - echo "Installing dependencies (including devDependencies for build tools)..."
     - npm ci --include=dev
@@ -53,6 +54,7 @@ pages:
   rules:
     - if: $CI_COMMIT_BRANCH == "feature-store-overview"
     - if: $CI_COMMIT_BRANCH == "resources-table-lists"
+    - if: $CI_COMMIT_BRANCH == "3.2"
   script:
     - echo "Deploying to GitLab Pages..."
   artifacts:
