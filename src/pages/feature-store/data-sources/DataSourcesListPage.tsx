@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import {
   PageSection,
   Title,
@@ -44,7 +44,7 @@ import {
   ThProps,
 } from '@patternfly/react-table';
 import { SearchIcon, WrenchIcon, ExternalLinkAltIcon } from '@patternfly/react-icons';
-import { mockDataSources, DataSource, formatRelativeTime } from '../../../mockData/featureStore';
+import { mockDataSources, DataSource } from '../../../mockData/featureStore';
 import { mockFeatureViews } from '../../../mockData/featureStore';
 
 // Mock owner data for data sources
@@ -71,6 +71,7 @@ const getConnectorType = (sourceType: string): string => {
     'PostgreSQL': 'FileSource',
     'Kafka': 'StreamKafka',
     'Parquet': 'FileSource',
+    'Request': 'RequestSource',
   };
   return typeMap[sourceType] || 'FileSource';
 };
@@ -78,6 +79,7 @@ const getConnectorType = (sourceType: string): string => {
 // Map sourceType to type label for display
 const getTypeLabel = (sourceType: string): string => {
   if (sourceType === 'Kafka') return 'StreamKafka';
+  if (sourceType === 'Request') return 'RequestSource';
   if (sourceType === 'Parquet' || sourceType === 'Snowflake' || sourceType === 'PostgreSQL') return 'BatchData';
   return 'BatchData';
 };
@@ -146,6 +148,7 @@ const highlightMatch = (text: string, query: string): React.ReactNode => {
  */
 export const DataSourcesListPage: React.FC = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
   const [page, setPage] = useState(1);
   const [perPage, setPerPage] = useState(10);
@@ -171,19 +174,17 @@ export const DataSourcesListPage: React.FC = () => {
   const [isSearchDropdownOpen, setIsSearchDropdownOpen] = useState(false);
   const searchContainerRef = useRef<HTMLDivElement>(null);
 
-  // Feature Store context selector state
+  // Feature Store context selector state - controlled by URL query param
   const [selectedFeatureStore, setSelectedFeatureStore] = useState(() => {
     const featureStoreParam = searchParams.get('featureStore');
     return featureStoreParam || 'All feature stores';
   });
   const [isFeatureStoreOpen, setIsFeatureStoreOpen] = useState(false);
 
-  // Update feature store selection when URL param changes
+  // Sync dropdown state from URL param whenever it changes
   useEffect(() => {
     const featureStoreParam = searchParams.get('featureStore');
-    if (featureStoreParam) {
-      setSelectedFeatureStore(featureStoreParam);
-    }
+    setSelectedFeatureStore(featureStoreParam || 'All feature stores');
   }, [searchParams]);
 
   // Sorting state
@@ -275,9 +276,9 @@ export const DataSourcesListPage: React.FC = () => {
             case 'Feature views':
               return extras.featureViewsCount.toString().includes(searchLower);
             case 'Last modified':
-              return formatRelativeTime(ds.lastUpdated).toLowerCase().includes(searchLower);
+              return ds.lastUpdated.toLowerCase().includes(searchLower);
             case 'Created':
-              return formatRelativeTime(ds.created).toLowerCase().includes(searchLower);
+              return ds.created.toLowerCase().includes(searchLower);
             case 'Owner':
               return extras.owner.toLowerCase().includes(searchLower);
             default:
@@ -420,7 +421,7 @@ export const DataSourcesListPage: React.FC = () => {
 
   // Handle navigation to data source detail page
   const handleDataSourceClick = (dataSourceId: string) => {
-    navigate(`/develop-train/feature-store/data-sources/${dataSourceId}?featureStore=${encodeURIComponent(selectedFeatureStore)}`);
+    navigate(`/develop-train/feature-store/data-sources/${dataSourceId}${location.search}`);
   };
 
   // Handle search result click
@@ -500,7 +501,7 @@ export const DataSourcesListPage: React.FC = () => {
             <Flex justifyContent={{ default: 'justifyContentSpaceBetween' }} alignItems={{ default: 'alignItemsFlexStart' }}>
               <FlexItem>
                 <Title headingLevel="h1" size="2xl" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                  <div style={{ background: 'var(--pf-t--global--color--nonstatus--blue--default)', borderRadius: '50%', width: '40px', height: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '28px' }}>
+                  <div style={{ background: 'var(--pf-t--global--color--nonstatus--blue--default)', borderRadius: '50%', width: '40px', height: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '32px' }}>
                     <svg className="pf-v6-svg" viewBox="0 0 36 36" fill="currentColor" aria-hidden="true" role="img" width="1em" height="1em"><path d="M22.8457,16.3933c.1934-.1118.3125-.3184.3125-.5415v-5.2344c0-.2231-.1191-.4297-.3125-.5415l-4.5332-2.6172c-.1934-.1113-.4316-.1113-.625,0l-4.5332,2.6172c-.1934.1118-.3125.3184-.3125.5415v5.2344c0,.2231.1191.4297.3125.5415l4.5332,2.6172c.0967.0557.2046.0835.3125.0835s.2158-.0278.3125-.0835l4.5332-2.6172ZM14.0918,15.491v-4.5127l3.9082-2.2563,3.9082,2.2563v4.5127l-3.9082,2.2563-3.9082-2.2563Z M23.7832,28.5417l4.5332-2.6172c.1934-.1118.3125-.3184.3125-.5415v-5.2349c0-.2231-.1191-.4297-.3125-.5415l-4.5332-2.6172c-.1934-.1113-.4316-.1113-.625,0l-4.5332,2.6172c-.1934.1118-.3125.3184-.3125.5415v5.2349c0,.2231.1191.4297.3125.5415l4.5332,2.6172c.0967.0557.2046.0835.3125.0835s.2158-.0278.3125-.0835ZM19.5625,25.0222v-4.5132l3.9082-2.2563,3.9082,2.2563v4.5132l-3.9082,2.2563s-3.9082-2.2563-3.9082-2.2563Z M12.8418,16.9895c-.1934-.1113-.4316-.1113-.625,0l-4.5332,2.6172c-.1934.1118-.3125.3184-.3125.5415v5.2349c0,.2231.1191.4297.3125.5415l4.5332,2.6172c.0967.0557.2046.0835.3125.0835s.2158-.0278.3125-.0835l4.5332-2.6172c.1934-.1118.3125-.3184.3125-.5415v-5.2349c0-.2231-.1191-.4297-.3125-.5415,0,0-4.5332-2.6172-4.5332-2.6172ZM16.4375,25.0222l-3.9082,2.2563-3.9082-2.2563v-4.5132l3.9082-2.2563,3.9082,2.2563v4.5132Z M12,30.3752h-6.375V5.6252h6.375c.3452,0,.625-.2798.625-.625s-.2798-.625-.625-.625h-7c-.3452,0-.625.2798-.625.625v26c0,.3452.2798.625.625.625h7c.3452,0,.625-.2798.625-.625s-.2798-.625-.625-.625Z M31,4.3752h-7c-.3452,0-.625.2798-.625.625s.2798.625.625.625h6.375v24.75h-6.375c-.3452,0-.625.2798-.625.625s.2798.625.625.625h7c.3452,0,.625-.2798.625-.625V5.0002c0-.3452-.2798-.625-.625-.625Z"></path></svg>
                   </div>
                   Data sources
@@ -968,10 +969,10 @@ export const DataSourcesListPage: React.FC = () => {
                       </Td>
 
                       {/* Last modified Column */}
-                      <Td dataLabel="Last modified">{formatRelativeTime(dataSource.lastUpdated)}</Td>
+                      <Td dataLabel="Last modified">{dataSource.lastUpdated}</Td>
 
                       {/* Created Column */}
-                      <Td dataLabel="Created">{formatRelativeTime(dataSource.created)}</Td>
+                      <Td dataLabel="Created">{dataSource.created}</Td>
 
                       {/* Owner Column */}
                       <Td dataLabel="Owner">{extras.owner}</Td>

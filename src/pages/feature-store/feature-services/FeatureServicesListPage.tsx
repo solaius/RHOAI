@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import {
   PageSection,
   Title,
@@ -44,7 +44,7 @@ import {
   ThProps,
 } from '@patternfly/react-table';
 import { SearchIcon, WrenchIcon, ExternalLinkAltIcon } from '@patternfly/react-icons';
-import { mockFeatureServices, FeatureService, formatRelativeTime, mockFeatureViews } from '../../../mockData/featureStore';
+import { mockFeatureServices, FeatureService, mockFeatureViews } from '../../../mockData/featureStore';
 
 // Mock owner data for feature services
 const getFeatureServiceExtras = (featureServiceId: string) => {
@@ -110,6 +110,7 @@ const highlightMatch = (text: string, query: string): React.ReactNode => {
  */
 export const FeatureServicesListPage: React.FC = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
   const [page, setPage] = useState(1);
   const [perPage, setPerPage] = useState(10);
@@ -134,19 +135,17 @@ export const FeatureServicesListPage: React.FC = () => {
   const [isSearchDropdownOpen, setIsSearchDropdownOpen] = useState(false);
   const searchContainerRef = useRef<HTMLDivElement>(null);
 
-  // Feature Store context selector state
+  // Feature Store context selector state - controlled by URL query param
   const [selectedFeatureStore, setSelectedFeatureStore] = useState(() => {
     const featureStoreParam = searchParams.get('featureStore');
     return featureStoreParam || 'All feature stores';
   });
   const [isFeatureStoreOpen, setIsFeatureStoreOpen] = useState(false);
 
-  // Update feature store selection when URL param changes
+  // Sync dropdown state from URL param whenever it changes
   useEffect(() => {
     const featureStoreParam = searchParams.get('featureStore');
-    if (featureStoreParam) {
-      setSelectedFeatureStore(featureStoreParam);
-    }
+    setSelectedFeatureStore(featureStoreParam || 'All feature stores');
   }, [searchParams]);
 
   // Sorting state
@@ -227,9 +226,9 @@ export const FeatureServicesListPage: React.FC = () => {
             case 'Feature Views':
               return fs.featureViewIds.length.toString().includes(searchLower);
             case 'Created':
-              return formatRelativeTime(fs.created).toLowerCase().includes(searchLower);
+              return fs.created.toLowerCase().includes(searchLower);
             case 'Updated':
-              return formatRelativeTime(fs.lastUpdated).toLowerCase().includes(searchLower);
+              return fs.lastUpdated.toLowerCase().includes(searchLower);
             case 'Owner':
               return extras.owner.toLowerCase().includes(searchLower);
             default:
@@ -367,7 +366,7 @@ export const FeatureServicesListPage: React.FC = () => {
 
   // Handle navigation to feature service detail page
   const handleFeatureServiceClick = (featureServiceId: string) => {
-    navigate(`/develop-train/feature-store/feature-services/${featureServiceId}?featureStore=${encodeURIComponent(selectedFeatureStore)}`);
+    navigate(`/develop-train/feature-store/feature-services/${featureServiceId}${location.search}`);
   };
 
   // Handle search result click
@@ -405,8 +404,8 @@ export const FeatureServicesListPage: React.FC = () => {
 
   // Sorting handler
   const getSortParams = (columnIndex: number): ThProps['sort'] => {
-    // Tags column (index 1) is not sortable
-    if (columnIndex === 1) return undefined;
+    // Tags column (index 2) is not sortable
+    if (columnIndex === 2) return undefined;
     
     return {
       sortBy: {
@@ -442,7 +441,7 @@ export const FeatureServicesListPage: React.FC = () => {
             <Flex justifyContent={{ default: 'justifyContentSpaceBetween' }} alignItems={{ default: 'alignItemsFlexStart' }}>
               <FlexItem>
                 <Title headingLevel="h1" size="2xl" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                  <div style={{ background: 'var(--pf-t--global--color--nonstatus--green--default)', borderRadius: '50%', width: '40px', height: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '28px' }}>
+                  <div style={{ background: 'var(--pf-t--global--color--nonstatus--green--default)', borderRadius: '50%', width: '40px', height: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '32px' }}>
                     <svg className="pf-v6-svg" viewBox="0 0 36 36" fill="currentColor" aria-hidden="true" role="img" width="1em" height="1em"><path d="M16,7.375H5c-.34521,0-.625.28027-.625.625v8c0,.34473.27979.625.625.625h11c.34521,0,.625-.28027.625-.625v-8c0-.34473-.27979-.625-.625-.625ZM15.375,15.375H5.625v-6.75h9.75v6.75Z M31,7.375h-11c-.34521,0-.625.28027-.625.625v8c0,.34473.27979.625.625.625h11c.34521,0,.625-.28027.625-.625v-8c0-.34473-.27979-.625-.625-.625ZM30.375,15.375h-9.75v-6.75h9.75v6.75Z M16,19.375H5c-.34521,0-.625.28027-.625.625v8c0,.34473.27979.625.625.625h11c.34521,0,.625-.28027.625-.625v-8c0-.34473-.27979-.625-.625-.625ZM15.375,27.375H5.625v-6.75h9.75v6.75Z M31,19.375h-11c-.34521,0-.625.28027-.625.625v8c0,.34473.27979.625.625.625h11c.34521,0,.625-.28027.625-.625v-8c0-.34473-.27979-.625-.625-.625ZM30.375,27.375h-9.75v-6.75h9.75v6.75Z"></path></svg>
                   </div>
                   Feature services
@@ -824,14 +823,22 @@ export const FeatureServicesListPage: React.FC = () => {
             <Table aria-label="Feature services table" variant="compact">
               <Thead>
                 <Tr>
-                  {columns.map((column, index) => (
-                    <Th 
-                      key={index} 
-                      sort={getSortParams(index)}
-                    >
-                      {column}
-                    </Th>
-                  ))}
+                  <Th sort={getSortParams(0)}>Feature service</Th>
+                  <Th sort={getSortParams(1)}>Feature store</Th>
+                  <Th sort={getSortParams(2)}>Tags</Th>
+                  <Th 
+                    sort={getSortParams(3)}
+                    info={{
+                      popover: 'The number of feature views included in this feature service. Feature views group related features and define how they\'re fetched from the source data.',
+                      ariaLabel: 'Feature Views help',
+                      popoverProps: { headerContent: 'Feature Views' }
+                    }}
+                  >
+                    Feature Views
+                  </Th>
+                  <Th sort={getSortParams(4)}>Created</Th>
+                  <Th sort={getSortParams(5)}>Updated</Th>
+                  <Th sort={getSortParams(6)}>Owner</Th>
                 </Tr>
               </Thead>
               <Tbody>
@@ -922,10 +929,10 @@ export const FeatureServicesListPage: React.FC = () => {
                       </Td>
 
                       {/* Created Column */}
-                      <Td dataLabel="Created">{formatRelativeTime(featureService.created)}</Td>
+                      <Td dataLabel="Created">{featureService.created}</Td>
 
                       {/* Updated Column */}
-                      <Td dataLabel="Updated">{formatRelativeTime(featureService.lastUpdated)}</Td>
+                      <Td dataLabel="Updated">{featureService.lastUpdated}</Td>
 
                       {/* Owner Column */}
                       <Td dataLabel="Owner">{extras.owner}</Td>

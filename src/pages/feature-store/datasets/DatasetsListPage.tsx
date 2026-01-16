@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import {
   PageSection,
   Title,
@@ -44,7 +44,7 @@ import {
   ThProps,
 } from '@patternfly/react-table';
 import { SearchIcon, WrenchIcon, ExternalLinkAltIcon } from '@patternfly/react-icons';
-import { mockDatasets, Dataset, formatRelativeTime, mockFeatureServices } from '../../../mockData/featureStore';
+import { mockDatasets, Dataset, mockFeatureServices } from '../../../mockData/featureStore';
 
 // Mock feature service connections for datasets
 const getDatasetExtras = (datasetId: string) => {
@@ -110,6 +110,7 @@ const highlightMatch = (text: string, query: string): React.ReactNode => {
  */
 export const DatasetsListPage: React.FC = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
   const [page, setPage] = useState(1);
   const [perPage, setPerPage] = useState(10);
@@ -133,19 +134,17 @@ export const DatasetsListPage: React.FC = () => {
   const [isSearchDropdownOpen, setIsSearchDropdownOpen] = useState(false);
   const searchContainerRef = useRef<HTMLDivElement>(null);
 
-  // Feature Store context selector state
+  // Feature Store context selector state - controlled by URL query param
   const [selectedFeatureStore, setSelectedFeatureStore] = useState(() => {
     const featureStoreParam = searchParams.get('featureStore');
     return featureStoreParam || 'All feature stores';
   });
   const [isFeatureStoreOpen, setIsFeatureStoreOpen] = useState(false);
 
-  // Update feature store selection when URL param changes
+  // Sync dropdown state from URL param whenever it changes
   useEffect(() => {
     const featureStoreParam = searchParams.get('featureStore');
-    if (featureStoreParam) {
-      setSelectedFeatureStore(featureStoreParam);
-    }
+    setSelectedFeatureStore(featureStoreParam || 'All feature stores');
   }, [searchParams]);
 
   // Sorting state
@@ -226,9 +225,9 @@ export const DatasetsListPage: React.FC = () => {
             case 'Source feature service':
               return extras.featureServiceCount.toString().includes(searchLower);
             case 'Last modified':
-              return formatRelativeTime(ds.created).toLowerCase().includes(searchLower);
+              return ds.created.toLowerCase().includes(searchLower);
             case 'Created':
-              return formatRelativeTime(ds.created).toLowerCase().includes(searchLower);
+              return ds.created.toLowerCase().includes(searchLower);
             default:
               return true;
           }
@@ -359,7 +358,7 @@ export const DatasetsListPage: React.FC = () => {
 
   // Handle navigation to dataset detail page
   const handleDatasetClick = (datasetId: string) => {
-    navigate(`/develop-train/feature-store/data-sets/${datasetId}?featureStore=${encodeURIComponent(selectedFeatureStore)}`);
+    navigate(`/develop-train/feature-store/data-sets/${datasetId}${location.search}`);
   };
 
   // Handle search result click
@@ -397,8 +396,8 @@ export const DatasetsListPage: React.FC = () => {
 
   // Sorting handler
   const getSortParams = (columnIndex: number): ThProps['sort'] => {
-    // Tags column (index 1) is not sortable
-    if (columnIndex === 1) return undefined;
+    // Tags column (index 2) is not sortable
+    if (columnIndex === 2) return undefined;
     
     return {
       sortBy: {
@@ -433,7 +432,7 @@ export const DatasetsListPage: React.FC = () => {
             <Flex justifyContent={{ default: 'justifyContentSpaceBetween' }} alignItems={{ default: 'alignItemsFlexStart' }}>
               <FlexItem>
                 <Title headingLevel="h1" size="2xl" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                  <div style={{ background: 'var(--pf-t--global--color--nonstatus--teal--default)', borderRadius: '50%', width: '40px', height: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '28px' }}>
+                  <div style={{ background: 'var(--pf-t--global--color--nonstatus--teal--default)', borderRadius: '50%', width: '40px', height: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '32px' }}>
                     <svg className="pf-v6-svg" viewBox="0 0 36 36" fill="currentColor" aria-hidden="true" role="img" width="1em" height="1em"><path d="M31,6.375H5c-.34521,0-.625.27979-.625.625v22c0,.34473.27979.625.625.625h26c.34521,0,.625-.28027.625-.625V7c0-.34521-.27979-.625-.625-.625ZM5.625,11.625h11.75v7.75H5.625v-7.75ZM18.625,11.625h11.75v7.75h-11.75v-7.75ZM30.375,7.625v2.75H5.625v-2.75h24.75ZM5.625,20.625h11.75v7.75H5.625v-7.75ZM18.625,28.375v-7.75h11.75v7.75h-11.75Z"></path></svg>
                   </div>
                   Datasets
@@ -910,10 +909,10 @@ export const DatasetsListPage: React.FC = () => {
                       </Td>
 
                       {/* Last modified Column */}
-                      <Td dataLabel="Last modified">{formatRelativeTime(dataset.created)}</Td>
+                      <Td dataLabel="Last modified">{dataset.created}</Td>
 
                       {/* Created Column */}
-                      <Td dataLabel="Created">{formatRelativeTime(dataset.created)}</Td>
+                      <Td dataLabel="Created">{dataset.created}</Td>
                     </Tr>
                   );
                 })}

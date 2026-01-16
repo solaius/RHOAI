@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import {
   PageSection,
   Title,
@@ -47,7 +47,6 @@ import { SearchIcon, WrenchIcon, ExternalLinkAltIcon, CheckCircleIcon, CheckIcon
 import { 
   mockFeatureViews, 
   FeatureView, 
-  formatRelativeTime, 
   mockFeatures, 
   mockDataSources,
   getFeatureNamesForView,
@@ -147,19 +146,17 @@ export const FeatureViewsListPage: React.FC = () => {
   const [isSearchDropdownOpen, setIsSearchDropdownOpen] = useState(false);
   const searchContainerRef = useRef<HTMLDivElement>(null);
 
-  // Feature Store context selector state
+  // Feature Store context selector state - controlled by URL query param
   const [selectedFeatureStore, setSelectedFeatureStore] = useState(() => {
     const featureStoreParam = searchParams.get('featureStore');
     return featureStoreParam || 'All feature stores';
   });
   const [isFeatureStoreOpen, setIsFeatureStoreOpen] = useState(false);
 
-  // Update feature store selection when URL param changes
+  // Sync dropdown state from URL param whenever it changes
   useEffect(() => {
     const featureStoreParam = searchParams.get('featureStore');
-    if (featureStoreParam) {
-      setSelectedFeatureStore(featureStoreParam);
-    }
+    setSelectedFeatureStore(featureStoreParam || 'All feature stores');
   }, [searchParams]);
 
   // Sorting state
@@ -240,9 +237,9 @@ export const FeatureViewsListPage: React.FC = () => {
             case 'Features':
               return getFeatureCountForView(fv.id).toString().includes(searchLower);
             case 'Created':
-              return formatRelativeTime(fv.created).toLowerCase().includes(searchLower);
+              return fv.created.toLowerCase().includes(searchLower);
             case 'Updated':
-              return formatRelativeTime(fv.lastUpdated).toLowerCase().includes(searchLower);
+              return fv.lastUpdated.toLowerCase().includes(searchLower);
             case 'Owner':
               return extras.owner.toLowerCase().includes(searchLower);
             case 'Store type':
@@ -385,9 +382,9 @@ export const FeatureViewsListPage: React.FC = () => {
     setPage(1);
   };
 
-  // Handle navigation to feature view detail page
+  // Handle navigation to feature view detail page - preserve query params
   const handleFeatureViewClick = (featureViewId: string) => {
-    navigate(`/develop-train/feature-store/feature-views/${featureViewId}?featureStore=${encodeURIComponent(selectedFeatureStore)}`);
+    navigate(`/develop-train/feature-store/feature-views/${featureViewId}${location.search}`);
   };
 
   // Handle search result click
@@ -425,8 +422,8 @@ export const FeatureViewsListPage: React.FC = () => {
 
   // Sorting handler
   const getSortParams = (columnIndex: number): ThProps['sort'] => {
-    // Tags column (index 1) is not sortable
-    if (columnIndex === 1) return undefined;
+    // Tags column (index 2) is not sortable
+    if (columnIndex === 2) return undefined;
     
     return {
       sortBy: {
@@ -463,7 +460,7 @@ export const FeatureViewsListPage: React.FC = () => {
             <Flex justifyContent={{ default: 'justifyContentSpaceBetween' }} alignItems={{ default: 'alignItemsFlexStart' }}>
               <FlexItem>
                 <Title headingLevel="h1" size="2xl" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                  <div style={{ background: 'var(--pf-t--global--color--nonstatus--purple--default)', borderRadius: '50%', width: '40px', height: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '28px' }}>
+                  <div style={{ background: 'var(--pf-t--global--color--nonstatus--purple--default)', borderRadius: '50%', width: '40px', height: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '32px' }}>
                     <svg className="pf-v6-svg" viewBox="0 0 36 36" fill="currentColor" aria-hidden="true" role="img" width="1em" height="1em"><path d="M25.625,22v-14c0-.34473-.27979-.625-.625-.625H5c-.34521,0-.625.28027-.625.625v14c0,.34473.27979.625.625.625h20c.34521,0,.625-.28027.625-.625ZM24.375,21.375H5.625v-12.75h18.75v12.75Z M28.625,25v-14c0-.34473-.27979-.625-.625-.625s-.625.28027-.625.625v13.375H8c-.34521,0-.625.28027-.625.625s.27979.625.625.625h20c.34521,0,.625-.28027.625-.625Z M31,13.375c-.34521,0-.625.28027-.625.625v13.375H11c-.34521,0-.625.28027-.625.625s.27979.625.625.625h20c.34521,0,.625-.28027.625-.625v-14c0-.34473-.27979-.625-.625-.625Z"></path></svg>
                   </div>
                   Feature views
@@ -947,10 +944,10 @@ export const FeatureViewsListPage: React.FC = () => {
                       </Td>
 
                       {/* Created Column */}
-                      <Td dataLabel="Created">{formatRelativeTime(featureView.created)}</Td>
+                      <Td dataLabel="Created">{featureView.created}</Td>
 
                       {/* Updated Column */}
-                      <Td dataLabel="Updated">{formatRelativeTime(featureView.lastUpdated)}</Td>
+                      <Td dataLabel="Updated">{featureView.lastUpdated}</Td>
 
                       {/* Owner Column */}
                       <Td dataLabel="Owner">{extras.owner}</Td>

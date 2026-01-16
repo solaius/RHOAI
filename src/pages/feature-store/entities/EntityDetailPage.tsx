@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useRef } from 'react';
-import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import {
   PageSection,
   Title,
@@ -47,6 +47,7 @@ import {
   Divider,
   List,
   ListItem,
+  Skeleton,
 } from '@patternfly/react-core';
 import {
   Table,
@@ -64,6 +65,7 @@ import {
   OutlinedQuestionCircleIcon,
 } from '@patternfly/react-icons';
 import { mockEntities, Entity } from '../../../mockData/entities';
+import { formatTimestamp } from '../../../mockData/featureStore';
 
 // Mock feature views data for the entity
 interface FeatureView {
@@ -267,12 +269,16 @@ const highlightMatch = (text: string, query: string): React.ReactNode => {
 export const EntityDetailPage: React.FC = () => {
   const { entityId } = useParams<{ entityId: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
   const [searchParams] = useSearchParams();
   const [activeTabKey, setActiveTabKey] = useState<string | number>(0);
   const [copied, setCopied] = useState(false);
   
-  // Get feature store from URL params (passed from EntitiesListPage)
+  // Get feature store from URL params (for search, etc.)
   const selectedFeatureStore = searchParams.get('featureStore') || 'All feature stores';
+  
+  // Get the resource's actual feature store for breadcrumb TEXT (visual display)
+  // Only use the actual value when resource is loaded, no default fallback
   
   // Feature Views tab state
   const [selectedFilter, setSelectedFilter] = useState('Feature view');
@@ -302,17 +308,7 @@ export const EntityDetailPage: React.FC = () => {
   const featureViews = entityId ? mockFeatureViewsData[entityId] || [] : [];
 
   // Format date to match design (e.g., "Jan 2020, 23:33 UTC")
-  const formatDate = (dateString: string): string => {
-    const date = new Date(dateString);
-    const month = date.toLocaleDateString('en-US', { month: 'short' });
-    const year = date.getFullYear();
-    const time = date.toLocaleTimeString('en-US', { 
-      hour: '2-digit', 
-      minute: '2-digit', 
-      hour12: false 
-    });
-    return `${month} ${year}, ${time} UTC`;
-  };
+  // Format timestamp to match materialization format (e.g., "2025-04-08T05:56:27.719897Z")
 
   // Handle tab selection
   const handleTabClick = (
@@ -424,7 +420,7 @@ export const EntityDetailPage: React.FC = () => {
             case 'Tags':
               return fv.tags.some(tag => tag.toLowerCase().includes(searchLower));
             case 'Updated':
-              return formatDate(fv.lastUpdated).toLowerCase().includes(searchLower);
+              return formatTimestamp(fv.lastUpdated).toLowerCase().includes(searchLower);
             default:
               return true;
           }
@@ -614,7 +610,7 @@ export const EntityDetailPage: React.FC = () => {
             <Breadcrumb>
               <BreadcrumbItem>
                 <span
-                  onClick={() => navigate(`/develop-train/feature-store/entities?featureStore=${encodeURIComponent(selectedFeatureStore)}`)}
+                  onClick={() => navigate(`/develop-train/feature-store/entities${location.search}`)}
                   style={{ 
                     color: 'var(--pf-t--global--text--color--link--default)',
                     borderBottom: '1px solid var(--pf-t--global--text--color--link--default)',
@@ -625,7 +621,7 @@ export const EntityDetailPage: React.FC = () => {
                     paddingBottom: '1px'
                   }}
                 >
-                  Entities -
+                  Entities in
                   <svg 
                     className="pf-v6-svg" 
                     viewBox="0 0 40 40" 
@@ -637,7 +633,11 @@ export const EntityDetailPage: React.FC = () => {
                   >
                     <path d="M28.5,25.375c-.63568,0-1.22626.19312-1.72021.52051l-4.38898-4.38898c.77032-.96265,1.23419-2.18066,1.23419-3.50653s-.46387-2.54388-1.23419-3.50653l3.25592-3.25592c.39655.24078.85651.38745,1.35327.38745,1.44727,0,2.625-1.17773,2.625-2.625s-1.17773-2.625-2.625-2.625-2.625,1.17773-2.625,2.625c0,.49677.14667.95673.38745,1.35327l-3.25592,3.25592c-.96265-.77032-2.18066-1.23419-3.50653-1.23419s-2.54388.46387-3.50653,1.23419l-4.38898-4.38898c.32745-.49402.52051-1.08459.52051-1.72021,0-1.72266-1.40186-3.125-3.125-3.125s-3.125,1.40234-3.125,3.125,1.40186,3.125,3.125,3.125c.63568,0,1.22626-.19312,1.72021-.52051l4.38898,4.38898c-.77032.96265-1.23419,2.18066-1.23419,3.50653s.46387,2.54388,1.23419,3.50653l-3.25586,3.25586c-.39655-.24078-.85657-.38739-1.35333-.38739-1.44727,0-2.625,1.17773-2.625,2.625s1.17773,2.625,2.625,2.625,2.625-1.17773,2.625-2.625c0-.49677-.14661-.95679-.38739-1.35333l3.25586-3.25586c.96265.77032,2.18066,1.23419,3.50653,1.23419s2.54388-.46387,3.50653-1.23419l4.38898,4.38898c-.32745.49402-.52051,1.08459-.52051,1.72021,0,1.72266,1.40186,3.125,3.125,3.125s3.125-1.40234,3.125-3.125-1.40186-3.125-3.125-3.125ZM27,7.625c.7583,0,1.375.61719,1.375,1.375s-.6167,1.375-1.375,1.375-1.375-.61719-1.375-1.375.6167-1.375,1.375-1.375ZM5.625,7.5c0-1.03418.84131-1.875,1.875-1.875s1.875.84082,1.875,1.875-.84131,1.875-1.875,1.875-1.875-.84082-1.875-1.875ZM9,28.375c-.7583,0-1.375-.61719-1.375-1.375s.6167-1.375,1.375-1.375,1.375.61719,1.375,1.375-.6167,1.375-1.375,1.375ZM13.625,18c0-2.41211,1.9624-4.375,4.375-4.375s4.375,1.96289,4.375,4.375-1.9624,4.375-4.375,4.375-4.375-1.96289-4.375-4.375ZM28.5,30.375c-1.03369,0-1.875-.84082-1.875-1.875s.84131-1.875,1.875-1.875,1.875.84082,1.875,1.875-.84131,1.875-1.875,1.875Z" />
                   </svg>
-                  {selectedFeatureStore}
+                  {entity?.featureStore ? (
+                    entity.featureStore
+                  ) : (
+                    <Skeleton width="150px" height="1em" />
+                  )}
                 </span>
               </BreadcrumbItem>
               <BreadcrumbItem isActive>{entity.name}</BreadcrumbItem>
@@ -841,7 +841,7 @@ export const EntityDetailPage: React.FC = () => {
         <Tabs activeKey={activeTabKey} onSelect={handleTabClick} aria-label="Entity detail tabs">
           <Tab eventKey={0} title={<TabTitleText>Details</TabTitleText>} aria-label="Details tab">
             <TabContentBody>
-              <PageSection style={{ backgroundColor: 'var(--pf-t--global--background--color--primary--default)', minHeight: 'calc(100vh - 300px)' }}>
+              <PageSection style={{ backgroundColor: 'var(--pf-t--global--background--color--primary--default)', minHeight: 'calc(100vh - 300px)', paddingTop: 'var(--pf-t--global--spacer--xl)' }}>
                 {/* Use Stack with large gap for spacing between sections */}
                 <Stack>
                   {/* Section 1: Basic Info (no title) - Join key, Value type */}
@@ -878,11 +878,11 @@ export const EntityDetailPage: React.FC = () => {
                       </DescriptionListGroup>
                       <DescriptionListGroup>
                         <DescriptionListTerm>Created date</DescriptionListTerm>
-                        <DescriptionListDescription>{formatDate(entity.created)}</DescriptionListDescription>
+                        <DescriptionListDescription>{formatTimestamp(entity.created)}</DescriptionListDescription>
                       </DescriptionListGroup>
                       <DescriptionListGroup>
                         <DescriptionListTerm>Last modified date</DescriptionListTerm>
-                        <DescriptionListDescription>{formatDate(entity.lastUpdated)}</DescriptionListDescription>
+                        <DescriptionListDescription>{formatTimestamp(entity.lastUpdated)}</DescriptionListDescription>
                       </DescriptionListGroup>
                     </DescriptionList>
                   </StackItem>
@@ -955,7 +955,7 @@ export const EntityDetailPage: React.FC = () => {
 
           <Tab eventKey={1} title={<TabTitleText>Feature views</TabTitleText>} aria-label="Feature views tab">
             <TabContentBody>
-              <PageSection style={{ backgroundColor: 'var(--pf-t--global--background--color--primary--default)', minHeight: 'calc(100vh - 300px)' }}>
+              <PageSection style={{ backgroundColor: 'var(--pf-t--global--background--color--primary--default)', minHeight: 'calc(100vh - 300px)', paddingTop: 'var(--pf-t--global--spacer--xl)' }}>
                 {/* Toolbar - same pattern as Entities list */}
                 <Toolbar id="feature-views-toolbar" clearAllFilters={clearAllFilters}>
                   <ToolbarContent>
@@ -1204,7 +1204,7 @@ export const EntityDetailPage: React.FC = () => {
                           </Td>
 
                           {/* Updated Column */}
-                          <Td dataLabel="Updated">{formatDate(fv.lastUpdated)}</Td>
+                          <Td dataLabel="Updated">{formatTimestamp(fv.lastUpdated)}</Td>
                         </Tr>
                       );
                     })}

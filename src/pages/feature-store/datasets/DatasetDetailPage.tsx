@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useRef } from 'react';
-import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import {
   PageSection,
   Title,
@@ -47,6 +47,7 @@ import {
   Divider,
   List,
   ListItem,
+  Skeleton,
 } from '@patternfly/react-core';
 import {
   Table,
@@ -66,7 +67,9 @@ import {
   mockDatasets,
   mockFeatureServices,
   mockFeatures,
+  mockFeatureViews,
   formatRelativeTime,
+  formatTimestamp,
 } from '../../../mockData/featureStore';
 import { mockEntities } from '../../../mockData/entities';
 
@@ -146,16 +149,16 @@ const highlightMatch = (text: string, query: string): React.ReactNode => {
 export const DatasetDetailPage: React.FC = () => {
   const { datasetId } = useParams<{ datasetId: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
   const [searchParams] = useSearchParams();
   const [activeTabKey, setActiveTabKey] = useState<string | number>(0);
   const [copied, setCopied] = useState(false);
   
-  // Get feature store from URL params
+  // Get feature store from URL params (for search, etc.)
   const selectedFeatureStore = searchParams.get('featureStore') || 'All feature stores';
   
-  // Features tab state
-  const [page, setPage] = useState(1);
-  const [perPage, setPerPage] = useState(10);
+  // Get the resource's actual feature store for breadcrumb TEXT (visual display)
+  // Only use the actual value when resource is loaded, no default fallback
 
   // Global search state
   const [globalSearchValue, setGlobalSearchValue] = useState('');
@@ -178,18 +181,6 @@ export const DatasetDetailPage: React.FC = () => {
   const storageInfo = dataset ? getDatasetStorage(dataset.id) : null;
   const sourceFeatureService = dataset ? getSourceFeatureService(dataset.id) : null;
 
-  // Format date to match design (e.g., "Jan 2020, 23:33 UTC")
-  const formatDate = (dateString: string): string => {
-    const date = new Date(dateString);
-    const month = date.toLocaleDateString('en-US', { month: 'short' });
-    const year = date.getFullYear();
-    const time = date.toLocaleTimeString('en-US', { 
-      hour: '2-digit', 
-      minute: '2-digit', 
-      hour12: false 
-    });
-    return `${month} ${year}, ${time} UTC`;
-  };
 
   // Handle tab selection
   const handleTabClick = (
@@ -279,12 +270,6 @@ dataset = Dataset(
     setGlobalSearchValue('');
   };
 
-  // Pagination for features
-  const paginatedFeatures = useMemo(() => {
-    const start = (page - 1) * perPage;
-    const end = start + perPage;
-    return features.slice(start, end);
-  }, [features, page, perPage]);
 
   if (!dataset) {
     return (
@@ -307,7 +292,7 @@ dataset = Dataset(
             <Breadcrumb>
               <BreadcrumbItem>
                 <span
-                  onClick={() => navigate(`/develop-train/feature-store/data-sets?featureStore=${encodeURIComponent(selectedFeatureStore)}`)}
+                  onClick={() => navigate(`/develop-train/feature-store/data-sets${location.search}`)}
                   style={{ 
                     color: 'var(--pf-t--global--text--color--link--default)',
                     borderBottom: '1px solid var(--pf-t--global--text--color--link--default)',
@@ -318,7 +303,7 @@ dataset = Dataset(
                     paddingBottom: '1px'
                   }}
                 >
-                  Datasets -
+                  Datasets in
                   <svg 
                     className="pf-v6-svg" 
                     viewBox="0 0 40 40" 
@@ -330,7 +315,11 @@ dataset = Dataset(
                   >
                     <path d="M28.5,25.375c-.63568,0-1.22626.19312-1.72021.52051l-4.38898-4.38898c.77032-.96265,1.23419-2.18066,1.23419-3.50653s-.46387-2.54388-1.23419-3.50653l3.25592-3.25592c.39655.24078.85651.38745,1.35327.38745,1.44727,0,2.625-1.17773,2.625-2.625s-1.17773-2.625-2.625-2.625-2.625,1.17773-2.625,2.625c0,.49677.14667.95673.38745,1.35327l-3.25592,3.25592c-.96265-.77032-2.18066-1.23419-3.50653-1.23419s-2.54388.46387-3.50653,1.23419l-4.38898-4.38898c.32745-.49402.52051-1.08459.52051-1.72021,0-1.72266-1.40186-3.125-3.125-3.125s-3.125,1.40234-3.125,3.125,1.40186,3.125,3.125,3.125c.63568,0,1.22626-.19312,1.72021-.52051l4.38898,4.38898c-.77032.96265-1.23419,2.18066-1.23419,3.50653s.46387,2.54388,1.23419,3.50653l-3.25586,3.25586c-.39655-.24078-.85657-.38739-1.35333-.38739-1.44727,0-2.625,1.17773-2.625,2.625s1.17773,2.625,2.625,2.625,2.625-1.17773,2.625-2.625c0-.49677-.14661-.95679-.38739-1.35333l3.25586-3.25586c.96265.77032,2.18066,1.23419,3.50653,1.23419s2.54388-.46387,3.50653-1.23419l4.38898,4.38898c-.32745.49402-.52051,1.08459-.52051,1.72021,0,1.72266,1.40186,3.125,3.125,3.125s3.125-1.40234,3.125-3.125-1.40186-3.125-3.125-3.125ZM27,7.625c.7583,0,1.375.61719,1.375,1.375s-.6167,1.375-1.375,1.375-1.375-.61719-1.375-1.375.6167-1.375,1.375-1.375ZM5.625,7.5c0-1.03418.84131-1.875,1.875-1.875s1.875.84082,1.875,1.875-.84131,1.875-1.875,1.875-1.875-.84082-1.875-1.875ZM9,28.375c-.7583,0-1.375-.61719-1.375-1.375s.6167-1.375,1.375-1.375,1.375.61719,1.375,1.375-.6167,1.375-1.375,1.375ZM13.625,18c0-2.41211,1.9624-4.375,4.375-4.375s4.375,1.96289,4.375,4.375-1.9624,4.375-4.375,4.375-4.375-1.96289-4.375-4.375ZM28.5,30.375c-1.03369,0-1.875-.84082-1.875-1.875s.84131-1.875,1.875-1.875,1.875.84082,1.875,1.875-.84131,1.875-1.875,1.875Z" />
                   </svg>
-                  {selectedFeatureStore}
+                  {dataset?.featureStore ? (
+                    dataset.featureStore
+                  ) : (
+                    <Skeleton width="150px" height="1em" />
+                  )}
                 </span>
               </BreadcrumbItem>
               <BreadcrumbItem isActive>{dataset.name}</BreadcrumbItem>
@@ -529,7 +518,7 @@ dataset = Dataset(
         <Tabs activeKey={activeTabKey} onSelect={handleTabClick} aria-label="Dataset detail tabs">
           <Tab eventKey={0} title={<TabTitleText>Details</TabTitleText>} aria-label="Details tab">
             <TabContentBody>
-              <PageSection style={{ backgroundColor: 'var(--pf-t--global--background--color--primary--default)', minHeight: 'calc(100vh - 300px)' }}>
+              <PageSection style={{ backgroundColor: 'var(--pf-t--global--background--color--primary--default)', minHeight: 'calc(100vh - 300px)', paddingTop: 'var(--pf-t--global--spacer--xl)' }}>
                 <Stack>
                   {/* Section 1: Source feature service */}
                   {sourceFeatureService && (
@@ -559,9 +548,6 @@ dataset = Dataset(
                   {/* Section 2: Storage */}
                   {storageInfo && (
                     <StackItem style={{ marginBottom: 'var(--pf-t--global--spacer--xl)' }}>
-                      <Title headingLevel="h3" size="md" style={{ marginBottom: 'var(--pf-t--global--spacer--sm)' }}>
-                        Storage
-                      </Title>
                       <DescriptionList isHorizontal isCompact>
                         <DescriptionListGroup>
                           <DescriptionListTerm>Storage</DescriptionListTerm>
@@ -590,11 +576,11 @@ dataset = Dataset(
                     <DescriptionList isHorizontal isCompact>
                       <DescriptionListGroup>
                         <DescriptionListTerm>Last modified</DescriptionListTerm>
-                        <DescriptionListDescription>{formatDate(dataset.created)}</DescriptionListDescription>
+                        <DescriptionListDescription>{formatTimestamp(dataset.created)}</DescriptionListDescription>
                       </DescriptionListGroup>
                       <DescriptionListGroup>
                         <DescriptionListTerm>Created</DescriptionListTerm>
-                        <DescriptionListDescription>{formatDate(dataset.created)}</DescriptionListDescription>
+                        <DescriptionListDescription>{formatTimestamp(dataset.created)}</DescriptionListDescription>
                       </DescriptionListGroup>
                     </DescriptionList>
                   </StackItem>
@@ -617,12 +603,22 @@ dataset = Dataset(
                       <Title headingLevel="h3" size="md" style={{ marginBottom: 'var(--pf-t--global--spacer--sm)' }}>
                         Join keys
                       </Title>
-                      <DescriptionList isHorizontal isCompact>
-                        <DescriptionListGroup>
-                          <DescriptionListTerm>Join key</DescriptionListTerm>
-                          <DescriptionListDescription>{entity.joinKey}</DescriptionListDescription>
-                        </DescriptionListGroup>
-                      </DescriptionList>
+                      <div style={{ maxWidth: '800px' }}>
+                        <Table aria-label="Join keys table" variant="compact">
+                          <Thead>
+                            <Tr>
+                              <Th>Name</Th>
+                              <Th>Value type</Th>
+                            </Tr>
+                          </Thead>
+                          <Tbody>
+                            <Tr>
+                              <Td dataLabel="Name">{entity.joinKey}</Td>
+                              <Td dataLabel="Value type">{entity.valueType}</Td>
+                            </Tr>
+                          </Tbody>
+                        </Table>
+                      </div>
                     </StackItem>
                   )}
 
@@ -688,58 +684,79 @@ dataset = Dataset(
 
           <Tab eventKey={1} title={<TabTitleText>Features</TabTitleText>} aria-label="Features tab">
             <TabContentBody>
-              <PageSection style={{ backgroundColor: 'var(--pf-t--global--background--color--primary--default)', minHeight: 'calc(100vh - 300px)' }}>
-                <Table aria-label="Features table" variant="compact">
-                  <Thead>
-                    <Tr>
-                      <Th>Feature</Th>
-                      <Th>Value type</Th>
-                      <Th>Updated</Th>
-                    </Tr>
-                  </Thead>
-                  <Tbody>
-                    {paginatedFeatures.map((feature) => (
-                      <Tr key={feature.id}>
-                        <Td dataLabel="Feature">
-                          <Flex direction={{ default: 'column' }} spaceItems={{ default: 'spaceItemsNone' }}>
+              <PageSection style={{ backgroundColor: 'var(--pf-t--global--background--color--primary--default)', minHeight: 'calc(100vh - 300px)', paddingTop: 'var(--pf-t--global--spacer--xl)' }}>
+                <div style={{ maxWidth: '800px' }}>
+                  <Title headingLevel="h3" size="md" style={{ marginBottom: 'var(--pf-t--global--spacer--md)' }}>
+                    Features
+                  </Title>
+                  <Table aria-label="Features table" variant="compact">
+                    <Thead>
+                      <Tr>
+                        <Th>Feature</Th>
+                        <Th>
+                          <Flex alignItems={{ default: 'alignItemsCenter' }} spaceItems={{ default: 'spaceItemsXs' }}>
+                            <FlexItem>Feature view</FlexItem>
                             <FlexItem>
-                              <Button
-                                variant="link"
-                                isInline
-                                onClick={() => navigate(`/develop-train/feature-store/features/${feature.id}`)}
+                              <Popover
+                                aria-label="Feature view help"
+                                headerContent="Feature view"
+                                bodyContent={
+                                  <Content component="p">
+                                    The feature view this feature was retrieved from when the dataset was created. Feature views group related features and define how they're fetched from the source data.
+                                  </Content>
+                                }
+                                showClose
                               >
-                                {feature.name}
-                              </Button>
-                            </FlexItem>
-                            <FlexItem>
-                              <Content component="small">{feature.description}</Content>
+                                <Button variant="plain" aria-label="Feature view help" style={{ padding: 0 }}>
+                                  <OutlinedQuestionCircleIcon />
+                                </Button>
+                              </Popover>
                             </FlexItem>
                           </Flex>
-                        </Td>
-                        <Td dataLabel="Value type">{feature.valueType}</Td>
-                        <Td dataLabel="Updated">{formatDate(feature.lastUpdated)}</Td>
+                        </Th>
                       </Tr>
-                    ))}
-                  </Tbody>
-                </Table>
-
-                {/* Bottom Pagination */}
-                <Flex justifyContent={{ default: 'justifyContentFlexEnd' }} style={{ marginTop: 'var(--pf-t--global--spacer--md)' }}>
-                  <FlexItem>
-                    <Pagination
-                      itemCount={features.length}
-                      perPage={perPage}
-                      page={page}
-                      onSetPage={(_event, newPage) => setPage(newPage)}
-                      onPerPageSelect={(_event, newPerPage) => {
-                        setPerPage(newPerPage);
-                        setPage(1);
-                      }}
-                      variant="bottom"
-                      isCompact
-                    />
-                  </FlexItem>
-                </Flex>
+                    </Thead>
+                    <Tbody>
+                      {features.length === 0 ? (
+                        <Tr>
+                          <Td colSpan={2} dataLabel="No features">
+                            <Content component="p">No features available</Content>
+                          </Td>
+                        </Tr>
+                      ) : (
+                        features.map((feature) => {
+                          const featureView = mockFeatureViews.find(fv => fv.id === feature.featureViewId);
+                          return (
+                            <Tr key={feature.id}>
+                              <Td dataLabel="Feature">
+                                <Button
+                                  variant="link"
+                                  isInline
+                                  onClick={() => navigate(`/develop-train/feature-store/features/${feature.id}`)}
+                                >
+                                  {feature.name}
+                                </Button>
+                              </Td>
+                              <Td dataLabel="Feature view">
+                                {featureView ? (
+                                  <Button
+                                    variant="link"
+                                    isInline
+                                    onClick={() => navigate(`/develop-train/feature-store/feature-views/${featureView.id}`)}
+                                  >
+                                    {featureView.name}
+                                  </Button>
+                                ) : (
+                                  <span>--</span>
+                                )}
+                              </Td>
+                            </Tr>
+                          );
+                        })
+                      )}
+                    </Tbody>
+                  </Table>
+                </div>
               </PageSection>
             </TabContentBody>
           </Tab>

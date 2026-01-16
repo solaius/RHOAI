@@ -65,6 +65,17 @@ export const mockDataSources: DataSource[] = [
     tags: ['domain=demographics', 'team=catalog'],
     featureStore: 'Product recommendations',
   },
+  {
+    id: 'ds-005',
+    name: 'application_data',
+    description: 'Description of this data source',
+    sourceType: 'Request',
+    connectionUrl: '',
+    created: '2018-01-07T23:33:00Z',
+    lastUpdated: '2019-02-22T23:33:00Z',
+    tags: ['domain=credit', 'env=production'],
+    featureStore: 'Fraud detection',
+  },
 ];
 
 // ============================================
@@ -717,6 +728,22 @@ export const getResourceCounts = () => ({
 // ============================================
 // Helper: Format relative time
 // ============================================
+/**
+ * Format timestamp to 'Jan 13, 2026, 3:40 PM UTC' format
+ */
+export const formatTimestamp = (dateString: string): string => {
+  const date = new Date(dateString);
+  const month = date.toLocaleDateString('en-US', { month: 'short' });
+  const day = date.getDate();
+  const year = date.getFullYear();
+  const time = date.toLocaleTimeString('en-US', { 
+    hour: 'numeric', 
+    minute: '2-digit', 
+    hour12: true 
+  });
+  return `${month} ${day}, ${year}, ${time} UTC`;
+};
+
 export const formatRelativeTime = (dateString: string): string => {
   const date = new Date(dateString);
   const now = new Date();

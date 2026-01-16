@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useRef } from 'react';
-import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import {
   PageSection,
   Title,
@@ -47,6 +47,7 @@ import {
   Divider,
   List,
   ListItem,
+  Skeleton,
 } from '@patternfly/react-core';
 import {
   Table,
@@ -65,7 +66,9 @@ import {
 import { 
   mockDataSources, 
   mockFeatureViews,
+  mockFeatureServices,
   formatRelativeTime,
+  formatTimestamp,
   getFeatureViewType,
 } from '../../../mockData/featureStore';
 
@@ -100,23 +103,42 @@ const getBatchDataSource = (dataSourceId: string): string | null => {
   return null;
 };
 
-// Mock schema for RequestSource data sources
-const getRequestSourceSchema = (dataSourceId: string): string => {
-  return `{
-  "type": "object",
-  "properties": {
-    "user_id": {
-      "type": "string",
-      "description": "User identifier"
+// Schema field interface for RequestSource
+interface SchemaField {
+  feature: string;
+  valueType: string;
+}
+
+// Mock schema data for RequestSource data sources (table format)
+const getRequestSourceSchemaFields = (dataSourceId: string): SchemaField[] => {
+  const schemas: Record<string, SchemaField[]> = {
+    'ds-005': [
+      { feature: 'loan_amnt', valueType: 'INT64' },
+      { feature: 'person_income', valueType: 'INT64' },
+      { feature: 'application_channel', valueType: 'STRING' },
+      { feature: 'time_of_day', valueType: 'INT64' },
+    ],
+  };
+  return schemas[dataSourceId] || [];
+};
+
+// Mock interactive example JSON for RequestSource data sources
+const getRequestSourceInteractiveExample = (dataSourceName: string, dataSourceId: string): string => {
+  const schemaFields = getRequestSourceSchemaFields(dataSourceId);
+  const schemaArray = schemaFields.map(field => ({
+    name: field.feature,
+    valueType: field.valueType,
+  }));
+  
+  return JSON.stringify({
+    type: 'REQUEST_SOURCE',
+    dataSourceClassType: 'feast.data_source.RequestSource',
+    requestDataOptions: {
+      schema: schemaArray,
     },
-    "timestamp": {
-      "type": "string",
-      "format": "date-time",
-      "description": "Request timestamp"
-    }
-  },
-  "required": ["user_id", "timestamp"]
-}`;
+    name: dataSourceName,
+    project: 'credit_scoring_local',
+  }, null, 2);
 };
 
 // Determine data source connector type
@@ -124,8 +146,10 @@ const getDataSourceConnectorType = (sourceType: string): 'BatchData' | 'RequestS
   if (sourceType === 'Kafka') {
     return 'StreamKafka';
   }
+  if (sourceType === 'Request') {
+    return 'RequestSource';
+  }
   // For now, treat all others as BatchData
-  // In a real implementation, you might have a separate field to identify RequestSource
   return 'BatchData';
 };
 
@@ -172,12 +196,16 @@ const highlightMatch = (text: string, query: string): React.ReactNode => {
 export const DataSourceDetailPage: React.FC = () => {
   const { dataSourceId } = useParams<{ dataSourceId: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
   const [searchParams] = useSearchParams();
   const [activeTabKey, setActiveTabKey] = useState<string | number>(0);
   const [copied, setCopied] = useState(false);
   
-  // Get feature store from URL params
+  // Get feature store from URL params (for search, etc.)
   const selectedFeatureStore = searchParams.get('featureStore') || 'All feature stores';
+  
+  // Get the resource's actual feature store for breadcrumb TEXT (visual display)
+  // Only use the actual value when resource is loaded, no default fallback
   
   // Feature Views tab state
   const [selectedFilter, setSelectedFilter] = useState('Feature view');
@@ -214,18 +242,11 @@ export const DataSourceDetailPage: React.FC = () => {
     return mockFeatureViews.filter(fv => fv.dataSourceId === dataSource.id);
   }, [dataSource]);
 
-  // Format date to match design (e.g., "Jan 2020, 23:33 UTC")
-  const formatDate = (dateString: string): string => {
-    const date = new Date(dateString);
-    const month = date.toLocaleDateString('en-US', { month: 'short' });
-    const year = date.getFullYear();
-    const time = date.toLocaleTimeString('en-US', { 
-      hour: '2-digit', 
-      minute: '2-digit', 
-      hour12: false 
-    });
-    return `${month} ${year}, ${time} UTC`;
+  // Get feature service consumers count for each feature view
+  const getFeatureServiceConsumersCount = (featureViewId: string): number => {
+    return mockFeatureServices.filter(fs => fs.featureViewIds.includes(featureViewId)).length;
   };
+
 
   // Handle tab selection
   const handleTabClick = (
@@ -337,7 +358,7 @@ data_source = DataSource(
             case 'Tags':
               return fv.tags.some(tag => tag.toLowerCase().includes(searchLower));
             case 'Updated':
-              return formatDate(fv.lastUpdated).toLowerCase().includes(searchLower);
+              return formatTimestamp(fv.lastUpdated).toLowerCase().includes(searchLower);
             default:
               return true;
           }
@@ -476,7 +497,8 @@ data_source = DataSource(
 
   const owner = getDataSourceOwner(dataSource.id);
   const batchDataSource = getBatchDataSource(dataSource.id);
-  const schema = getRequestSourceSchema(dataSource.id);
+  const schemaFields = connectorType === 'RequestSource' ? getRequestSourceSchemaFields(dataSource.id) : [];
+  const interactiveExample = connectorType === 'RequestSource' ? getRequestSourceInteractiveExample(dataSource.name, dataSource.id) : '';
 
   return (
     <>
@@ -487,7 +509,7 @@ data_source = DataSource(
             <Breadcrumb>
               <BreadcrumbItem>
                 <span
-                  onClick={() => navigate(`/develop-train/feature-store/data-sources?featureStore=${encodeURIComponent(selectedFeatureStore)}`)}
+                  onClick={() => navigate(`/develop-train/feature-store/data-sources${location.search}`)}
                   style={{ 
                     color: 'var(--pf-t--global--text--color--link--default)',
                     borderBottom: '1px solid var(--pf-t--global--text--color--link--default)',
@@ -498,7 +520,7 @@ data_source = DataSource(
                     paddingBottom: '1px'
                   }}
                 >
-                  Data sources -
+                  Data sources in
                   <svg 
                     className="pf-v6-svg" 
                     viewBox="0 0 40 40" 
@@ -510,7 +532,11 @@ data_source = DataSource(
                   >
                     <path d="M28.5,25.375c-.63568,0-1.22626.19312-1.72021.52051l-4.38898-4.38898c.77032-.96265,1.23419-2.18066,1.23419-3.50653s-.46387-2.54388-1.23419-3.50653l3.25592-3.25592c.39655.24078.85651.38745,1.35327.38745,1.44727,0,2.625-1.17773,2.625-2.625s-1.17773-2.625-2.625-2.625-2.625,1.17773-2.625,2.625c0,.49677.14667.95673.38745,1.35327l-3.25592,3.25592c-.96265-.77032-2.18066-1.23419-3.50653-1.23419s-2.54388.46387-3.50653,1.23419l-4.38898-4.38898c.32745-.49402.52051-1.08459.52051-1.72021,0-1.72266-1.40186-3.125-3.125-3.125s-3.125,1.40234-3.125,3.125,1.40186,3.125,3.125,3.125c.63568,0,1.22626-.19312,1.72021-.52051l4.38898,4.38898c-.77032.96265-1.23419,2.18066-1.23419,3.50653s.46387,2.54388,1.23419,3.50653l-3.25586,3.25586c-.39655-.24078-.85657-.38739-1.35333-.38739-1.44727,0-2.625,1.17773-2.625,2.625s1.17773,2.625,2.625,2.625,2.625-1.17773,2.625-2.625c0-.49677-.14661-.95679-.38739-1.35333l3.25586-3.25586c.96265.77032,2.18066,1.23419,3.50653,1.23419s2.54388-.46387,3.50653-1.23419l4.38898,4.38898c-.32745.49402-.52051,1.08459-.52051,1.72021,0,1.72266,1.40186,3.125,3.125,3.125s3.125-1.40234,3.125-3.125-1.40186-3.125-3.125-3.125ZM27,7.625c.7583,0,1.375.61719,1.375,1.375s-.6167,1.375-1.375,1.375-1.375-.61719-1.375-1.375.6167-1.375,1.375-1.375ZM5.625,7.5c0-1.03418.84131-1.875,1.875-1.875s1.875.84082,1.875,1.875-.84131,1.875-1.875,1.875-1.875-.84082-1.875-1.875ZM9,28.375c-.7583,0-1.375-.61719-1.375-1.375s.6167-1.375,1.375-1.375,1.375.61719,1.375,1.375-.6167,1.375-1.375,1.375ZM13.625,18c0-2.41211,1.9624-4.375,4.375-4.375s4.375,1.96289,4.375,4.375-1.9624,4.375-4.375,4.375-4.375-1.96289-4.375-4.375ZM28.5,30.375c-1.03369,0-1.875-.84082-1.875-1.875s.84131-1.875,1.875-1.875,1.875.84082,1.875,1.875-.84131,1.875-1.875,1.875Z" />
                   </svg>
-                  {selectedFeatureStore}
+                  {dataSource?.featureStore ? (
+                    dataSource.featureStore
+                  ) : (
+                    <Skeleton width="150px" height="1em" />
+                  )}
                 </span>
               </BreadcrumbItem>
               <BreadcrumbItem isActive>{dataSource.name}</BreadcrumbItem>
@@ -718,7 +744,7 @@ data_source = DataSource(
         <Tabs activeKey={activeTabKey} onSelect={handleTabClick} aria-label="Data source detail tabs">
           <Tab eventKey={0} title={<TabTitleText>Details</TabTitleText>} aria-label="Details tab">
             <TabContentBody>
-              <PageSection style={{ backgroundColor: 'var(--pf-t--global--background--color--primary--default)', minHeight: 'calc(100vh - 300px)' }}>
+              <PageSection style={{ backgroundColor: 'var(--pf-t--global--background--color--primary--default)', minHeight: 'calc(100vh - 300px)', paddingTop: 'var(--pf-t--global--spacer--xl)' }}>
                 <Stack>
                   {/* Section 1: Data source connector */}
                   <StackItem style={{ marginBottom: 'var(--pf-t--global--spacer--xl)' }}>
@@ -741,11 +767,11 @@ data_source = DataSource(
                       )}
                       <DescriptionListGroup>
                         <DescriptionListTerm>Last modified</DescriptionListTerm>
-                        <DescriptionListDescription>{formatDate(dataSource.lastUpdated)}</DescriptionListDescription>
+                        <DescriptionListDescription>{formatTimestamp(dataSource.lastUpdated)}</DescriptionListDescription>
                       </DescriptionListGroup>
                       <DescriptionListGroup>
                         <DescriptionListTerm>Created</DescriptionListTerm>
-                        <DescriptionListDescription>{formatDate(dataSource.created)}</DescriptionListDescription>
+                        <DescriptionListDescription>{formatTimestamp(dataSource.created)}</DescriptionListDescription>
                       </DescriptionListGroup>
                       {connectorType !== 'StreamKafka' && (
                         <DescriptionListGroup>
@@ -807,10 +833,18 @@ data_source = DataSource(
                         actions={
                           <CodeBlockAction>
                             <ClipboardCopyButton
-                              id="copy-code-button"
-                              textId="code-content"
+                              id={connectorType === 'RequestSource' ? "copy-example-button" : "copy-code-button"}
+                              textId={connectorType === 'RequestSource' ? "example-content" : "code-content"}
                               aria-label="Copy to clipboard"
-                              onClick={handleCopyCode}
+                              onClick={() => {
+                                if (connectorType === 'RequestSource') {
+                                  navigator.clipboard.writeText(interactiveExample);
+                                } else {
+                                  handleCopyCode();
+                                }
+                                setCopied(true);
+                                setTimeout(() => setCopied(false), 2000);
+                              }}
                               variant="plain"
                             >
                               {copied ? 'Copied!' : ''}
@@ -818,8 +852,8 @@ data_source = DataSource(
                           </CodeBlockAction>
                         }
                       >
-                        <CodeBlockCode id="code-content">
-                          {`from feast import DataSource
+                        <CodeBlockCode id={connectorType === 'RequestSource' ? "example-content" : "code-content"}>
+                          {connectorType === 'RequestSource' ? interactiveExample : `from feast import DataSource
 
 data_source = DataSource(
     name="${dataSource.name}",
@@ -837,169 +871,81 @@ data_source = DataSource(
 
           <Tab eventKey={1} title={<TabTitleText>Feature views</TabTitleText>} aria-label="Feature views tab">
             <TabContentBody>
-              <PageSection style={{ backgroundColor: 'var(--pf-t--global--background--color--primary--default)', minHeight: 'calc(100vh - 300px)' }}>
-                {/* Toolbar */}
-                <Toolbar id="feature-views-toolbar" clearAllFilters={clearAllFilters}>
-                  <ToolbarContent>
-                    <ToolbarGroup variant="filter-group">
-                      <ToolbarItem>
-                        <Select
-                          aria-label="Select filter attribute"
-                          isOpen={isFilterOpen}
-                          selected={selectedFilter}
-                          onSelect={(_event, value) => {
-                            setSelectedFilter(value as string);
-                            setIsFilterOpen(false);
-                          }}
-                          onOpenChange={(isOpen) => setIsFilterOpen(isOpen)}
-                          toggle={(toggleRef: React.Ref<MenuToggleElement>) => (
-                            <MenuToggle
-                              ref={toggleRef}
-                              onClick={() => setIsFilterOpen(!isFilterOpen)}
-                              isExpanded={isFilterOpen}
-                              style={{ width: '150px' }}
-                            >
-                              {selectedFilter}
-                            </MenuToggle>
-                          )}
-                        >
-                          <SelectList>
-                            <SelectOption value="Feature view">Feature view</SelectOption>
-                            <SelectOption value="Tags">Tags</SelectOption>
-                            <SelectOption value="Updated">Updated</SelectOption>
-                          </SelectList>
-                        </Select>
-                      </ToolbarItem>
-                      <ToolbarItem>
-                        {selectedFilter === 'Updated' ? (
-                          <DatePicker
-                            aria-label="Filter by Updated"
-                            placeholder="Select date"
-                            onChange={(_event, value) => {
-                              if (value) {
-                                addFilterValue(value);
-                              }
-                            }}
-                            style={{ minWidth: '250px' }}
-                          />
-                        ) : (
-                          <TextInput
-                            type="text"
-                            aria-label={`Filter by ${selectedFilter}`}
-                            placeholder={`Filter by ${selectedFilter.toLowerCase()}`}
-                            value={filterInputValue}
-                            onChange={(_event, value) => setFilterInputValue(value)}
-                            onKeyDown={handleFilterKeyPress}
-                            style={{ minWidth: '250px' }}
-                          />
-                        )}
-                      </ToolbarItem>
-                    </ToolbarGroup>
-                    <ToolbarItem variant="pagination" style={{ marginLeft: 'auto' }}>
-                      <Pagination
-                        itemCount={sortedFeatureViews.length}
-                        perPage={perPage}
-                        page={page}
-                        onSetPage={(_event, newPage) => setPage(newPage)}
-                        onPerPageSelect={(_event, newPerPage) => {
-                          setPerPage(newPerPage);
-                          setPage(1);
-                        }}
-                        variant="top"
-                        isCompact
-                      />
-                    </ToolbarItem>
-                  </ToolbarContent>
-                  
-                  {/* Active Filter Chips */}
-                  {hasActiveFilters && (
-                    <ToolbarContent>
-                      <ToolbarGroup>
-                        {Object.entries(activeFilters).map(([category, chipsSet]) => {
-                          const chips = Array.from(chipsSet);
-                          return chips.length > 0 ? (
-                            <ToolbarItem key={category}>
-                              <Flex spaceItems={{ default: 'spaceItemsXs' }} alignItems={{ default: 'alignItemsCenter' }}>
-                                <FlexItem>
-                                  <Content component="small" style={{ fontWeight: 'bold' }}>{category}:</Content>
-                                </FlexItem>
-                                <FlexItem>
-                                  <LabelGroup categoryName={category} numLabels={10}>
-                                    {chips.map((chip, index) => (
-                                      <Label
-                                        key={`${category}-${chip}-${index}`}
-                                        color="blue"
-                                        onClose={() => onDeleteChip(category, chip)}
-                                      >
-                                        {chip}
-                                      </Label>
-                                    ))}
-                                  </LabelGroup>
-                                </FlexItem>
-                              </Flex>
-                            </ToolbarItem>
-                          ) : null;
-                        })}
-                        <ToolbarItem>
-                          <Button variant="link" onClick={clearAllFilters}>
-                            Clear all filters
-                          </Button>
-                        </ToolbarItem>
-                      </ToolbarGroup>
-                    </ToolbarContent>
-                  )}
-                </Toolbar>
-
+              <PageSection style={{ backgroundColor: 'var(--pf-t--global--background--color--primary--default)', minHeight: 'calc(100vh - 300px)', paddingTop: 'var(--pf-t--global--spacer--xl)' }}>
                 {/* Feature Views Table */}
-                <Table aria-label="Feature views table" variant="compact">
-                  <Thead>
-                    <Tr>
-                      <Th sort={getSortParams(0)}>Feature view</Th>
-                      <Th sort={getSortParams(1)}>Updated</Th>
-                    </Tr>
-                  </Thead>
-                  <Tbody>
-                    {paginatedFeatureViews.map((fv) => (
-                      <Tr key={fv.id}>
-                        <Td dataLabel="Feature view">
-                          <Flex direction={{ default: 'column' }} spaceItems={{ default: 'spaceItemsNone' }}>
-                            <FlexItem>
-                              <Button
-                                variant="link"
-                                isInline
-                                onClick={() => navigate(`/develop-train/feature-store/feature-views/${fv.id}`)}
-                              >
-                                {fv.name}
-                              </Button>
-                            </FlexItem>
-                            <FlexItem>
-                              <Content component="small">{fv.description}</Content>
-                            </FlexItem>
-                          </Flex>
-                        </Td>
-                        <Td dataLabel="Updated">{formatDate(fv.lastUpdated)}</Td>
+                <div style={{ maxWidth: '800px' }}>
+                  <Title headingLevel="h3" size="md" style={{ marginBottom: 'var(--pf-t--global--spacer--md)' }}>
+                    Feature views
+                  </Title>
+                  <Table aria-label="Feature views table" variant="compact">
+                    <Thead>
+                      <Tr>
+                        <Th>Feature view</Th>
+                        <Th>Feature service consumers</Th>
                       </Tr>
-                    ))}
-                  </Tbody>
-                </Table>
-
-                {/* Bottom Pagination */}
-                <Flex justifyContent={{ default: 'justifyContentFlexEnd' }} style={{ marginTop: 'var(--pf-t--global--spacer--md)' }}>
-                  <FlexItem>
-                    <Pagination
-                      itemCount={sortedFeatureViews.length}
-                      perPage={perPage}
-                      page={page}
-                      onSetPage={(_event, newPage) => setPage(newPage)}
-                      onPerPageSelect={(_event, newPerPage) => {
-                        setPerPage(newPerPage);
-                        setPage(1);
-                      }}
-                      variant="bottom"
-                      isCompact
-                    />
-                  </FlexItem>
-                </Flex>
+                    </Thead>
+                    <Tbody>
+                      {featureViews.length === 0 ? (
+                        <Tr>
+                          <Td colSpan={2}>
+                            <Content component="p" style={{ textAlign: 'center', padding: 'var(--pf-t--global--spacer--lg)' }}>
+                              No feature views found for this data source.
+                            </Content>
+                          </Td>
+                        </Tr>
+                      ) : (
+                        featureViews.map((fv) => {
+                          const consumerCount = getFeatureServiceConsumersCount(fv.id);
+                          const consumingServices = mockFeatureServices.filter(fs => fs.featureViewIds.includes(fv.id));
+                          return (
+                            <Tr key={fv.id}>
+                              <Td dataLabel="Feature view">
+                                <Button
+                                  variant="link"
+                                  isInline
+                                  onClick={() => navigate(`/develop-train/feature-store/feature-views/${fv.id}`)}
+                                >
+                                  {fv.name}
+                                </Button>
+                              </Td>
+                              <Td dataLabel="Feature service consumers">
+                                {consumerCount > 0 ? (
+                                  <Popover
+                                    aria-label="Feature service consumers"
+                                    hasAutoWidth
+                                    showClose={true}
+                                    bodyContent={
+                                      <List isPlain style={{ fontSize: '14px' }}>
+                                        {consumingServices.map((service, idx) => (
+                                          <ListItem key={idx}>
+                                            •{' '}
+                                            <Button
+                                              variant="link"
+                                              isInline
+                                              onClick={() => navigate(`/develop-train/feature-store/feature-services/${service.id}`)}
+                                            >
+                                              {service.name}
+                                            </Button>
+                                          </ListItem>
+                                        ))}
+                                      </List>
+                                    }
+                                  >
+                                    <Button variant="link" isInline>
+                                      {consumerCount} feature service{consumerCount !== 1 ? 's' : ''}
+                                    </Button>
+                                  </Popover>
+                                ) : (
+                                  <span>0 feature services</span>
+                                )}
+                              </Td>
+                            </Tr>
+                          );
+                        })
+                      )}
+                    </Tbody>
+                  </Table>
+                </div>
               </PageSection>
             </TabContentBody>
           </Tab>
@@ -1008,13 +954,35 @@ data_source = DataSource(
           {connectorType === 'RequestSource' && (
             <Tab eventKey={2} title={<TabTitleText>Schema</TabTitleText>} aria-label="Schema tab">
               <TabContentBody>
-                <PageSection style={{ backgroundColor: 'var(--pf-t--global--background--color--primary--default)', minHeight: 'calc(100vh - 300px)' }}>
+                <PageSection style={{ backgroundColor: 'var(--pf-t--global--background--color--primary--default)', minHeight: 'calc(100vh - 300px)', paddingTop: 'var(--pf-t--global--spacer--xl)' }}>
                   <div style={{ maxWidth: '800px' }}>
-                    <CodeBlock>
-                      <CodeBlockCode id="schema-content">
-                        {schema}
-                      </CodeBlockCode>
-                    </CodeBlock>
+                    <Title headingLevel="h3" size="md" style={{ marginBottom: 'var(--pf-t--global--spacer--md)' }}>
+                      Schema
+                    </Title>
+                    <Table aria-label="Schema table" variant="compact">
+                      <Thead>
+                        <Tr>
+                          <Th>Feature</Th>
+                          <Th>Value type</Th>
+                        </Tr>
+                      </Thead>
+                      <Tbody>
+                        {schemaFields.length === 0 ? (
+                          <Tr>
+                            <Td colSpan={2} dataLabel="No schema data">
+                              <Content component="p">No schema data available</Content>
+                            </Td>
+                          </Tr>
+                        ) : (
+                          schemaFields.map((field, index) => (
+                            <Tr key={index}>
+                              <Td dataLabel="Feature">{field.feature}</Td>
+                              <Td dataLabel="Value type">{field.valueType}</Td>
+                            </Tr>
+                          ))
+                        )}
+                      </Tbody>
+                    </Table>
                   </div>
                 </PageSection>
               </TabContentBody>

@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useRef } from 'react';
-import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import {
   PageSection,
   Title,
@@ -46,6 +46,7 @@ import {
   StackItem,
   List,
   ListItem,
+  Skeleton,
 } from '@patternfly/react-core';
 import {
   Table,
@@ -64,10 +65,34 @@ import {
 import { 
   mockFeatureServices,
   mockFeatureViews,
+  mockFeatures,
   getFeatureViewType,
   getFeatureCountForView,
+  getFeatureNamesForView,
+  formatTimestamp,
 } from '../../../mockData/featureStore';
 import { mockEntities } from '../../../mockData/entities';
+
+// Mock owner data for feature views
+const getFeatureViewExtras = (featureViewId: string) => {
+  const extras: Record<string, { owner: string }> = {
+    'fv-001': { owner: 'acorvin@redhat.com' },
+    'fv-002': { owner: 'jsmith@redhat.com' },
+    'fv-003': { owner: 'acorvin@redhat.com' },
+    'fv-004': { owner: 'mjones@redhat.com' },
+  };
+  return extras[featureViewId] || { owner: 'unknown@redhat.com' };
+};
+
+// Helper to get value type for a feature view (use the first feature's value type as representative)
+const getFeatureViewValueType = (featureViewId: string): string => {
+  const features = mockFeatures.filter(f => f.featureViewId === featureViewId);
+  if (features.length > 0) {
+    // Return the most common value type, or first one if all are different
+    return features[0].valueType;
+  }
+  return 'UNKNOWN';
+};
 
 // Mock connected workbenches data
 const mockConnectedWorkbenches = [
@@ -123,12 +148,16 @@ const highlightMatch = (text: string, query: string): React.ReactNode => {
 export const FeatureServiceDetailPage: React.FC = () => {
   const { featureServiceId } = useParams<{ featureServiceId: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
   const [searchParams] = useSearchParams();
   const [activeTabKey, setActiveTabKey] = useState<string | number>(0);
   const [copied, setCopied] = useState(false);
   
-  // Get feature store from URL params
+  // Get feature store from URL params (for search, etc.)
   const selectedFeatureStore = searchParams.get('featureStore') || 'All feature stores';
+  
+  // Get the resource's actual feature store for breadcrumb TEXT (visual display)
+  // Only use the actual value when resource is loaded, no default fallback
   
   // Feature Views tab state
   const [selectedFilter, setSelectedFilter] = useState('Feature view');
@@ -141,6 +170,9 @@ export const FeatureServiceDetailPage: React.FC = () => {
   const [activeFilters, setActiveFilters] = useState<Record<string, Set<string>>>({
     'Feature view': new Set(),
     'Tags': new Set(),
+    'Feature': new Set(),
+    'Value Type': new Set(),
+    'Owner': new Set(),
     'Updated': new Set(),
   });
   
@@ -177,19 +209,6 @@ export const FeatureServiceDetailPage: React.FC = () => {
     return featureViews.reduce((total, fv) => total + getFeatureCountForView(fv.id), 0);
   }, [featureViews]);
 
-  // Format date to match design (e.g., "07 Jan 2020, 23:33 UTC")
-  const formatDate = (dateString: string): string => {
-    const date = new Date(dateString);
-    const day = date.getDate().toString().padStart(2, '0');
-    const month = date.toLocaleDateString('en-US', { month: 'short' });
-    const year = date.getFullYear();
-    const time = date.toLocaleTimeString('en-US', { 
-      hour: '2-digit', 
-      minute: '2-digit', 
-      hour12: false 
-    });
-    return `${day} ${month} ${year}, ${time} UTC`;
-  };
 
   // Generate code snippet for feature service
   const codeSnippet = useMemo(() => {
@@ -268,10 +287,10 @@ ${featureViews.map(fv => `        ${fv.name}_features,`).join('\n')}
   const handleSearchResultClick = (result: SearchResult) => {
     switch (result.category) {
       case 'Feature Services':
-        navigate(`/develop-train/feature-store/feature-services/${result.id}?featureStore=${encodeURIComponent(selectedFeatureStore)}`);
+        navigate(`/develop-train/feature-store/feature-services/${result.id}`);
         break;
       case 'Feature Views':
-        navigate(`/develop-train/feature-store/feature-views/${result.id}?featureStore=${encodeURIComponent(selectedFeatureStore)}`);
+        navigate(`/develop-train/feature-store/feature-views/${result.id}`);
         break;
       case 'Entities':
         navigate(`/develop-train/feature-store/entities/${result.id}`);
@@ -305,14 +324,21 @@ ${featureViews.map(fv => `        ${fv.name}_features,`).join('\n')}
         
         const matchesAny = Array.from(filterValues).some(filterValue => {
           const searchLower = filterValue.toLowerCase();
+          const extras = getFeatureViewExtras(fv.id);
           switch (category) {
             case 'Feature view':
               return fv.name.toLowerCase().includes(searchLower) ||
                      fv.description.toLowerCase().includes(searchLower);
             case 'Tags':
               return fv.tags.some(tag => tag.toLowerCase().includes(searchLower));
+            case 'Feature':
+              return getFeatureCountForView(fv.id).toString().includes(searchLower);
+            case 'Value Type':
+              return getFeatureViewValueType(fv.id).toLowerCase().includes(searchLower);
+            case 'Owner':
+              return extras.owner.toLowerCase().includes(searchLower);
             case 'Updated':
-              return formatDate(fv.lastUpdated).toLowerCase().includes(searchLower);
+              return formatTimestamp(fv.lastUpdated).toLowerCase().includes(searchLower);
             default:
               return true;
           }
@@ -332,13 +358,27 @@ ${featureViews.map(fv => `        ${fv.name}_features,`).join('\n')}
     const sorted = [...filteredFeatureViews].sort((a, b) => {
       let compareA: string | number;
       let compareB: string | number;
+      const extrasA = getFeatureViewExtras(a.id);
+      const extrasB = getFeatureViewExtras(b.id);
       
       switch (activeSortIndex) {
         case 0: // Feature View name
           compareA = a.name.toLowerCase();
           compareB = b.name.toLowerCase();
           break;
-        case 1: // Updated
+        case 2: // Feature count
+          compareA = getFeatureCountForView(a.id);
+          compareB = getFeatureCountForView(b.id);
+          break;
+        case 3: // Value Type
+          compareA = getFeatureViewValueType(a.id).toLowerCase();
+          compareB = getFeatureViewValueType(b.id).toLowerCase();
+          break;
+        case 4: // Owner
+          compareA = extrasA.owner.toLowerCase();
+          compareB = extrasB.owner.toLowerCase();
+          break;
+        case 5: // Updated
           compareA = new Date(a.lastUpdated).getTime();
           compareB = new Date(b.lastUpdated).getTime();
           break;
@@ -424,6 +464,9 @@ ${featureViews.map(fv => `        ${fv.name}_features,`).join('\n')}
     setActiveFilters({
       'Feature view': new Set(),
       'Tags': new Set(),
+      'Feature': new Set(),
+      'Value Type': new Set(),
+      'Owner': new Set(),
       'Updated': new Set(),
     });
     setFilterInputValue('');
@@ -467,7 +510,7 @@ ${featureViews.map(fv => `        ${fv.name}_features,`).join('\n')}
             <Breadcrumb>
               <BreadcrumbItem>
                 <span
-                  onClick={() => navigate(`/develop-train/feature-store/feature-services?featureStore=${encodeURIComponent(selectedFeatureStore)}`)}
+                  onClick={() => navigate(`/develop-train/feature-store/feature-services${location.search}`)}
                   style={{ 
                     color: 'var(--pf-t--global--text--color--link--default)',
                     borderBottom: '1px solid var(--pf-t--global--text--color--link--default)',
@@ -478,7 +521,7 @@ ${featureViews.map(fv => `        ${fv.name}_features,`).join('\n')}
                     paddingBottom: '1px'
                   }}
                 >
-                  Feature services -
+                  Feature services in
                   <svg 
                     className="pf-v6-svg" 
                     viewBox="0 0 40 40" 
@@ -490,7 +533,11 @@ ${featureViews.map(fv => `        ${fv.name}_features,`).join('\n')}
                   >
                     <path d="M28.5,25.375c-.63568,0-1.22626.19312-1.72021.52051l-4.38898-4.38898c.77032-.96265,1.23419-2.18066,1.23419-3.50653s-.46387-2.54388-1.23419-3.50653l3.25592-3.25592c.39655.24078.85651.38745,1.35327.38745,1.44727,0,2.625-1.17773,2.625-2.625s-1.17773-2.625-2.625-2.625-2.625,1.17773-2.625,2.625c0,.49677.14667.95673.38745,1.35327l-3.25592,3.25592c-.96265-.77032-2.18066-1.23419-3.50653-1.23419s-2.54388.46387-3.50653,1.23419l-4.38898-4.38898c.32745-.49402.52051-1.08459.52051-1.72021,0-1.72266-1.40186-3.125-3.125-3.125s-3.125,1.40234-3.125,3.125,1.40186,3.125,3.125,3.125c.63568,0,1.22626-.19312,1.72021-.52051l4.38898,4.38898c-.77032.96265-1.23419,2.18066-1.23419,3.50653s.46387,2.54388,1.23419,3.50653l-3.25586,3.25586c-.39655-.24078-.85657-.38739-1.35333-.38739-1.44727,0-2.625,1.17773-2.625,2.625s1.17773,2.625,2.625,2.625,2.625-1.17773,2.625-2.625c0-.49677-.14661-.95679-.38739-1.35333l3.25586-3.25586c.96265.77032,2.18066,1.23419,3.50653,1.23419s2.54388-.46387,3.50653-1.23419l4.38898,4.38898c-.32745.49402-.52051,1.08459-.52051,1.72021,0,1.72266,1.40186,3.125,3.125,3.125s3.125-1.40234,3.125-3.125-1.40186-3.125-3.125-3.125ZM27,7.625c.7583,0,1.375.61719,1.375,1.375s-.6167,1.375-1.375,1.375-1.375-.61719-1.375-1.375.6167-1.375,1.375-1.375ZM5.625,7.5c0-1.03418.84131-1.875,1.875-1.875s1.875.84082,1.875,1.875-.84131,1.875-1.875,1.875-1.875-.84082-1.875-1.875ZM9,28.375c-.7583,0-1.375-.61719-1.375-1.375s.6167-1.375,1.375-1.375,1.375.61719,1.375,1.375-.6167,1.375-1.375,1.375ZM13.625,18c0-2.41211,1.9624-4.375,4.375-4.375s4.375,1.96289,4.375,4.375-1.9624,4.375-4.375,4.375-4.375-1.96289-4.375-4.375ZM28.5,30.375c-1.03369,0-1.875-.84082-1.875-1.875s.84131-1.875,1.875-1.875,1.875.84082,1.875,1.875-.84131,1.875-1.875,1.875Z" />
                   </svg>
-                  {selectedFeatureStore}
+                  {featureService?.featureStore ? (
+                    featureService.featureStore
+                  ) : (
+                    <Skeleton width="150px" height="1em" />
+                  )}
                 </span>
               </BreadcrumbItem>
               <BreadcrumbItem isActive>{featureService.name}</BreadcrumbItem>
@@ -689,7 +736,7 @@ ${featureViews.map(fv => `        ${fv.name}_features,`).join('\n')}
         <Tabs activeKey={activeTabKey} onSelect={handleTabClick} aria-label="Feature service detail tabs">
           <Tab eventKey={0} title={<TabTitleText>Details</TabTitleText>} aria-label="Details tab">
             <TabContentBody>
-              <PageSection style={{ backgroundColor: 'var(--pf-t--global--background--color--primary--default)', minHeight: 'calc(100vh - 300px)' }}>
+              <PageSection style={{ backgroundColor: 'var(--pf-t--global--background--color--primary--default)', minHeight: 'calc(100vh - 300px)', paddingTop: 'var(--pf-t--global--spacer--xl)' }}>
                 <Stack>
                   {/* Section 1: Overview */}
                   <StackItem style={{ marginBottom: 'var(--pf-t--global--spacer--xl)' }}>
@@ -716,11 +763,11 @@ ${featureViews.map(fv => `        ${fv.name}_features,`).join('\n')}
                       </DescriptionListGroup>
                       <DescriptionListGroup>
                         <DescriptionListTerm>Created at</DescriptionListTerm>
-                        <DescriptionListDescription>{formatDate(featureService.created)}</DescriptionListDescription>
+                        <DescriptionListDescription>{formatTimestamp(featureService.created)}</DescriptionListDescription>
                       </DescriptionListGroup>
                       <DescriptionListGroup>
                         <DescriptionListTerm>Updated at</DescriptionListTerm>
-                        <DescriptionListDescription>{formatDate(featureService.lastUpdated)}</DescriptionListDescription>
+                        <DescriptionListDescription>{formatTimestamp(featureService.lastUpdated)}</DescriptionListDescription>
                       </DescriptionListGroup>
                     </DescriptionList>
                   </StackItem>
@@ -825,7 +872,7 @@ ${featureViews.map(fv => `        ${fv.name}_features,`).join('\n')}
 
           <Tab eventKey={1} title={<TabTitleText>Feature views</TabTitleText>} aria-label="Feature views tab">
             <TabContentBody>
-              <PageSection style={{ backgroundColor: 'var(--pf-t--global--background--color--primary--default)', minHeight: 'calc(100vh - 300px)' }}>
+              <PageSection style={{ backgroundColor: 'var(--pf-t--global--background--color--primary--default)', minHeight: 'calc(100vh - 300px)', paddingTop: 'var(--pf-t--global--spacer--xl)' }}>
                 {/* Toolbar */}
                 <Toolbar id="feature-views-toolbar" clearAllFilters={clearAllFilters}>
                   <ToolbarContent>
@@ -854,6 +901,9 @@ ${featureViews.map(fv => `        ${fv.name}_features,`).join('\n')}
                           <SelectList>
                             <SelectOption value="Feature view">Feature view</SelectOption>
                             <SelectOption value="Tags">Tags</SelectOption>
+                            <SelectOption value="Feature">Feature</SelectOption>
+                            <SelectOption value="Value Type">Value Type</SelectOption>
+                            <SelectOption value="Owner">Owner</SelectOption>
                             <SelectOption value="Updated">Updated</SelectOption>
                           </SelectList>
                         </Select>
@@ -940,45 +990,112 @@ ${featureViews.map(fv => `        ${fv.name}_features,`).join('\n')}
                   <Thead>
                     <Tr>
                       <Th sort={getSortParams(0)}>Feature view</Th>
-                      <Th sort={getSortParams(1)}>Updated</Th>
+                      <Th sort={getSortParams(1)}>Tags</Th>
+                      <Th sort={getSortParams(2)}>Feature</Th>
+                      <Th sort={getSortParams(3)}>Value Type</Th>
+                      <Th sort={getSortParams(4)}>Owner</Th>
+                      <Th sort={getSortParams(5)}>Updated</Th>
                     </Tr>
                   </Thead>
                   <Tbody>
                     {paginatedFeatureViews.length === 0 ? (
                       <Tr>
-                        <Td colSpan={2}>
+                        <Td colSpan={6}>
                           <Content component="p" style={{ textAlign: 'center', padding: 'var(--pf-t--global--spacer--xl)' }}>
                             No feature views found
                           </Content>
                         </Td>
                       </Tr>
                     ) : (
-                      paginatedFeatureViews.map((fv) => (
-                        <Tr key={fv.id}>
-                          <Td dataLabel="Feature view">
-                            <Flex direction={{ default: 'column' }} spaceItems={{ default: 'spaceItemsNone' }}>
-                              <FlexItem>
+                      paginatedFeatureViews.map((fv) => {
+                        const extras = getFeatureViewExtras(fv.id);
+                        const featureNames = getFeatureNamesForView(fv.id);
+                        const featureCount = getFeatureCountForView(fv.id);
+                        const valueType = getFeatureViewValueType(fv.id);
+                        return (
+                          <Tr key={fv.id}>
+                            <Td dataLabel="Feature view">
+                              <Flex direction={{ default: 'column' }} spaceItems={{ default: 'spaceItemsNone' }}>
+                                <FlexItem>
+                                  <Button
+                                    variant="link"
+                                    isInline
+                                    onClick={() => navigate(`/develop-train/feature-store/feature-views/${fv.id}`)}
+                                  >
+                                    {fv.name}
+                                  </Button>
+                                </FlexItem>
+                                <FlexItem>
+                                  <Content component="small">{fv.description}</Content>
+                                </FlexItem>
+                                <FlexItem>
+                                  <Label isCompact variant="filled" color="blue" style={{ marginTop: '4px' }}>
+                                    {getFeatureViewType(fv)}
+                                  </Label>
+                                </FlexItem>
+                              </Flex>
+                            </Td>
+                            <Td dataLabel="Tags">
+                              {fv.tags.length > 0 ? (
+                                <LabelGroup numLabels={2}>
+                                  {fv.tags.map((tag, index) => (
+                                    <Label 
+                                      key={index} 
+                                      color="blue"
+                                      onClick={() => addTagFilter(tag)}
+                                      style={{ cursor: 'pointer' }}
+                                    >
+                                      {tag}
+                                    </Label>
+                                  ))}
+                                </LabelGroup>
+                              ) : (
+                                <span>--</span>
+                              )}
+                            </Td>
+                            <Td dataLabel="Feature">
+                              <Popover
+                                aria-label="Features"
+                                hasAutoWidth
+                                showClose={true}
+                                bodyContent={
+                                  featureNames.length > 0 ? (
+                                    <List isPlain style={{ fontSize: '14px' }}>
+                                      {featureNames.map((featureName, idx) => {
+                                        const feature = mockFeatures.find(f => f.name === featureName);
+                                        return (
+                                          <ListItem key={idx}>
+                                            •{' '}
+                                            <Button
+                                              variant="link"
+                                              isInline
+                                              onClick={() => feature && navigate(`/develop-train/feature-store/features/${feature.id}`)}
+                                            >
+                                              {featureName}
+                                            </Button>
+                                          </ListItem>
+                                        );
+                                      })}
+                                    </List>
+                                  ) : (
+                                    <Content component="small" style={{ fontSize: '14px' }}>No features associated</Content>
+                                  )
+                                }
+                              >
                                 <Button
                                   variant="link"
                                   isInline
-                                  onClick={() => navigate(`/develop-train/feature-store/feature-views/${fv.id}?featureStore=${encodeURIComponent(selectedFeatureStore)}`)}
                                 >
-                                  {fv.name}
+                                  {featureCount} feature{featureCount !== 1 ? 's' : ''}
                                 </Button>
-                              </FlexItem>
-                              <FlexItem>
-                                <Content component="small">{fv.description}</Content>
-                              </FlexItem>
-                              <FlexItem>
-                                <Label isCompact variant="filled" color="blue" style={{ marginTop: '4px' }}>
-                                  {getFeatureViewType(fv)}
-                                </Label>
-                              </FlexItem>
-                            </Flex>
-                          </Td>
-                          <Td dataLabel="Updated">{formatDate(fv.lastUpdated)}</Td>
-                        </Tr>
-                      ))
+                              </Popover>
+                            </Td>
+                            <Td dataLabel="Value Type">{valueType}</Td>
+                            <Td dataLabel="Owner">{extras.owner}</Td>
+                            <Td dataLabel="Updated">{formatTimestamp(fv.lastUpdated)}</Td>
+                          </Tr>
+                        );
+                      })
                     )}
                   </Tbody>
                 </Table>

@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import {
   PageSection,
   Title,
@@ -43,7 +43,7 @@ import {
   Td,
   ThProps,
 } from '@patternfly/react-table';
-import { SearchIcon, WrenchIcon, ExternalLinkAltIcon } from '@patternfly/react-icons';
+import { SearchIcon, WrenchIcon, ExternalLinkAltIcon, OutlinedQuestionCircleIcon } from '@patternfly/react-icons';
 import { mockFeatures, Feature, formatRelativeTime, mockFeatureViews, mockFeatureServices } from '../../../mockData/featureStore';
 
 // Mock owner data for features
@@ -138,6 +138,7 @@ const highlightMatch = (text: string, query: string): React.ReactNode => {
  */
 export const FeaturesListPage: React.FC = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
   const [page, setPage] = useState(1);
   const [perPage, setPerPage] = useState(10);
@@ -163,19 +164,17 @@ export const FeaturesListPage: React.FC = () => {
   const [isSearchDropdownOpen, setIsSearchDropdownOpen] = useState(false);
   const searchContainerRef = useRef<HTMLDivElement>(null);
 
-  // Feature Store context selector state
+  // Feature Store context selector state - controlled by URL query param
   const [selectedFeatureStore, setSelectedFeatureStore] = useState(() => {
     const featureStoreParam = searchParams.get('featureStore');
     return featureStoreParam || 'All feature stores';
   });
   const [isFeatureStoreOpen, setIsFeatureStoreOpen] = useState(false);
 
-  // Update feature store selection when URL param changes
+  // Sync dropdown state from URL param whenever it changes
   useEffect(() => {
     const featureStoreParam = searchParams.get('featureStore');
-    if (featureStoreParam) {
-      setSelectedFeatureStore(featureStoreParam);
-    }
+    setSelectedFeatureStore(featureStoreParam || 'All feature stores');
   }, [searchParams]);
 
   // Auto-apply Feature view filter from URL parameter
@@ -423,7 +422,7 @@ export const FeaturesListPage: React.FC = () => {
 
   // Handle navigation to feature detail page
   const handleFeatureClick = (featureId: string) => {
-    navigate(`/develop-train/feature-store/features/${featureId}?featureStore=${encodeURIComponent(selectedFeatureStore)}`);
+    navigate(`/develop-train/feature-store/features/${featureId}${location.search}`);
   };
 
   // Handle search result click
@@ -498,7 +497,7 @@ export const FeaturesListPage: React.FC = () => {
             <Flex justifyContent={{ default: 'justifyContentSpaceBetween' }} alignItems={{ default: 'alignItemsFlexStart' }}>
               <FlexItem>
                 <Title headingLevel="h1" size="2xl" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                  <div style={{ background: 'var(--pf-t--global--color--nonstatus--orange--default)', borderRadius: '50%', width: '40px', height: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '28px' }}>
+                  <div style={{ background: 'var(--pf-t--global--color--nonstatus--orange--default)', borderRadius: '50%', width: '40px', height: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '32px' }}>
                     <svg className="pf-v6-svg" viewBox="0 0 36 36" fill="currentColor" aria-hidden="true" role="img" width="1em" height="1em"><path d="M31,27.625H5c-.34521,0-.625-.28027-.625-.625V9c0-.34473.27979-.625.625-.625h26c.34521,0,.625.28027.625.625v18c0,.34473-.27979.625-.625.625ZM5.625,26.375h24.75V9.625H5.625v16.75Z"></path></svg>
                   </div>
                   Features
@@ -867,14 +866,31 @@ export const FeaturesListPage: React.FC = () => {
             <Table aria-label="Features table" variant="compact">
               <Thead>
                 <Tr>
-                  {columns.map((column, index) => (
-                    <Th 
-                      key={index} 
-                      sort={getSortParams(index)}
-                    >
-                      {column}
-                    </Th>
-                  ))}
+                  <Th sort={getSortParams(0)}>Feature</Th>
+                  <Th sort={getSortParams(1)}>Feature store</Th>
+                  <Th sort={getSortParams(2)}>Tags</Th>
+                  <Th 
+                    sort={getSortParams(3)}
+                    info={{
+                      popover: 'The data type of this feature\'s values (e.g., INT64, FLOAT64, STRING).',
+                      ariaLabel: 'Value type help',
+                      popoverProps: { headerContent: 'Value type' }
+                    }}
+                  >
+                    Value type
+                  </Th>
+                  <Th 
+                    sort={getSortParams(4)}
+                    info={{
+                      popover: 'The feature view this feature belongs to. Feature views group related features and define how they\'re fetched from the source data.',
+                      ariaLabel: 'Feature view help',
+                      popoverProps: { headerContent: 'Feature view' }
+                    }}
+                  >
+                    Feature view
+                  </Th>
+                  <Th sort={getSortParams(5)}>Feature service</Th>
+                  <Th sort={getSortParams(6)}>Owner</Th>
                 </Tr>
               </Thead>
               <Tbody>

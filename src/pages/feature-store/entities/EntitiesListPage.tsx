@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import {
   PageSection,
   Title,
@@ -45,7 +45,7 @@ import {
 } from '@patternfly/react-table';
 import { SearchIcon, WrenchIcon, ExternalLinkAltIcon } from '@patternfly/react-icons';
 import { mockEntities, Entity } from '../../../mockData/entities';
-import { mockFeatureViews } from '../../../mockData/featureStore';
+import { mockFeatureViews, formatTimestamp } from '../../../mockData/featureStore';
 
 // Get feature views for an entity (from mockFeatureViews data)
 const getEntityFeatureViews = (entityId: string) => {
@@ -141,6 +141,7 @@ const highlightMatch = (text: string, query: string): React.ReactNode => {
  */
 export const EntitiesListPage: React.FC = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
   const [page, setPage] = useState(1);
   const [perPage, setPerPage] = useState(10);
@@ -167,37 +168,24 @@ export const EntitiesListPage: React.FC = () => {
   const [isSearchDropdownOpen, setIsSearchDropdownOpen] = useState(false);
   const searchContainerRef = useRef<HTMLDivElement>(null);
 
-  // Feature Store context selector state - initialize from URL param if present
+  // Feature Store context selector state - controlled by URL query param
   const [selectedFeatureStore, setSelectedFeatureStore] = useState(() => {
     const featureStoreParam = searchParams.get('featureStore');
     return featureStoreParam || 'All feature stores';
   });
   const [isFeatureStoreOpen, setIsFeatureStoreOpen] = useState(false);
 
-  // Update feature store selection when URL param changes
+  // Sync dropdown state from URL param whenever it changes
   useEffect(() => {
     const featureStoreParam = searchParams.get('featureStore');
-    if (featureStoreParam) {
-      setSelectedFeatureStore(featureStoreParam);
-    }
+    setSelectedFeatureStore(featureStoreParam || 'All feature stores');
   }, [searchParams]);
 
   // Sorting state
   const [activeSortIndex, setActiveSortIndex] = useState<number | null>(null);
   const [activeSortDirection, setActiveSortDirection] = useState<'asc' | 'desc'>('asc');
 
-  // Format date to match design (e.g., "Jan 2020, 23:33 UTC")
-  const formatDate = (dateString: string): string => {
-    const date = new Date(dateString);
-    const month = date.toLocaleDateString('en-US', { month: 'short' });
-    const year = date.getFullYear();
-    const time = date.toLocaleTimeString('en-US', { 
-      hour: '2-digit', 
-      minute: '2-digit', 
-      hour12: false 
-    });
-    return `${month} ${year}, ${time} UTC`;
-  };
+  // Format timestamp to match materialization format (e.g., "2025-04-08T05:56:27.719897Z")
 
   // Mock data for owner (would come from API in production)
   // Feature views count is calculated from actual data using getEntityFeatureViews
@@ -308,9 +296,9 @@ export const EntitiesListPage: React.FC = () => {
         case 'Feature views':
           return extras.featureViewsCount.toString().includes(searchLower);
         case 'Created':
-          return formatDate(entity.created).toLowerCase().includes(searchLower);
+          return formatTimestamp(entity.created).toLowerCase().includes(searchLower);
         case 'Updated':
-          return formatDate(entity.lastUpdated).toLowerCase().includes(searchLower);
+          return formatTimestamp(entity.lastUpdated).toLowerCase().includes(searchLower);
         case 'Owner':
           return extras.owner.toLowerCase().includes(searchLower);
         default:
@@ -458,7 +446,7 @@ export const EntitiesListPage: React.FC = () => {
 
   // Handle navigation to entity detail page - pass selected feature store
   const handleEntityClick = (entityId: string) => {
-    navigate(`/develop-train/feature-store/entities/${entityId}?featureStore=${encodeURIComponent(selectedFeatureStore)}`);
+    navigate(`/develop-train/feature-store/entities/${entityId}${location.search}`);
   };
 
   // Handle search result click
@@ -496,8 +484,8 @@ export const EntitiesListPage: React.FC = () => {
 
   // Sorting handler
   const getSortParams = (columnIndex: number): ThProps['sort'] => {
-    // Tags column (index 1) is not sortable
-    if (columnIndex === 1) return undefined;
+    // Tags column (index 2) is not sortable
+    if (columnIndex === 2) return undefined;
     
     return {
       sortBy: {
@@ -550,7 +538,7 @@ export const EntitiesListPage: React.FC = () => {
             <Flex justifyContent={{ default: 'justifyContentSpaceBetween' }} alignItems={{ default: 'alignItemsFlexStart' }}>
               <FlexItem>
                 <Title headingLevel="h1" size="2xl" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                  <div style={{ background: 'var(--pf-t--global--color--nonstatus--gray--default)', borderRadius: '50%', width: '40px', height: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '28px' }}>
+                  <div style={{ background: 'var(--pf-t--global--color--nonstatus--gray--default)', borderRadius: '50%', width: '40px', height: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '32px' }}>
                     <svg className="pf-v6-svg" viewBox="0 0 36 36" fill="currentColor" aria-hidden="true" role="img" width="1em" height="1em"><path d="M28.125,9c0-1.99902-1.62598-3.625-3.625-3.625s-3.625,1.62598-3.625,3.625c0,1.78497,1.29919,3.26373,3,3.56177v2.43823c0,1.30957-1.06543,2.375-2.375,2.375h-6c-1.33502,0-2.53003.57721-3.375,1.48492v-8.29816c1.70081-.29803,3-1.77679,3-3.56177,0-1.99902-1.62598-3.625-3.625-3.625s-3.625,1.62598-3.625,3.625c0,1.78497,1.29919,3.26373,3,3.56177v14.87646c-1.70081.29803-3,1.77679-3,3.56177,0,1.99902,1.62598,3.625,3.625,3.625s3.625-1.62598,3.625-3.625c0-1.78497-1.29919-3.26373-3-3.56177v-3.43823c0-1.86133,1.51416-3.375,3.375-3.375h6c1.99902,0,3.625-1.62598,3.625-3.625v-2.43823c1.70081-.29803,3-1.77679,3-3.56177ZM9.125,7c0-1.30957,1.06543-2.375,2.375-2.375s2.375,1.06543,2.375,2.375-1.06543,2.375-2.375,2.375-2.375-1.06543-2.375-2.375ZM13.875,29c0,1.30957-1.06543,2.375-2.375,2.375s-2.375-1.06543-2.375-2.375,1.06543-2.375,2.375-2.375,2.375,1.06543,2.375,2.375ZM24.5,11.375c-1.30957,0-2.375-1.06543-2.375-2.375s1.06543-2.375,2.375-2.375,2.375,1.06543,2.375,2.375-1.06543,2.375-2.375,2.375Z"></path></svg>
                   </div>
               Entities
@@ -713,7 +701,6 @@ export const EntitiesListPage: React.FC = () => {
                         const newValue = value as string;
                         setSelectedFeatureStore(newValue);
                         setIsFeatureStoreOpen(false);
-                        // Update URL parameter for cross-navigation consistency
                         if (newValue === 'All feature stores') {
                           searchParams.delete('featureStore');
                         } else {
@@ -1045,10 +1032,10 @@ export const EntitiesListPage: React.FC = () => {
                     </Td>
 
                     {/* Created Column */}
-                    <Td dataLabel="Created">{formatDate(entity.created)}</Td>
+                    <Td dataLabel="Created">{formatTimestamp(entity.created)}</Td>
 
                     {/* Updated Column */}
-                    <Td dataLabel="Updated">{formatDate(entity.lastUpdated)}</Td>
+                    <Td dataLabel="Updated">{formatTimestamp(entity.lastUpdated)}</Td>
 
                     {/* Owner Column */}
                     <Td dataLabel="Owner">{extras.owner}</Td>
