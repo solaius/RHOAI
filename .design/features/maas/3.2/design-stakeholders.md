@@ -6,8 +6,9 @@ Note: RACIs are approximate and unofficial.
 
 Responsible: Jonathan Zarecki
 Accountable: Jonathan Zarecki
+Consulted: Jenny Yi (Dashboard PM)
 Consulted: Rob Greenberg (AI Assets, closely-related)
-Informed: Adam Bellusci (model serving)
+Consulted: Adam Bellusci (model serving PM)
 
 ## Engineering
 
@@ -18,20 +19,22 @@ Accountable: Daniele Zonca (architect)
 Accountable: Lindani Phiri (architect)
 Accountable: Yuan Tang (staff)
 Consulted: Jamie Land
-Consulted: Edgar Hernandez Garcia
 Consulted: Bartosz Majsak
+Consulted: Edgar Hernandez Garcia (BFF)
+Consulted: Wen Liang (3.4 BFF)
 
 ### UI
-Responsible: Andrew Ballantyne (UI Dev Lead)
+Responsible: Andrew Ballantyne (Zaffre UI Dev Lead)
+Accountable: Griffin Sullivan
+Accountable: Emily Samoylov
 
 ## UX
 Responsible: Andy Braren
-Accountable: Andy Braren
-Consulted: Celestine Tan
+Responsible: Celestine Tan
+Consulted: Jenn Giardino
+Consulted: Vince Conzola
 Consulted: Beau Morley
-Informed: Jenn Giardino
 Informed: Daniel Warner
-Informed: Vince Conzola
 Informed: Joey Xing
 Informed: Melody Zhong
 Informed: June Zhang
