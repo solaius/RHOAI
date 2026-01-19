@@ -39,6 +39,13 @@ interface PatternFlyLineChartProps {
   ariaTitle?: string;
   // Optional axis tick label font size override (in px)
   axisTickFontSize?: number;
+  // Optional custom colors per series (mapped by series name)
+  seriesColors?: { [seriesName: string]: string };
+  // Optional custom stroke widths per series (mapped by series name)
+  seriesStrokeWidths?: { [seriesName: string]: number };
+  // Optional axis labels
+  xAxisLabel?: string;
+  yAxisLabel?: string;
 }
 
 const PatternFlyLineChart: React.FunctionComponent<PatternFlyLineChartProps> = ({
@@ -58,7 +65,11 @@ const PatternFlyLineChart: React.FunctionComponent<PatternFlyLineChartProps> = (
   themeColor = 'blue',
   ariaDesc,
   ariaTitle,
-  axisTickFontSize
+  axisTickFontSize,
+  seriesColors,
+  seriesStrokeWidths,
+  xAxisLabel,
+  yAxisLabel
 }) => {
   // Group data by name if multiple series exist
   const groupedData = React.useMemo(() => {
@@ -132,6 +143,7 @@ const PatternFlyLineChart: React.FunctionComponent<PatternFlyLineChartProps> = (
         height={height}
         width={chartWidth}
         domain={domain}
+        domainPadding={domain?.x ? { x: [0, 0] } : undefined}
         padding={adjustedPadding}
         themeColor={themeColor}
         containerComponent={
@@ -176,6 +188,7 @@ const PatternFlyLineChart: React.FunctionComponent<PatternFlyLineChartProps> = (
       >
         <ChartAxis
           dependentAxis
+          label={yAxisLabel}
           showGrid
           tickFormat={(t) => t.toLocaleString()}
           style={{
@@ -183,6 +196,7 @@ const PatternFlyLineChart: React.FunctionComponent<PatternFlyLineChartProps> = (
           }}
         />
         <ChartAxis
+          label={xAxisLabel}
           tickFormat={(x) => {
             // Handle time strings like "00:00", "02:00" etc.
             if (typeof x === 'string' && x.includes(':')) {
@@ -203,19 +217,23 @@ const PatternFlyLineChart: React.FunctionComponent<PatternFlyLineChartProps> = (
           }}
         />
         <ChartGroup>
-          {chartData.map((series, index) => (
-            <ChartLine
-              key={series.name}
-              data={series.data}
-              name={series.name}
-              style={{
-                data: {
-                  stroke: '#0066cc',
-                  strokeWidth: 3
-                }
-              }}
-            />
-          ))}
+          {chartData.map((series, index) => {
+            const customColor = seriesColors?.[series.name];
+            const customStrokeWidth = seriesStrokeWidths?.[series.name];
+            return (
+              <ChartLine
+                key={series.name}
+                data={series.data}
+                name={series.name}
+                style={{
+                  data: {
+                    stroke: customColor || '#0066cc',
+                    strokeWidth: customStrokeWidth || 3
+                  }
+                }}
+              />
+            );
+          })}
         </ChartGroup>
       </Chart>
     </div>

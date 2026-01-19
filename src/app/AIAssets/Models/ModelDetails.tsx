@@ -91,6 +91,15 @@ import {
   FilterIcon,
   MonitoringIcon,
 } from '@patternfly/react-icons';
+import {
+  Chart,
+  ChartAxis,
+  ChartGroup,
+  ChartLine,
+  ChartVoronoiContainer,
+  ChartLegend,
+  ChartTooltip,
+} from '@patternfly/react-charts/victory';
 import { useDocumentTitle } from '../../utils/useDocumentTitle';
 import { useFeatureFlags } from '../../utils/FeatureFlagsContext';
 import { modelLogos } from './modelLogos';
@@ -99,6 +108,7 @@ import { MODELS } from '../../../data/models';
 import type { Model } from '../../../types';
 import { usePerformanceFilters, DEFAULT_LATENCY_METRIC, DEFAULT_LATENCY_PERCENTILE, DEFAULT_LATENCY_VALUE, DEFAULT_RPS_VALUE, DEFAULT_WORKLOAD, WORKLOAD_OPTIONS } from '../../../hooks/usePerformanceFilters';
 import { generateModelBenchmarks, filterBenchmarks, getAvailableWorkloads, getAvailableHardware } from '../../../lib/benchmarks';
+import ReactECharts from 'echarts-for-react';
 import { useColumnPreferences } from '../../../hooks/useColumnPreferences';
 import { COLUMN_DEFINITIONS, getColumnById, getDefaultVisibleColumns } from '../../../lib/columnConfig';
 import type { BenchmarkData } from '../../../lib/benchmarks';
@@ -670,6 +680,197 @@ const ModelDetails: React.FunctionComponent<ModelDetailsProps> = () => {
     
     return related.slice(0, 3); // Limit to 3 related models
   }, [model, isValidated]);
+
+  // Get all compression models including current model for the inference metrics chart
+  const allCompressionModels = React.useMemo(() => {
+    if (!model || !isValidated) return [];
+    return [model, ...compressionModels];
+  }, [model, isValidated, compressionModels]);
+
+  // State for inference metrics chart
+  const [selectedMetricTab, setSelectedMetricTab] = React.useState<'E2E' | 'ITL' | 'TTFT' | 'TPS'>('E2E');
+  const [selectedChartHardware, setSelectedChartHardware] = React.useState<string>('');
+  const [isChartHardwareOpen, setIsChartHardwareOpen] = React.useState(false);
+  const chartHardwareMenuRef = React.useRef<HTMLDivElement>(null);
+  const chartContainerRef = React.useRef<HTMLDivElement>(null);
+  const [chartWidth, setChartWidth] = React.useState(800);
+
+  // Sync chart hardware selection with table hardware filter
+  React.useEffect(() => {
+    if (hardware.length > 0 && !selectedChartHardware) {
+      setSelectedChartHardware(hardware[0]);
+    } else if (hardware.length === 0 && selectedChartHardware) {
+      // If hardware filter is cleared, try to keep current selection or use first available
+      const availableHardware = getAvailableHardware(allBenchmarks, workload);
+      if (availableHardware.length > 0) {
+        setSelectedChartHardware(availableHardware[0]);
+      } else {
+        setSelectedChartHardware('');
+      }
+    }
+  }, [hardware, allBenchmarks, workload, selectedChartHardware]);
+
+  // Initialize chart hardware selection when hardware options become available
+  React.useEffect(() => {
+    if (!selectedChartHardware && hardwareOptions.length > 0) {
+      // Prefer the first selected hardware from table, or first available
+      setSelectedChartHardware(hardware.length > 0 ? hardware[0] : hardwareOptions[0]);
+    }
+  }, [hardwareOptions, hardware, selectedChartHardware]);
+
+  // Close chart hardware menu on click outside
+  React.useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (chartHardwareMenuRef.current && !chartHardwareMenuRef.current.contains(event.target as Node)) {
+        setIsChartHardwareOpen(false);
+      }
+    };
+    if (isChartHardwareOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isChartHardwareOpen]);
+
+  // Calculate chart width based on container
+  React.useEffect(() => {
+    // Only run if we have compression models (section will be visible)
+    if (!isValidated || allCompressionModels.length < 2) return;
+
+    const updateChartWidth = () => {
+      if (chartContainerRef.current) {
+        const containerWidth = chartContainerRef.current.offsetWidth || chartContainerRef.current.clientWidth;
+        if (containerWidth > 0) {
+          const newWidth = Math.max(600, containerWidth); // Min 600px, use full container width
+          setChartWidth(newWidth);
+        }
+      }
+    };
+
+    // Use requestAnimationFrame to ensure DOM is ready
+    const rafId = requestAnimationFrame(() => {
+      updateChartWidth();
+      // Also try after delays as fallback
+      setTimeout(updateChartWidth, 100);
+      setTimeout(updateChartWidth, 300);
+    });
+
+    // Use ResizeObserver for better performance
+    let resizeObserver: ResizeObserver | null = null;
+    if (chartContainerRef.current) {
+      resizeObserver = new ResizeObserver(() => {
+        updateChartWidth();
+      });
+      resizeObserver.observe(chartContainerRef.current);
+    }
+
+    // Also listen to window resize as fallback
+    window.addEventListener('resize', updateChartWidth);
+    
+    return () => {
+      cancelAnimationFrame(rafId);
+      if (resizeObserver) {
+        resizeObserver.disconnect();
+      }
+      window.removeEventListener('resize', updateChartWidth);
+    };
+  }, [isValidated, allCompressionModels.length, selectedChartHardware]); // Recalculate when section visibility changes
+
+  // Generate chart data for inference metrics across compressions
+  const inferenceMetricsChartData = React.useMemo(() => {
+    if (!model || !isValidated || allCompressionModels.length < 2 || !selectedChartHardware) {
+      return [];
+    }
+
+    // Color palette for different compression levels
+    // First color (blue) is reserved for current model
+    const colors = [
+      '#0066cc', // Blue for current model
+      '#3e8635', // Green
+      '#2c9eaf', // Teal/Cyan
+      '#f0ab00', // Orange/Gold
+      '#795600', // Brown
+      '#6a6e73', // Grey
+    ];
+
+    const chartData: Array<{ name: string; data: Array<{ x: number; y: number }>; color: string; isCurrent: boolean }> = [];
+
+    // Sort models to ensure current model is first
+    const sortedModels = [...allCompressionModels].sort((a, b) => {
+      if (a.id === model.id) return -1;
+      if (b.id === model.id) return 1;
+      return 0;
+    });
+
+    sortedModels.forEach((compModel, index) => {
+      const isCurrent = compModel.id === model.id;
+      
+      // Generate benchmarks for this compression model
+      const modelBenchmarks = generateModelBenchmarks(compModel);
+      
+      // Get all benchmarks for this hardware and workload (no filtering by latency/RPS)
+      const hardwareBenchmarks = modelBenchmarks.filter(b => 
+        b.hardware === selectedChartHardware && b.workload === workload
+      );
+
+      if (hardwareBenchmarks.length === 0) {
+        return;
+      }
+
+      // Get base metric value from the first benchmark
+      const baseBenchmark = hardwareBenchmarks[0];
+      const baseMetricValue = baseBenchmark.latencyData[selectedMetricTab]['Mean'];
+      const baseRps = baseBenchmark.totalRps || baseBenchmark.rpsPerReplica;
+
+      // Create data points for RPS range 1-10
+      // Simulate how metric changes with RPS (latency typically increases with RPS)
+      const dataPoints: Array<{ x: number; y: number }> = [];
+      
+      for (let rps = 1; rps <= 10; rps++) {
+        let metricValue: number;
+        
+        if (selectedMetricTab === 'TPS') {
+          // Throughput: generally decreases slightly as RPS increases (more load)
+          // Use a slight degradation factor
+          const degradationFactor = 1 - (rps - 1) * 0.02; // 2% decrease per RPS
+          metricValue = Math.max(baseMetricValue * degradationFactor, baseMetricValue * 0.8);
+        } else {
+          // Latency metrics: generally increase as RPS increases (more load)
+          // Use a scaling factor based on RPS
+          const scalingFactor = 1 + (rps - 1) * 0.08; // 8% increase per RPS
+          metricValue = baseMetricValue * scalingFactor;
+        }
+        
+        dataPoints.push({ 
+          x: rps, 
+          y: Math.round(metricValue) 
+        });
+      }
+
+      if (dataPoints.length > 0) {
+        const displayName = getDisplayName(compModel.name);
+        const compressionLabel = compModel.tensorType ? `-${compModel.tensorType}` : '';
+        // Use first color (blue) for current model, others get subsequent colors
+        const colorIndex = isCurrent ? 0 : (index > 0 ? index : index + 1);
+        chartData.push({
+          name: `${displayName}${compressionLabel}`,
+          data: dataPoints,
+          color: colors[colorIndex % colors.length],
+          isCurrent: isCurrent,
+        });
+      }
+    });
+
+    return chartData;
+  }, [model, isValidated, allCompressionModels, selectedChartHardware, workload, selectedMetricTab]);
+
+  // Check if we should show the inference metrics section
+  const shouldShowInferenceMetrics = React.useMemo(() => {
+    return isValidated && 
+           allCompressionModels.length >= 2 && 
+           inferenceMetricsChartData.length > 0;
+  }, [isValidated, allCompressionModels.length, inferenceMetricsChartData.length]);
 
   if (!model) {
     return (
@@ -1507,70 +1708,225 @@ const ModelDetails: React.FunctionComponent<ModelDetailsProps> = () => {
                 </CardBody>
               </Card>
 
-              {/* Compression Level Comparison */}
-              {compressionModels.length > 0 && (
-                <Card style={{ marginBottom: '1rem' }}>
+              {/* Compression Level Comparison and Inference Metrics */}
+              {(compressionModels.length > 0 || shouldShowInferenceMetrics) && (
+                <Card style={{ marginBottom: '1rem', overflow: 'visible' }}>
                   <CardHeader>
                     <Title headingLevel="h3" size="md">Compression level comparison</Title>
                     <p style={{ color: 'var(--pf-t--global--text--color--subtle)', fontSize: '0.875rem', marginTop: '0.25rem' }}>
                       View benchmark performance of this model's available compression levels.
                     </p>
                   </CardHeader>
-                  <CardBody>
-                    <div style={{ display: 'flex', alignItems: 'stretch' }}>
-                      {/* Current model */}
-                      <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.5rem 1rem' }}>
-                        <div 
-                          style={{ width: '40px', height: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
-                          dangerouslySetInnerHTML={{ __html: ValidatedModelIcon }}
-                        />
-                        <div>
-                          <div style={{ fontWeight: 500, fontSize: '0.875rem', marginBottom: '0.25rem' }}>
-                            {getDisplayName(model.name)}
-                          </div>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
-                            <Label color="green" isCompact>{model.tensorType}</Label>
-                            <Label color="grey" isCompact>Current model</Label>
-                          </div>
-                        </div>
-                      </div>
-                      
-                      {/* Related compression models */}
-                      {compressionModels.map(compModel => (
-                        <React.Fragment key={compModel.id}>
-                          {/* Divider */}
-                          <div style={{ width: '1px', backgroundColor: 'var(--pf-t--global--border--color--default)', margin: '0.5rem 0' }} />
-                          
-                          {/* Model item */}
-                          <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.5rem 1rem' }}>
-                            <div 
-                              style={{ width: '40px', height: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
-                              dangerouslySetInnerHTML={{ __html: ValidatedModelIcon }}
-                            />
-                            <div>
-                              <Button 
-                                variant="link" 
-                                isInline 
-                                style={{ fontWeight: 500, fontSize: '0.875rem', padding: 0, marginBottom: '0.25rem', textAlign: 'left' }}
-                                onClick={() => {
-                                  const params = new URLSearchParams();
-                                  searchParams.forEach((value, key) => {
-                                    params.set(key, value);
-                                  });
-                                  params.set('tab', 'performance');
-                                  navigate(`/ai-assets/models/${compModel.id}?${params.toString()}`);
-                                }}
-                              >
-                                {getDisplayName(compModel.name)}
-                              </Button>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                                <Label color="green" isCompact>{compModel.tensorType}</Label>
-                              </div>
+                  <CardBody style={{ overflow: 'visible', paddingBottom: '2rem' }}>
+                    {/* Compression level comparison */}
+                    {compressionModels.length > 0 && (
+                      <div style={{ display: 'flex', alignItems: 'stretch', marginBottom: shouldShowInferenceMetrics ? '2rem' : '0' }}>
+                        {/* Current model */}
+                        <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.5rem 1rem' }}>
+                          <div 
+                            style={{ width: '40px', height: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
+                            dangerouslySetInnerHTML={{ __html: ValidatedModelIcon }}
+                          />
+                          <div>
+                            <div style={{ fontWeight: 500, fontSize: '0.875rem', marginBottom: '0.25rem' }}>
+                              {getDisplayName(model.name)}
+                            </div>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                              <Label color="green" isCompact>{model.tensorType}</Label>
+                              <Label color="grey" isCompact>Current model</Label>
                             </div>
                           </div>
-                        </React.Fragment>
-                      ))}
+                        </div>
+                        
+                        {/* Related compression models */}
+                        {compressionModels.map(compModel => (
+                          <React.Fragment key={compModel.id}>
+                            {/* Divider */}
+                            <div style={{ width: '1px', backgroundColor: 'var(--pf-t--global--border--color--default)', margin: '0.5rem 0' }} />
+                            
+                            {/* Model item */}
+                            <div style={{ flex: 1, display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.5rem 1rem' }}>
+                              <div 
+                                style={{ width: '40px', height: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
+                                dangerouslySetInnerHTML={{ __html: ValidatedModelIcon }}
+                              />
+                              <div>
+                                <Button 
+                                  variant="link" 
+                                  isInline 
+                                  style={{ fontWeight: 500, fontSize: '0.875rem', padding: 0, marginBottom: '0.25rem', textAlign: 'left' }}
+                                  onClick={() => {
+                                    const params = new URLSearchParams();
+                                    searchParams.forEach((value, key) => {
+                                      params.set(key, value);
+                                    });
+                                    params.set('tab', 'performance');
+                                    navigate(`/ai-assets/models/${compModel.id}?${params.toString()}`);
+                                  }}
+                                >
+                                  {getDisplayName(compModel.name)}
+                                </Button>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                                  <Label color="green" isCompact>{compModel.tensorType}</Label>
+                                </div>
+                              </div>
+                            </div>
+                          </React.Fragment>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Inference metrics across compressions */}
+                    {shouldShowInferenceMetrics && (
+                      <>
+                        <div style={{ marginTop: compressionModels.length > 0 ? '2rem' : '0', overflow: 'visible' }}>
+                          <Title headingLevel="h4" size="md" style={{ marginBottom: '0.5rem' }}>Inference metrics across compressions</Title>
+                          <p style={{ color: 'var(--pf-t--global--text--color--subtle)', fontSize: '0.875rem', marginBottom: '1.5rem' }}>
+                            Select a hardware configuration to view the inference metrics of models at various compression levels.
+                          </p>
+                          {/* Hardware configuration dropdown */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '1.5rem', flexWrap: 'wrap' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        <span style={{ fontSize: '0.875rem', fontWeight: 500 }}>Hardware configuration:</span>
+                        <div ref={chartHardwareMenuRef} style={{ position: 'relative' }}>
+                          <MenuToggle
+                            onClick={() => setIsChartHardwareOpen(!isChartHardwareOpen)}
+                            isExpanded={isChartHardwareOpen}
+                            style={{ minWidth: '250px' }}
+                          >
+                            {selectedChartHardware || 'Select hardware'}
+                          </MenuToggle>
+                          {isChartHardwareOpen && (
+                            <Menu
+                              onSelect={(_event, itemId) => {
+                                if (typeof itemId === 'string') {
+                                  setSelectedChartHardware(itemId);
+                                  setIsChartHardwareOpen(false);
+                                }
+                              }}
+                              selected={selectedChartHardware}
+                              style={{ 
+                                position: 'absolute', 
+                                top: '100%', 
+                                left: 0, 
+                                zIndex: 9999,
+                                minWidth: '250px'
+                              }}
+                            >
+                              <MenuContent>
+                                <MenuList>
+                                  {hardwareOptions.map(hw => (
+                                    <MenuItem key={hw} itemId={hw}>
+                                      {hw}
+                                    </MenuItem>
+                                  ))}
+                                </MenuList>
+                              </MenuContent>
+                            </Menu>
+                          )}
+                        </div>
+                      </div>
+                      <Popover
+                        headerContent="Can't find what you're looking for?"
+                        bodyContent="The Inference metrics table uses the filters applied to the Hardware configuration table. Adjust or clear the filters to see more options here."
+                      >
+                        <Button variant="link" isInline icon={<OutlinedQuestionCircleIcon />}>
+                          Can't find what you're looking for?
+                        </Button>
+                      </Popover>
                     </div>
+
+                    {/* Metric tabs */}
+                    <Tabs
+                      activeKey={selectedMetricTab}
+                      onSelect={(_, key) => setSelectedMetricTab(key as typeof selectedMetricTab)}
+                      style={{ marginBottom: '1.5rem', backgroundColor: 'transparent' }}
+                    >
+                      <Tab eventKey="E2E" title={<TabTitleText>E2E latency (ms)</TabTitleText>} />
+                      <Tab eventKey="ITL" title={<TabTitleText>Inter-token latency (ms)</TabTitleText>} />
+                      <Tab eventKey="TTFT" title={<TabTitleText>Time to first token latency (ms)</TabTitleText>} />
+                      <Tab eventKey="TPS" title={<TabTitleText>Throughput (tok/s)</TabTitleText>} />
+                    </Tabs>
+
+                    {/* Line chart */}
+                    {inferenceMetricsChartData.length > 0 ? (
+                      <div style={{ width: '100%', height: '400px', marginBottom: '1rem' }}>
+                        <ReactECharts
+                          option={{
+                            tooltip: {
+                              trigger: 'axis',
+                              formatter: (params: any) => {
+                                let tooltip = `<strong>RPS: ${params[0].value[0]}</strong><br/>`;
+                                params.forEach((param: any) => {
+                                  const unit = selectedMetricTab === 'TPS' ? ' tok/s' : ' ms';
+                                  tooltip += `${param.marker} ${param.seriesName}: ${param.value[1]}${unit}<br/>`;
+                                });
+                                return tooltip;
+                              }
+                            },
+                            legend: {
+                              data: inferenceMetricsChartData.map(series => 
+                                series.isCurrent ? `${series.name} (Current model)` : series.name
+                              ),
+                              bottom: 0,
+                              type: 'scroll'
+                            },
+                            xAxis: {
+                              type: 'value',
+                              min: 1,
+                              max: 10,
+                              name: 'Request per second (RPS)',
+                              nameLocation: 'middle',
+                              nameGap: 30,
+                              axisLabel: {
+                                formatter: '{value}'
+                              }
+                            },
+                            yAxis: {
+                              type: 'value',
+                              name: selectedMetricTab === 'TPS' ? 'Throughput (tok/s)' : `${selectedMetricTab} latency (ms)`,
+                              nameLocation: 'middle',
+                              nameGap: 50
+                            },
+                            series: inferenceMetricsChartData.map(series => ({
+                              name: series.isCurrent ? `${series.name} (Current model)` : series.name,
+                              data: series.data.map(point => [point.x, point.y]),
+                              type: 'line',
+                              smooth: true,
+                              itemStyle: {
+                                color: series.color
+                              },
+                              lineStyle: {
+                                width: series.isCurrent ? 3 : 2
+                              }
+                            })),
+                            grid: {
+                              left: '10%',
+                              right: '10%',
+                              bottom: '20%',
+                              top: '10%',
+                              containLabel: true
+                            }
+                          }}
+                          style={{ height: '100%', width: '100%' }}
+                        />
+                      </div>
+                    ) : (
+                      <div style={{ 
+                        padding: '3rem', 
+                        textAlign: 'center', 
+                        color: 'var(--pf-t--global--text--color--subtle)',
+                        backgroundColor: 'var(--pf-t--global--background--color--secondary--default)',
+                        borderRadius: '4px',
+                        marginBottom: '1rem'
+                      }}>
+                        N/A
+                      </div>
+                    )}
+
+                        </div>
+                      </>
+                    )}
                   </CardBody>
                 </Card>
               )}

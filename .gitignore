@@ -14,3 +14,7 @@ storybook-static
 # MCP configuration with sensitive data
 # (keep .cursormcp.example in git as a template)
 .cursormcp.local
+
+# Git SSL certificate bundles (local configuration)
+.git_cert_bundle.pem
+redhat_gitlab_cert.pem
