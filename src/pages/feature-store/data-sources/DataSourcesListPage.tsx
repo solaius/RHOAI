@@ -44,12 +44,44 @@ import {
   ThProps,
 } from '@patternfly/react-table';
 import { SearchIcon, WrenchIcon, ExternalLinkAltIcon } from '@patternfly/react-icons';
-import { mockEntities, Entity } from '../../../mockData/entities';
-import { mockFeatureViews, formatTimestamp } from '../../../mockData/featureStore';
+import { mockDataSources, DataSource } from '../../../mockData/featureStore';
+import { mockFeatureViews } from '../../../mockData/featureStore';
 
-// Get feature views for an entity (from mockFeatureViews data)
-const getEntityFeatureViews = (entityId: string) => {
-  return mockFeatureViews.filter(fv => fv.entityIds.includes(entityId));
+// Mock owner data for data sources
+const getDataSourceExtras = (dataSourceId: string) => {
+  // Get feature views connected to this data source
+  const connectedFeatureViews = mockFeatureViews.filter(fv => fv.dataSourceId === dataSourceId);
+  const extras: Record<string, { owner: string }> = {
+    'ds-001': { owner: 'acorvin@redhat.com' },
+    'ds-002': { owner: 'jsmith@redhat.com' },
+    'ds-003': { owner: 'acorvin@redhat.com' },
+    'ds-004': { owner: 'mjones@redhat.com' },
+  };
+  return {
+    owner: extras[dataSourceId]?.owner || 'unknown@redhat.com',
+    featureViewsCount: connectedFeatureViews.length,
+    featureViewIds: connectedFeatureViews.map(fv => fv.id),
+  };
+};
+
+// Map sourceType to connector type labels
+const getConnectorType = (sourceType: string): string => {
+  const typeMap: Record<string, string> = {
+    'Snowflake': 'FileSource',
+    'PostgreSQL': 'FileSource',
+    'Kafka': 'StreamKafka',
+    'Parquet': 'FileSource',
+    'Request': 'RequestSource',
+  };
+  return typeMap[sourceType] || 'FileSource';
+};
+
+// Map sourceType to type label for display
+const getTypeLabel = (sourceType: string): string => {
+  if (sourceType === 'Kafka') return 'StreamKafka';
+  if (sourceType === 'Request') return 'RequestSource';
+  if (sourceType === 'Parquet' || sourceType === 'Snowflake' || sourceType === 'PostgreSQL') return 'BatchData';
+  return 'BatchData';
 };
 
 // Mock connected workbenches data
@@ -63,7 +95,7 @@ const mockProjectsWithoutWorkbenches = [
   { name: 'Project 4' },
 ];
 
-// Mock search results with categories (matching the design)
+// Mock search results with categories
 interface SearchResult {
   id: string;
   name: string;
@@ -82,37 +114,12 @@ const mockSearchResults: SearchResult[] = [
     featureStore: 'Fraud detection',
     tags: ['domain=demographics', 'env=production'],
   },
-  {
-    id: 'f-001',
-    name: 'local_type',
-    description: 'Categorical indicator of the borrower\'s residential area type',
-    category: 'Features',
-    featureStore: 'Customer analytics',
-    tags: ['domain=demographics', 'type=numeric'],
-  },
-  {
-    id: 'f-002',
-    name: 'social_media_usage_hours_per_day',
-    description: 'Average number of hours per day the borrower spends on social media.',
-    category: 'Features',
-    featureStore: 'Product recommendations',
-    tags: ['term=credit', 'type=numeric', 'env=production'],
-  },
-  {
-    id: 'fv-001',
-    name: 'personal_profile_view',
-    description: 'Aggregated features from the user\'s personal and demographic data.',
-    category: 'Feature Views',
-    featureStore: 'Fraud detection',
-    tags: ['domain=demographics', 'use_case=fraud'],
-  },
 ];
 
 // Utility function to highlight matching text
 const highlightMatch = (text: string, query: string): React.ReactNode => {
   if (!query.trim()) return text;
   
-  // Handle tag search format
   const tagMatch = query.match(/^(\w+)=(.+)$/);
   const searchTerm = tagMatch ? tagMatch[2] : query;
   
@@ -136,10 +143,10 @@ const highlightMatch = (text: string, query: string): React.ReactNode => {
 };
 
 /**
- * EntitiesListPage Component
- * Displays a list of Feature Store entities with search and filtering capabilities
+ * DataSourcesListPage Component
+ * Displays a list of Feature Store data sources with search and filtering capabilities
  */
-export const EntitiesListPage: React.FC = () => {
+export const DataSourcesListPage: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -147,19 +154,18 @@ export const EntitiesListPage: React.FC = () => {
   const [perPage, setPerPage] = useState(10);
   
   // Toolbar filter state
-  const [selectedFilterAttribute, setSelectedFilterAttribute] = useState<string>('Entities');
+  const [selectedFilterAttribute, setSelectedFilterAttribute] = useState<string>('Data sources');
   const [isFilterDropdownOpen, setIsFilterDropdownOpen] = useState(false);
   const [filterInputValue, setFilterInputValue] = useState('');
   
-  // Store multiple filter values as chips (using Set to prevent duplicates)
+  // Store multiple filter values as chips
   const [activeFilters, setActiveFilters] = useState<Record<string, Set<string>>>({
-    Entities: new Set(),
+    'Data sources': new Set(),
     Tags: new Set(),
-    'Join key': new Set(),
-    'Value type': new Set(),
+    'Data source connector': new Set(),
     'Feature views': new Set(),
+    'Last modified': new Set(),
     Created: new Set(),
-    Updated: new Set(),
     Owner: new Set(),
   });
 
@@ -185,24 +191,6 @@ export const EntitiesListPage: React.FC = () => {
   const [activeSortIndex, setActiveSortIndex] = useState<number | null>(null);
   const [activeSortDirection, setActiveSortDirection] = useState<'asc' | 'desc'>('asc');
 
-  // Format timestamp to match materialization format (e.g., "2025-04-08T05:56:27.719897Z")
-
-  // Mock data for owner (would come from API in production)
-  // Feature views count is calculated from actual data using getEntityFeatureViews
-  const getEntityExtras = (entityId: string) => {
-    const extras: Record<string, { owner: string }> = {
-      'entity-001': { owner: 'acorvin@redhat.com' },
-      'entity-002': { owner: 'acorvin@redhat.com' },
-      'entity-003': { owner: 'jsmith@redhat.com' },
-      'entity-004': { owner: 'acorvin@redhat.com' },
-      'entity-005': { owner: 'mjones@redhat.com' },
-    };
-    const owner = extras[entityId]?.owner || 'unknown@redhat.com';
-    // Calculate actual feature views count from data
-    const featureViews = getEntityFeatureViews(entityId);
-    return { owner, featureViewsCount: featureViews.length };
-  };
-
   // Check if any filters are active
   const hasActiveFilters = useMemo(() => {
     return Object.values(activeFilters).some(filters => filters.size > 0);
@@ -214,12 +202,10 @@ export const EntitiesListPage: React.FC = () => {
     
     const query = globalSearchValue.toLowerCase();
     
-    // Filter function for feature store
     const matchesFeatureStore = (itemFeatureStore: string | undefined) => {
       return selectedFeatureStore === 'All feature stores' || itemFeatureStore === selectedFeatureStore;
     };
     
-    // Filter mock search results (Data Sources, Features, Feature Views) by feature store
     const filteredResults = mockSearchResults.filter(result => 
       matchesFeatureStore(result.featureStore) &&
       (result.name.toLowerCase().includes(query) ||
@@ -227,24 +213,23 @@ export const EntitiesListPage: React.FC = () => {
       result.tags.some(tag => tag.toLowerCase().includes(query)))
     );
     
-    // Also search entities (filter by selected feature store)
-    const entityResults: SearchResult[] = mockEntities
-      .filter(entity => 
-        matchesFeatureStore(entity.featureStore) &&
-        (entity.name.toLowerCase().includes(query) ||
-        entity.description.toLowerCase().includes(query) ||
-        entity.tags.some(tag => tag.toLowerCase().includes(query)))
+    const dataSourceResults: SearchResult[] = mockDataSources
+      .filter(ds => 
+        matchesFeatureStore(ds.featureStore) &&
+        (ds.name.toLowerCase().includes(query) ||
+        ds.description.toLowerCase().includes(query) ||
+        ds.tags.some(tag => tag.toLowerCase().includes(query)))
       )
-      .map(entity => ({
-        id: entity.id,
-        name: entity.name,
-        description: entity.description,
-        category: 'Entities' as const,
-        featureStore: entity.featureStore,
-        tags: entity.tags,
+      .map(ds => ({
+        id: ds.id,
+        name: ds.name,
+        description: ds.description,
+        category: 'Data Sources' as const,
+        featureStore: ds.featureStore,
+        tags: ds.tags,
       }));
     
-    const allResults = [...filteredResults, ...entityResults];
+    const allResults = [...filteredResults, ...dataSourceResults];
     
     return { results: allResults, total: allResults.length };
   }, [globalSearchValue, selectedFeatureStore]);
@@ -261,50 +246,45 @@ export const EntitiesListPage: React.FC = () => {
     return groups;
   }, [globalSearchResults]);
 
-  // Filter entities based on selected feature store and active filters
-  const filteredEntities = useMemo(() => {
-    // First filter by feature store
-    let entities = mockEntities;
+  // Filter data sources based on selected feature store and active filters
+  const filteredDataSources = useMemo(() => {
+    let dataSources = mockDataSources;
     if (selectedFeatureStore !== 'All feature stores') {
-      entities = mockEntities.filter(entity => entity.featureStore === selectedFeatureStore);
+      dataSources = mockDataSources.filter(ds => ds.featureStore === selectedFeatureStore);
     }
     
-    // Then apply active filters
     if (!hasActiveFilters) {
-      return entities;
+      return dataSources;
     }
     
-    return entities.filter(entity => {
-      const extras = getEntityExtras(entity.id);
+    return dataSources.filter(ds => {
+      const extras = getDataSourceExtras(ds.id);
       
-      // Check each filter category
       for (const [category, filterValues] of Object.entries(activeFilters)) {
         if (filterValues.size === 0) continue;
         
         const matchesAny = Array.from(filterValues).some(filterValue => {
           const searchLower = filterValue.toLowerCase();
           switch (category) {
-        case 'Entities':
-          return entity.name.toLowerCase().includes(searchLower) ||
-                 entity.description.toLowerCase().includes(searchLower);
-        case 'Tags':
-          return entity.tags.some(tag => tag.toLowerCase().includes(searchLower));
-        case 'Join key':
-          return entity.joinKey.toLowerCase().includes(searchLower);
-        case 'Value type':
-          return entity.valueType.toLowerCase().includes(searchLower);
-        case 'Feature views':
-          return extras.featureViewsCount.toString().includes(searchLower);
-        case 'Created':
-          return formatTimestamp(entity.created).toLowerCase().includes(searchLower);
-        case 'Updated':
-          return formatTimestamp(entity.lastUpdated).toLowerCase().includes(searchLower);
-        case 'Owner':
-          return extras.owner.toLowerCase().includes(searchLower);
-        default:
-          return true;
-      }
-    });
+            case 'Data sources':
+              return ds.name.toLowerCase().includes(searchLower) ||
+                     ds.description.toLowerCase().includes(searchLower);
+            case 'Tags':
+              return ds.tags.some(tag => tag.toLowerCase().includes(searchLower));
+            case 'Data source connector':
+              return getConnectorType(ds.sourceType).toLowerCase().includes(searchLower);
+            case 'Feature views':
+              return extras.featureViewsCount.toString().includes(searchLower);
+            case 'Last modified':
+              return ds.lastUpdated.toLowerCase().includes(searchLower);
+            case 'Created':
+              return ds.created.toLowerCase().includes(searchLower);
+            case 'Owner':
+              return extras.owner.toLowerCase().includes(searchLower);
+            default:
+              return true;
+          }
+        });
         
         if (!matchesAny) return false;
       }
@@ -314,18 +294,18 @@ export const EntitiesListPage: React.FC = () => {
   }, [activeFilters, hasActiveFilters, selectedFeatureStore]);
 
   // Sorting logic
-  const sortedEntities = useMemo(() => {
-    if (activeSortIndex === null) return filteredEntities;
+  const sortedDataSources = useMemo(() => {
+    if (activeSortIndex === null) return filteredDataSources;
     
-    const sorted = [...filteredEntities].sort((a, b) => {
-      const extrasA = getEntityExtras(a.id);
-      const extrasB = getEntityExtras(b.id);
+    const sorted = [...filteredDataSources].sort((a, b) => {
+      const extrasA = getDataSourceExtras(a.id);
+      const extrasB = getDataSourceExtras(b.id);
       
       let compareA: string | number;
       let compareB: string | number;
       
       switch (activeSortIndex) {
-        case 0: // Entities (name)
+        case 0: // Data source (name)
           compareA = a.name.toLowerCase();
           compareB = b.name.toLowerCase();
           break;
@@ -333,27 +313,23 @@ export const EntitiesListPage: React.FC = () => {
           compareA = a.featureStore.toLowerCase();
           compareB = b.featureStore.toLowerCase();
           break;
-        case 3: // Join key
-          compareA = a.joinKey.toLowerCase();
-          compareB = b.joinKey.toLowerCase();
+        case 2: // Data source connector
+          compareA = getConnectorType(a.sourceType).toLowerCase();
+          compareB = getConnectorType(b.sourceType).toLowerCase();
           break;
-        case 4: // Value type
-          compareA = a.valueType.toLowerCase();
-          compareB = b.valueType.toLowerCase();
-          break;
-        case 5: // Feature views
+        case 3: // Feature views
           compareA = extrasA.featureViewsCount;
           compareB = extrasB.featureViewsCount;
           break;
-        case 6: // Created
-          compareA = new Date(a.created).getTime();
-          compareB = new Date(b.created).getTime();
-          break;
-        case 7: // Updated
+        case 4: // Last modified
           compareA = new Date(a.lastUpdated).getTime();
           compareB = new Date(b.lastUpdated).getTime();
           break;
-        case 8: // Owner
+        case 5: // Created
+          compareA = new Date(a.created).getTime();
+          compareB = new Date(b.created).getTime();
+          break;
+        case 6: // Owner
           compareA = extrasA.owner.toLowerCase();
           compareB = extrasB.owner.toLowerCase();
           break;
@@ -367,14 +343,14 @@ export const EntitiesListPage: React.FC = () => {
     });
     
     return sorted;
-  }, [filteredEntities, activeSortIndex, activeSortDirection]);
+  }, [filteredDataSources, activeSortIndex, activeSortDirection]);
 
   // Pagination logic
-  const paginatedEntities = useMemo(() => {
+  const paginatedDataSources = useMemo(() => {
     const start = (page - 1) * perPage;
     const end = start + perPage;
-    return sortedEntities.slice(start, end);
-  }, [sortedEntities, page, perPage]);
+    return sortedDataSources.slice(start, end);
+  }, [sortedDataSources, page, perPage]);
 
   const onSetPage = (_event: React.MouseEvent | React.KeyboardEvent | MouseEvent, newPage: number) => {
     setPage(newPage);
@@ -385,7 +361,7 @@ export const EntitiesListPage: React.FC = () => {
     setPage(1);
   };
 
-  // Handle adding a filter value (prevents duplicates using Set)
+  // Handle adding a filter value
   const addFilterValue = (value?: string) => {
     const valueToAdd = value || filterInputValue.trim();
     if (valueToAdd) {
@@ -431,35 +407,34 @@ export const EntitiesListPage: React.FC = () => {
   // Clear all filters
   const clearAllFilters = () => {
     setActiveFilters({
-      Entities: new Set(),
+      'Data sources': new Set(),
       Tags: new Set(),
-      'Join key': new Set(),
-      'Value type': new Set(),
+      'Data source connector': new Set(),
       'Feature views': new Set(),
+      'Last modified': new Set(),
       Created: new Set(),
-      Updated: new Set(),
       Owner: new Set(),
     });
     setFilterInputValue('');
     setPage(1);
   };
 
-  // Handle navigation to entity detail page - pass selected feature store
-  const handleEntityClick = (entityId: string) => {
-    navigate(`/develop-train/feature-store/entities/${entityId}${location.search}`);
+  // Handle navigation to data source detail page
+  const handleDataSourceClick = (dataSourceId: string) => {
+    navigate(`/develop-train/feature-store/data-sources/${dataSourceId}${location.search}`);
   };
 
   // Handle search result click
   const handleSearchResultClick = (result: SearchResult) => {
     switch (result.category) {
+      case 'Data Sources':
+        handleDataSourceClick(result.id);
+        break;
       case 'Entities':
-        handleEntityClick(result.id);
+        navigate(`/develop-train/feature-store/entities/${result.id}`);
         break;
       case 'Feature Views':
         navigate(`/develop-train/feature-store/feature-views/${result.id}`);
-        break;
-      case 'Data Sources':
-        navigate(`/develop-train/feature-store/data-sources/${result.id}`);
         break;
       case 'Features':
         navigate(`/develop-train/feature-store/features/${result.id}`);
@@ -475,7 +450,7 @@ export const EntitiesListPage: React.FC = () => {
     setGlobalSearchValue('');
   };
 
-  // Handle search input key press (Enter to add filter)
+  // Handle search input key press
   const handleFilterKeyPress = (event: React.KeyboardEvent) => {
     if (event.key === 'Enter') {
       addFilterValue();
@@ -484,9 +459,6 @@ export const EntitiesListPage: React.FC = () => {
 
   // Sorting handler
   const getSortParams = (columnIndex: number): ThProps['sort'] => {
-    // Tags column (index 2) is not sortable
-    if (columnIndex === 2) return undefined;
-    
     return {
       sortBy: {
         index: activeSortIndex ?? undefined,
@@ -502,25 +474,16 @@ export const EntitiesListPage: React.FC = () => {
 
   // Column definitions
   const columns = [
-    'Entities',
+    'Data source',
     'Feature store',
-    'Tags',
-    'Join key',
-    'Value type',
+    'Data source connector',
     'Feature views',
+    'Last modified',
     'Created',
-    'Updated',
     'Owner',
   ];
 
-  // Help text for column headers
-  const columnHelp: Record<string, string> = {
-    'Join key': 'A join key is a unique identifier that links feature data to entities. It is used to join feature values with entity records during feature retrieval.',
-    'Value type': 'The data type of the join key values (e.g., INT64, STRING). This determines how the key is stored and compared.',
-    'Feature views': 'Feature views define how features are computed and served. Each entity can be associated with multiple feature views.',
-  };
-
-  // Get display name for feature store (for popover)
+  // Get display name for feature store
   const getFeatureStoreDisplayName = () => {
     if (selectedFeatureStore === 'All feature stores') {
       return 'All feature stores';
@@ -538,14 +501,14 @@ export const EntitiesListPage: React.FC = () => {
             <Flex justifyContent={{ default: 'justifyContentSpaceBetween' }} alignItems={{ default: 'alignItemsFlexStart' }}>
               <FlexItem>
                 <Title headingLevel="h1" size="2xl" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                  <div style={{ background: 'var(--pf-t--global--color--nonstatus--gray--default)', borderRadius: '50%', width: '40px', height: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '32px' }}>
-                    <svg className="pf-v6-svg" viewBox="0 0 36 36" fill="currentColor" aria-hidden="true" role="img" width="1em" height="1em"><path d="M28.125,9c0-1.99902-1.62598-3.625-3.625-3.625s-3.625,1.62598-3.625,3.625c0,1.78497,1.29919,3.26373,3,3.56177v2.43823c0,1.30957-1.06543,2.375-2.375,2.375h-6c-1.33502,0-2.53003.57721-3.375,1.48492v-8.29816c1.70081-.29803,3-1.77679,3-3.56177,0-1.99902-1.62598-3.625-3.625-3.625s-3.625,1.62598-3.625,3.625c0,1.78497,1.29919,3.26373,3,3.56177v14.87646c-1.70081.29803-3,1.77679-3,3.56177,0,1.99902,1.62598,3.625,3.625,3.625s3.625-1.62598,3.625-3.625c0-1.78497-1.29919-3.26373-3-3.56177v-3.43823c0-1.86133,1.51416-3.375,3.375-3.375h6c1.99902,0,3.625-1.62598,3.625-3.625v-2.43823c1.70081-.29803,3-1.77679,3-3.56177ZM9.125,7c0-1.30957,1.06543-2.375,2.375-2.375s2.375,1.06543,2.375,2.375-1.06543,2.375-2.375,2.375-2.375-1.06543-2.375-2.375ZM13.875,29c0,1.30957-1.06543,2.375-2.375,2.375s-2.375-1.06543-2.375-2.375,1.06543-2.375,2.375-2.375,2.375,1.06543,2.375,2.375ZM24.5,11.375c-1.30957,0-2.375-1.06543-2.375-2.375s1.06543-2.375,2.375-2.375,2.375,1.06543,2.375,2.375-1.06543,2.375-2.375,2.375Z"></path></svg>
+                  <div style={{ background: 'var(--pf-t--global--color--nonstatus--blue--default)', borderRadius: '50%', width: '40px', height: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '32px' }}>
+                    <svg className="pf-v6-svg" viewBox="0 0 36 36" fill="currentColor" aria-hidden="true" role="img" width="1em" height="1em"><path d="M22.8457,16.3933c.1934-.1118.3125-.3184.3125-.5415v-5.2344c0-.2231-.1191-.4297-.3125-.5415l-4.5332-2.6172c-.1934-.1113-.4316-.1113-.625,0l-4.5332,2.6172c-.1934.1118-.3125.3184-.3125.5415v5.2344c0,.2231.1191.4297.3125.5415l4.5332,2.6172c.0967.0557.2046.0835.3125.0835s.2158-.0278.3125-.0835l4.5332-2.6172ZM14.0918,15.491v-4.5127l3.9082-2.2563,3.9082,2.2563v4.5127l-3.9082,2.2563-3.9082-2.2563Z M23.7832,28.5417l4.5332-2.6172c.1934-.1118.3125-.3184.3125-.5415v-5.2349c0-.2231-.1191-.4297-.3125-.5415l-4.5332-2.6172c-.1934-.1113-.4316-.1113-.625,0l-4.5332,2.6172c-.1934.1118-.3125.3184-.3125.5415v5.2349c0,.2231.1191.4297.3125.5415l4.5332,2.6172c.0967.0557.2046.0835.3125.0835s.2158-.0278.3125-.0835ZM19.5625,25.0222v-4.5132l3.9082-2.2563,3.9082,2.2563v4.5132l-3.9082,2.2563s-3.9082-2.2563-3.9082-2.2563Z M12.8418,16.9895c-.1934-.1113-.4316-.1113-.625,0l-4.5332,2.6172c-.1934.1118-.3125.3184-.3125.5415v5.2349c0,.2231.1191.4297.3125.5415l4.5332,2.6172c.0967.0557.2046.0835.3125.0835s.2158-.0278.3125-.0835l4.5332-2.6172c.1934-.1118.3125-.3184.3125-.5415v-5.2349c0-.2231-.1191-.4297-.3125-.5415,0,0-4.5332-2.6172-4.5332-2.6172ZM16.4375,25.0222l-3.9082,2.2563-3.9082-2.2563v-4.5132l3.9082-2.2563,3.9082,2.2563v4.5132Z M12,30.3752h-6.375V5.6252h6.375c.3452,0,.625-.2798.625-.625s-.2798-.625-.625-.625h-7c-.3452,0-.625.2798-.625.625v26c0,.3452.2798.625.625.625h7c.3452,0,.625-.2798.625-.625s-.2798-.625-.625-.625Z M31,4.3752h-7c-.3452,0-.625.2798-.625.625s.2798.625.625.625h6.375v24.75h-6.375c-.3452,0-.625.2798-.625.625s.2798.625.625.625h7c.3452,0,.625-.2798.625-.625V5.0002c0-.3452-.2798-.625-.625-.625Z"></path></svg>
                   </div>
-              Entities
-            </Title>
+                  Data sources
+                </Title>
               </FlexItem>
               
-              {/* Global Search Bar - Top Right aligned with header */}
+              {/* Global Search Bar */}
               <FlexItem>
                 <div ref={searchContainerRef} style={{ position: 'relative', width: '350px' }}>
                   <Tooltip
@@ -567,7 +530,6 @@ export const EntitiesListPage: React.FC = () => {
                         }
                       }}
                       onBlur={() => {
-                        // Delay to allow dropdown click
                         setTimeout(() => setIsSearchDropdownOpen(false), 200);
                       }}
                       onClear={() => {
@@ -595,7 +557,6 @@ export const EntitiesListPage: React.FC = () => {
                     >
                       <PanelMain>
                         <PanelMainBody style={{ padding: '16px 0' }}>
-                          {/* Results count - centered */}
                           <div style={{ textAlign: 'center', marginBottom: '16px', padding: '0 16px' }}>
                             <span style={{ color: 'var(--pf-t--global--text--color--link--default)', textDecoration: 'none' }}>
                               {globalSearchResults.total} results from {selectedFeatureStore}
@@ -645,7 +606,6 @@ export const EntitiesListPage: React.FC = () => {
                                         {highlightMatch(result.description, globalSearchValue)}
                                       </Content>
                                       {result.tags.length > 0 && (() => {
-                                        // Only show tags that match the search query
                                         const matchingTags = result.tags.filter(tag => 
                                           tag.toLowerCase().includes(globalSearchValue.toLowerCase())
                                         );
@@ -679,14 +639,13 @@ export const EntitiesListPage: React.FC = () => {
           {/* Description */}
           <FlexItem>
             <Content component="p">
-              Select a feature store to view and manage its entities. Entities are collections of related features and can be mapped to your use case (for example, customers, products, transactions).
+              Raw data sources from which features are extracted.
             </Content>
           </FlexItem>
           
           {/* Feature Store Dropdown + Workbench Link Row */}
           <FlexItem>
             <Flex spaceItems={{ default: 'spaceItemsLg' }} alignItems={{ default: 'alignItemsCenter' }}>
-              {/* Feature Store Label + Dropdown */}
               <FlexItem>
                 <Flex spaceItems={{ default: 'spaceItemsSm' }} alignItems={{ default: 'alignItemsCenter' }}>
                   <FlexItem>
@@ -733,7 +692,6 @@ export const EntitiesListPage: React.FC = () => {
                 </Flex>
               </FlexItem>
               
-              {/* View Connected Workbenches Link with Icon - matching Overview page */}
               <FlexItem>
                 <Popover
                   position="right"
@@ -743,7 +701,6 @@ export const EntitiesListPage: React.FC = () => {
                   minWidth="460px"
                   bodyContent={
                     <div>
-                      {/* First section - Connected workbenches */}
                       <div style={{ marginBottom: '16px' }}>
                         <div style={{ fontSize: '14px', marginBottom: '8px' }}>
                           Workbenches already connected to the {selectedFeatureStore === 'All feature stores' ? <strong>All feature stores</strong> : <strong>{selectedFeatureStore}</strong>} feature store:
@@ -760,7 +717,6 @@ export const EntitiesListPage: React.FC = () => {
                         </List>
                       </div>
                       
-                      {/* Second section - Projects without workbenches */}
                       <div>
                         <div style={{ fontSize: '14px', marginBottom: '8px' }}>
                           Projects that can access the {selectedFeatureStore === 'All feature stores' ? <strong>All feature stores</strong> : <strong>{selectedFeatureStore}</strong>} feature store but do not have connected workbenches:
@@ -787,18 +743,18 @@ export const EntitiesListPage: React.FC = () => {
         </Flex>
       </PageSection>
 
-      {/* Toolbar Section - Added top margin for spacing */}
+      {/* Toolbar Section */}
       <PageSection padding={{ default: 'noPadding' }} style={{ paddingLeft: 'var(--pf-t--global--spacer--lg)', paddingRight: 'var(--pf-t--global--spacer--lg)', marginTop: 'var(--pf-t--global--spacer--lg)' }}>
         <Toolbar 
-          id="entities-toolbar" 
+          id="data-sources-toolbar" 
           clearAllFilters={clearAllFilters}
         >
           <ToolbarContent>
             <ToolbarGroup variant="filter-group">
               <ToolbarItem>
-              <Select
-                aria-label="Select filter attribute"
-                isOpen={isFilterDropdownOpen}
+                <Select
+                  aria-label="Select filter attribute"
+                  isOpen={isFilterDropdownOpen}
                   selected={selectedFilterAttribute}
                   onSelect={(_event, value) => {
                     setSelectedFilterAttribute(value as string);
@@ -818,7 +774,7 @@ export const EntitiesListPage: React.FC = () => {
                   shouldFocusToggleOnSelect
                 >
                   <SelectList>
-                {columns.map((column) => (
+                    {columns.map((column) => (
                       <SelectOption 
                         key={column} 
                         value={column}
@@ -828,14 +784,14 @@ export const EntitiesListPage: React.FC = () => {
                       </SelectOption>
                     ))}
                   </SelectList>
-              </Select>
+                </Select>
               </ToolbarItem>
               <ToolbarItem>
-                {selectedFilterAttribute === 'Created' || selectedFilterAttribute === 'Updated' ? (
+                {selectedFilterAttribute === 'Last modified' || selectedFilterAttribute === 'Created' ? (
                   <DatePicker
                     aria-label={`Filter by ${selectedFilterAttribute}`}
                     placeholder="Select date"
-                onChange={(_event, value) => {
+                    onChange={(_event, value) => {
                       if (value) {
                         addFilterValue(value);
                       }
@@ -853,11 +809,11 @@ export const EntitiesListPage: React.FC = () => {
                     style={{ minWidth: '250px' }}
                   />
                 )}
-            </ToolbarItem>
+              </ToolbarItem>
             </ToolbarGroup>
             <ToolbarItem variant="pagination" style={{ marginLeft: 'auto' }}>
               <Pagination
-                itemCount={sortedEntities.length}
+                itemCount={sortedDataSources.length}
                 perPage={perPage}
                 page={page}
                 onSetPage={onSetPage}
@@ -910,14 +866,13 @@ export const EntitiesListPage: React.FC = () => {
 
       {/* Table Section */}
       <PageSection style={{ backgroundColor: 'var(--pf-t--global--background--color--primary--default)', minHeight: 'calc(100vh - 350px)' }}>
-        {sortedEntities.length === 0 ? (
-          // Empty State
+        {sortedDataSources.length === 0 ? (
           <EmptyState variant={EmptyStateVariant.sm} icon={SearchIcon}>
             <Title headingLevel="h2" size="lg">
               No results found
             </Title>
             <EmptyStateBody>
-              No entities match your filter criteria. Try adjusting your filters.
+              No data sources match your filter criteria. Try adjusting your filters.
             </EmptyStateBody>
             <Button variant="link" onClick={clearAllFilters}>
               Clear all filters
@@ -925,19 +880,13 @@ export const EntitiesListPage: React.FC = () => {
           </EmptyState>
         ) : (
           <>
-            {/* Data Table */}
-            <Table aria-label="Entities table" variant="compact">
+            <Table aria-label="Data sources table" variant="compact">
               <Thead>
                 <Tr>
                   {columns.map((column, index) => (
                     <Th 
                       key={index} 
                       sort={getSortParams(index)}
-                      info={columnHelp[column] ? {
-                        popover: columnHelp[column],
-                        ariaLabel: `${column} help`,
-                        popoverProps: { headerContent: column }
-                      } : undefined}
                     >
                       {column}
                     </Th>
@@ -945,110 +894,97 @@ export const EntitiesListPage: React.FC = () => {
                 </Tr>
               </Thead>
               <Tbody>
-                {paginatedEntities.map((entity) => {
-                const extras = getEntityExtras(entity.id);
-                const featureViews = getEntityFeatureViews(entity.id);
-                return (
-                  <Tr key={entity.id}>
-                    {/* Entities Column - Name with Description */}
-                    <Td dataLabel="Entities">
-                      <Flex direction={{ default: 'column' }} spaceItems={{ default: 'spaceItemsNone' }}>
-                        <FlexItem>
+                {paginatedDataSources.map((dataSource) => {
+                  const extras = getDataSourceExtras(dataSource.id);
+                  return (
+                    <Tr key={dataSource.id}>
+                      {/* Data source Column - Name with Description and Type Label */}
+                      <Td dataLabel="Data source">
+                        <Flex direction={{ default: 'column' }} spaceItems={{ default: 'spaceItemsNone' }}>
+                          <FlexItem>
+                            <Button
+                              variant="link"
+                              isInline
+                              onClick={() => handleDataSourceClick(dataSource.id)}
+                            >
+                              {dataSource.name}
+                            </Button>
+                          </FlexItem>
+                          <FlexItem>
+                            <Content component="small">
+                              {dataSource.description}
+                            </Content>
+                          </FlexItem>
+                          <FlexItem>
+                            <Label isCompact variant="filled" color="blue" style={{ marginTop: '4px' }}>
+                              {getTypeLabel(dataSource.sourceType)}
+                            </Label>
+                          </FlexItem>
+                        </Flex>
+                      </Td>
+
+                      {/* Feature Store Column */}
+                      <Td dataLabel="Feature store">{dataSource.featureStore}</Td>
+
+                      {/* Data source connector Column */}
+                      <Td dataLabel="Data source connector">{getConnectorType(dataSource.sourceType)}</Td>
+
+                      {/* Feature views Column - Count with Popover */}
+                      <Td dataLabel="Feature views">
+                        <Popover
+                          aria-label="Feature views"
+                          hasAutoWidth
+                          showClose={true}
+                          bodyContent={
+                            extras.featureViewIds.length > 0 ? (
+                              <List isPlain style={{ fontSize: '14px' }}>
+                                {extras.featureViewIds.map((fvId) => {
+                                  const fv = mockFeatureViews.find(f => f.id === fvId);
+                                  return fv ? (
+                                    <ListItem key={fvId}>
+                                      •{' '}
+                                      <Button
+                                        variant="link"
+                                        isInline
+                                        onClick={() => navigate(`/develop-train/feature-store/feature-views/${fvId}`)}
+                                      >
+                                        {fv.name}
+                                      </Button>
+                                    </ListItem>
+                                  ) : null;
+                                })}
+                              </List>
+                            ) : (
+                              <Content component="small" style={{ fontSize: '14px' }}>No feature views associated</Content>
+                            )
+                          }
+                        >
                           <Button
                             variant="link"
                             isInline
-                            onClick={() => handleEntityClick(entity.id)}
                           >
-                            {entity.name}
+                            {extras.featureViewsCount} feature view{extras.featureViewsCount !== 1 ? 's' : ''}
                           </Button>
-                        </FlexItem>
-                        <FlexItem>
-                          <Content component="small">
-                            {entity.description}
-                          </Content>
-                        </FlexItem>
-                      </Flex>
-                    </Td>
+                        </Popover>
+                      </Td>
 
-                    {/* Feature Store Column */}
-                    <Td dataLabel="Feature store">{entity.featureStore}</Td>
+                      {/* Last modified Column */}
+                      <Td dataLabel="Last modified">{dataSource.lastUpdated}</Td>
 
-                    {/* Tags Column - Clickable to add filter (key=value format) */}
-                    <Td dataLabel="Tags">
-                      <LabelGroup numLabels={2}>
-                        {entity.tags.map((tag, index) => (
-                          <Label 
-                            key={index} 
-                            color="blue"
-                            onClick={() => addTagFilter(tag)}
-                            style={{ cursor: 'pointer' }}
-                          >
-                            {tag}
-                          </Label>
-                        ))}
-                      </LabelGroup>
-                    </Td>
+                      {/* Created Column */}
+                      <Td dataLabel="Created">{dataSource.created}</Td>
 
-                    {/* Join Key Column */}
-                    <Td dataLabel="Join key">{entity.joinKey}</Td>
-
-                    {/* Value Type Column */}
-                    <Td dataLabel="Value type">{entity.valueType}</Td>
-
-                    {/* Feature Views Column - Clickable with Popover (no header, 14px font, with close button) */}
-                    <Td dataLabel="Feature views">
-                      <Popover
-                        aria-label="Feature views"
-                        hasAutoWidth
-                        showClose={true}
-                        bodyContent={
-                          featureViews.length > 0 ? (
-                            <List isPlain style={{ fontSize: '14px' }}>
-                              {featureViews.map((fv) => (
-                                <ListItem key={fv.id}>
-                                  •{' '}
-                                  <Button
-                                    variant="link"
-                                    isInline
-                                    onClick={() => navigate(`/develop-train/feature-store/feature-views/${fv.id}`)}
-                                  >
-                                    {fv.name}
-                                  </Button>
-                                </ListItem>
-                              ))}
-                            </List>
-                          ) : (
-                            <Content component="small" style={{ fontSize: '14px' }}>No feature views associated</Content>
-                          )
-                        }
-                      >
-                        <Button
-                          variant="link"
-                          isInline
-                      >
-                        {extras.featureViewsCount} feature view{extras.featureViewsCount !== 1 ? 's' : ''}
-                      </Button>
-                      </Popover>
-                    </Td>
-
-                    {/* Created Column */}
-                    <Td dataLabel="Created">{formatTimestamp(entity.created)}</Td>
-
-                    {/* Updated Column */}
-                    <Td dataLabel="Updated">{formatTimestamp(entity.lastUpdated)}</Td>
-
-                    {/* Owner Column */}
-                    <Td dataLabel="Owner">{extras.owner}</Td>
-                  </Tr>
-                );
-              })}
+                      {/* Owner Column */}
+                      <Td dataLabel="Owner">{extras.owner}</Td>
+                    </Tr>
+                  );
+                })}
               </Tbody>
             </Table>
-            {/* Bottom Pagination */}
             <Flex justifyContent={{ default: 'justifyContentFlexEnd' }}>
               <FlexItem>
                 <Pagination
-                  itemCount={sortedEntities.length}
+                  itemCount={sortedDataSources.length}
                   perPage={perPage}
                   page={page}
                   onSetPage={onSetPage}
@@ -1065,4 +1001,5 @@ export const EntitiesListPage: React.FC = () => {
   );
 };
 
-export default EntitiesListPage;
+export default DataSourcesListPage;
+

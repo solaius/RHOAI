@@ -65,6 +65,17 @@ export const mockDataSources: DataSource[] = [
     tags: ['domain=demographics', 'team=catalog'],
     featureStore: 'Product recommendations',
   },
+  {
+    id: 'ds-005',
+    name: 'application_data',
+    description: 'Description of this data source',
+    sourceType: 'Request',
+    connectionUrl: '',
+    created: '2018-01-07T23:33:00Z',
+    lastUpdated: '2019-02-22T23:33:00Z',
+    tags: ['domain=credit', 'env=production'],
+    featureStore: 'Fraud detection',
+  },
 ];
 
 // ============================================
@@ -146,6 +157,7 @@ export interface Feature {
 }
 
 export const mockFeatures: Feature[] = [
+  // Features for fv-001 (user_transaction_aggregates) - Fraud detection feature store
   {
     id: 'feature-001',
     name: 'credit_card_due',
@@ -168,31 +180,153 @@ export const mockFeatures: Feature[] = [
     created: '2024-01-20T08:00:00Z',
     lastUpdated: '2024-12-06T10:30:00Z',
     tags: ['term=credit', 'type=numeric'],
-    featureStore: 'Customer analytics',
+    featureStore: 'Fraud detection', // Fixed: was 'Customer analytics', now matches fv-001's featureStore
   },
   {
-    id: 'feature-003',
-    name: 'transaction_count_7d',
-    description: 'Number of transactions in the last 7 days',
-    valueType: 'INT64',
+    id: 'feature-005',
+    name: 'transaction_amount',
+    description: 'Amount of the transaction',
+    valueType: 'FLOAT64',
     entityId: 'entity-003',
-    featureViewId: 'fv-002',
-    created: '2024-03-15T12:00:00Z',
-    lastUpdated: '2024-12-09T11:30:00Z',
-    tags: ['domain=loan', 'type=aggregation'],
+    featureViewId: 'fv-001',
+    created: '2024-01-21T09:00:00Z',
+    lastUpdated: '2024-12-05T14:22:00Z',
+    tags: ['domain=demographics', 'type=numeric'],
     featureStore: 'Fraud detection',
   },
   {
-    id: 'feature-004',
-    name: 'avg_order_value',
-    description: 'Average order value over lifetime',
+    id: 'feature-006',
+    name: 'transaction_frequency_30d',
+    description: 'Number of transactions in the last 30 days',
+    valueType: 'INT64',
+    entityId: 'entity-003',
+    featureViewId: 'fv-001',
+    created: '2024-01-22T10:00:00Z',
+    lastUpdated: '2024-12-05T14:22:00Z',
+    tags: ['domain=demographics', 'type=aggregation'],
+    featureStore: 'Fraud detection',
+  },
+  {
+    id: 'feature-007',
+    name: 'avg_transaction_amount_7d',
+    description: 'Average transaction amount in the last 7 days',
     valueType: 'FLOAT64',
-    entityId: 'entity-005',
+    entityId: 'entity-003',
+    featureViewId: 'fv-001',
+    created: '2024-01-23T11:00:00Z',
+    lastUpdated: '2024-12-05T14:22:00Z',
+    tags: ['domain=demographics', 'type=aggregation'],
+    featureStore: 'Fraud detection',
+  },
+  {
+    id: 'feature-008',
+    name: 'max_transaction_amount_30d',
+    description: 'Maximum transaction amount in the last 30 days',
+    valueType: 'FLOAT64',
+    entityId: 'entity-003',
+    featureViewId: 'fv-001',
+    created: '2024-01-24T12:00:00Z',
+    lastUpdated: '2024-12-05T14:22:00Z',
+    tags: ['domain=demographics', 'type=aggregation'],
+    featureStore: 'Fraud detection',
+  },
+  {
+    id: 'feature-009',
+    name: 'customer_age',
+    description: 'Age of the customer',
+    valueType: 'INT64',
+    entityId: 'entity-001',
+    featureViewId: 'fv-001',
+    created: '2024-01-25T13:00:00Z',
+    lastUpdated: '2024-12-05T14:22:00Z',
+    tags: ['domain=demographics', 'type=numeric'],
+    featureStore: 'Fraud detection',
+  },
+  {
+    id: 'feature-010',
+    name: 'customer_account_age_days',
+    description: 'Number of days since account creation',
+    valueType: 'INT64',
+    entityId: 'entity-001',
+    featureViewId: 'fv-001',
+    created: '2024-01-26T14:00:00Z',
+    lastUpdated: '2024-12-05T14:22:00Z',
+    tags: ['domain=demographics', 'type=numeric'],
+    featureStore: 'Fraud detection',
+  },
+  {
+    id: 'feature-011',
+    name: 'transaction_velocity_1h',
+    description: 'Number of transactions in the last hour',
+    valueType: 'INT64',
+    entityId: 'entity-003',
+    featureViewId: 'fv-001',
+    created: '2024-01-27T15:00:00Z',
+    lastUpdated: '2024-12-05T14:22:00Z',
+    tags: ['domain=demographics', 'type=aggregation'],
+    featureStore: 'Fraud detection',
+  },
+  {
+    id: 'feature-012',
+    name: 'long_entity_name_feature',
+    description: 'Feature for long entity name testing',
+    valueType: 'STRING',
+    entityId: 'entity-006',
+    featureViewId: 'fv-001',
+    created: '2024-01-28T16:00:00Z',
+    lastUpdated: '2024-12-05T14:22:00Z',
+    tags: ['domain=demographics', 'type=test'],
+    featureStore: 'Fraud detection',
+  },
+  {
+    id: 'feature-013',
+    name: 'long_entity_aggregate_7d',
+    description: '7-day aggregate for long entity',
+    valueType: 'FLOAT64',
+    entityId: 'entity-006',
+    featureViewId: 'fv-001',
+    created: '2024-01-29T17:00:00Z',
+    lastUpdated: '2024-12-05T14:22:00Z',
+    tags: ['domain=demographics', 'type=aggregation'],
+    featureStore: 'Fraud detection',
+  },
+  {
+    id: 'feature-014',
+    name: 'long_entity_aggregate_30d',
+    description: '30-day aggregate for long entity',
+    valueType: 'FLOAT64',
+    entityId: 'entity-006',
+    featureViewId: 'fv-001',
+    created: '2024-01-30T18:00:00Z',
+    lastUpdated: '2024-12-05T14:22:00Z',
+    tags: ['domain=demographics', 'type=aggregation'],
+    featureStore: 'Fraud detection',
+  },
+  // Features for fv-002 (product_similarity_scores) - Product recommendations feature store
+  {
+    id: 'feature-003',
+    name: 'product_similarity_score',
+    description: 'Pre-computed similarity score between products for recommendation engine',
+    valueType: 'FLOAT64',
+    entityId: 'entity-002', // Fixed: matches fv-002's entityIds
+    featureViewId: 'fv-002',
+    created: '2024-03-10T10:00:00Z',
+    lastUpdated: '2024-12-08T09:45:00Z',
+    tags: ['term=credit', 'use_case=recommendations', 'type=similarity'],
+    featureStore: 'Product recommendations', // Fixed: matches fv-002's featureStore
+  },
+  // Features for fv-003 (customer_churn_indicators) - Customer analytics feature store
+  {
+    id: 'feature-004',
+    name: 'customer_churn_probability',
+    description: 'Probability of customer churn based on behavior indicators',
+    valueType: 'FLOAT64',
+    entityId: 'entity-001', // Fixed: matches fv-003's entityIds
     featureViewId: 'fv-003',
-    created: '2024-05-20T11:45:00Z',
-    lastUpdated: '2024-12-09T08:00:00Z',
-    tags: ['source=credit_bureau', 'type=aggregation'],
-    featureStore: 'Product recommendations',
+    created: '2024-04-15T12:00:00Z',
+    lastUpdated: '2024-12-07T16:15:00Z',
+    tags: ['domain=loan', 'use_case=churn', 'type=prediction'],
+    featureStore: 'Customer analytics', // Fixed: matches fv-003's featureStore
   },
 ];
 
@@ -329,6 +463,42 @@ export const mockFeatureServices: FeatureService[] = [
     featureStore: 'Fraud detection',
   },
 ];
+
+// ============================================
+// Shared Utility Functions for Feature View Data
+// ============================================
+
+/**
+ * Get feature names for a feature view (source of truth)
+ * Returns actual feature names from mockFeatures that belong to the feature view
+ */
+export const getFeatureNamesForView = (featureViewId: string): string[] => {
+  const features = mockFeatures.filter(f => f.featureViewId === featureViewId);
+  return features.map(f => f.name);
+};
+
+/**
+ * Get feature count for a feature view (source of truth)
+ * Returns the actual count of features from mockFeatures
+ */
+export const getFeatureCountForView = (featureViewId: string): number => {
+  return getFeatureNamesForView(featureViewId).length;
+};
+
+/**
+ * Get feature view type (Batch, Streaming, On demand)
+ */
+export const getFeatureViewType = (featureView: FeatureView): string => {
+  if (!featureView.dataSourceId) {
+    return 'On demand';
+  }
+  // Check if the data source is Kafka (Streaming)
+  const dataSource = mockDataSources.find(ds => ds.id === featureView.dataSourceId);
+  if (dataSource && dataSource.sourceType === 'Kafka') {
+    return 'Streaming';
+  }
+  return 'Batch';
+};
 
 // ============================================
 // Recently Viewed Resources
@@ -558,6 +728,22 @@ export const getResourceCounts = () => ({
 // ============================================
 // Helper: Format relative time
 // ============================================
+/**
+ * Format timestamp to 'Jan 13, 2026, 3:40 PM UTC' format
+ */
+export const formatTimestamp = (dateString: string): string => {
+  const date = new Date(dateString);
+  const month = date.toLocaleDateString('en-US', { month: 'short' });
+  const day = date.getDate();
+  const year = date.getFullYear();
+  const time = date.toLocaleTimeString('en-US', { 
+    hour: 'numeric', 
+    minute: '2-digit', 
+    hour12: true 
+  });
+  return `${month} ${day}, ${year}, ${time} UTC`;
+};
+
 export const formatRelativeTime = (dateString: string): string => {
   const date = new Date(dateString);
   const now = new Date();
@@ -664,54 +850,13 @@ export const generateLineageData = (featureStore: string): LineageGraphData => {
   
   // Create Feature View nodes with feature count and features list
   filteredFeatureViews.forEach(fv => {
-    // Get features for this feature view
-    const viewFeatures = filteredFeatures.filter(f => f.featureViewId === fv.id);
-    const realFeatureNames = viewFeatures.map(f => f.name);
+    // Use shared utility functions to get feature names and count (source of truth)
+    // This ensures consistency across all pages (Feature Views table, Lineage, Overview, etc.)
+    const featureNames = getFeatureNamesForView(fv.id);
+    const actualFeatureCount = getFeatureCountForView(fv.id);
     
-    // Generate full feature list: use real feature names when available, fill rest with mock features
-    // Always generate exactly featureCount features
-    const allFeatures: string[] = [];
-    const usedNames = new Set<string>();
-    
-    // Add real feature names first
-    realFeatureNames.forEach(name => {
-      if (allFeatures.length < fv.featureCount && !usedNames.has(name)) {
-        allFeatures.push(name);
-        usedNames.add(name);
-      }
-    });
-    
-    // Fill remaining slots with mock features (avoid duplicates)
-    const mockFeatures = generateMockFeatures(20); // Generate enough mock features
-    for (const mockFeature of mockFeatures) {
-      if (allFeatures.length >= fv.featureCount) break;
-      if (!usedNames.has(mockFeature)) {
-        allFeatures.push(mockFeature);
-        usedNames.add(mockFeature);
-      }
-    }
-    
-    // If still not enough, add numbered features with descriptive names
-    let counter = 1;
-    while (allFeatures.length < fv.featureCount) {
-      const numberedFeature = `${fv.name}_feature_${counter}`;
-      if (!usedNames.has(numberedFeature)) {
-        allFeatures.push(numberedFeature);
-        usedNames.add(numberedFeature);
-      }
-      counter++;
-      // Safety check to prevent infinite loop
-      if (counter > 1000) break;
-    }
-    
-    // Ensure we have exactly featureCount features (this should always be true, but just in case)
-    while (allFeatures.length < fv.featureCount) {
-      allFeatures.push(`feature_${allFeatures.length + 1}`);
-    }
-    const finalFeatures = allFeatures.slice(0, fv.featureCount);
-    
-    // Determine view type (Batch vs On demand)
-    const viewType = fv.dataSourceId ? 'Batch' : 'On demand';
+    // Determine view type using shared utility function
+    const viewType = getFeatureViewType(fv);
     
     nodes.push({
       id: `featureview-${fv.id}`,
@@ -719,8 +864,8 @@ export const generateLineageData = (featureStore: string): LineageGraphData => {
       label: `${viewType} FeatureView: ${fv.name}`,
       data: {
         description: fv.description,
-        featureCount: fv.featureCount,
-        features: finalFeatures,
+        featureCount: actualFeatureCount, // Use actual count from shared utility
+        features: featureNames, // Only real features from shared utility
       },
     });
   });

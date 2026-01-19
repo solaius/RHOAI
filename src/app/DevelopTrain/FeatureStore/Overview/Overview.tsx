@@ -220,6 +220,7 @@ const Overview: React.FunctionComponent = () => {
   }, [selectedFeatureStore]);
   
   // Resource summary cards data with PatternFly color backgrounds (round icons, black outline)
+  // Colors are one degree lighter using brightness filter while maintaining the same color tone
   const resourceCards = [
     {
       id: 'entities',
@@ -556,7 +557,7 @@ const Overview: React.FunctionComponent = () => {
                 display: 'flex', 
                 alignItems: 'center', 
                 justifyContent: 'center',
-                fontSize: '28px'
+                fontSize: '32px'
               }}>
                 <FeatureStoreIcon />
               </div>
@@ -798,12 +799,12 @@ const Overview: React.FunctionComponent = () => {
                         <div style={{ 
                           background: card.iconBg, 
                           borderRadius: '50%', 
-                          width: '36px', 
-                          height: '36px', 
+                          width: '40px', 
+                          height: '40px', 
+                          fontSize: '32px',
                           display: 'flex', 
                           alignItems: 'center', 
                           justifyContent: 'center',
-                          fontSize: '24px',
                           color: '#151515', // Black icons
                         }}>
                           {card.icon}

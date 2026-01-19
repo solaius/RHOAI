@@ -42,25 +42,25 @@ import { mockEntities } from '../../mockData/entities';
 // Custom SVG Icons (matching Overview page)
 // ============================================
 const EntitiesIcon = () => (
-  <svg viewBox="0 0 36 36" fill="currentColor" width="16" height="16">
+  <svg viewBox="0 0 36 36" fill="currentColor" width="20" height="20">
     <path d="M28.125,9c0-1.99902-1.62598-3.625-3.625-3.625s-3.625,1.62598-3.625,3.625c0,1.78497,1.29919,3.26373,3,3.56177v2.43823c0,1.30957-1.06543,2.375-2.375,2.375h-6c-1.33502,0-2.53003.57721-3.375,1.48492v-8.29816c1.70081-.29803,3-1.77679,3-3.56177,0-1.99902-1.62598-3.625-3.625-3.625s-3.625,1.62598-3.625,3.625c0,1.78497,1.29919,3.26373,3,3.56177v14.87646c-1.70081.29803-3,1.77679-3,3.56177,0,1.99902,1.62598,3.625,3.625,3.625s3.625-1.62598,3.625-3.625c0-1.78497-1.29919-3.26373-3-3.56177v-3.43823c0-1.86133,1.51416-3.375,3.375-3.375h6c1.99902,0,3.625-1.62598,3.625-3.625v-2.43823c1.70081-.29803,3-1.77679,3-3.56177ZM9.125,7c0-1.30957,1.06543-2.375,2.375-2.375s2.375,1.06543,2.375,2.375-1.06543,2.375-2.375,2.375-2.375-1.06543-2.375-2.375ZM13.875,29c0,1.30957-1.06543,2.375-2.375,2.375s-2.375-1.06543-2.375-2.375,1.06543-2.375,2.375-2.375,2.375,1.06543,2.375,2.375ZM24.5,11.375c-1.30957,0-2.375-1.06543-2.375-2.375s1.06543-2.375,2.375-2.375,2.375,1.06543,2.375,2.375-1.06543,2.375-2.375,2.375Z"></path>
   </svg>
 );
 
 const DataSourcesIcon = () => (
-  <svg viewBox="0 0 36 36" fill="currentColor" width="16" height="16">
+  <svg viewBox="0 0 36 36" fill="currentColor" width="20" height="20">
     <path d="M22.8457,16.3933c.1934-.1118.3125-.3184.3125-.5415v-5.2344c0-.2231-.1191-.4297-.3125-.5415l-4.5332-2.6172c-.1934-.1113-.4316-.1113-.625,0l-4.5332,2.6172c-.1934.1118-.3125.3184-.3125.5415v5.2344c0,.2231.1191.4297.3125.5415l4.5332,2.6172c.0967.0557.2046.0835.3125.0835s.2158-.0278.3125-.0835l4.5332-2.6172ZM14.0918,15.491v-4.5127l3.9082-2.2563,3.9082,2.2563v4.5127l-3.9082,2.2563-3.9082-2.2563Z M23.7832,28.5417l4.5332-2.6172c.1934-.1118.3125-.3184.3125-.5415v-5.2349c0-.2231-.1191-.4297-.3125-.5415l-4.5332-2.6172c-.1934-.1113-.4316-.1113-.625,0l-4.5332,2.6172c-.1934.1118-.3125.3184-.3125.5415v5.2349c0,.2231.1191.4297.3125.5415l4.5332,2.6172c.0967.0557.2046.0835.3125.0835s.2158-.0278.3125-.0835ZM19.5625,25.0222v-4.5132l3.9082-2.2563,3.9082,2.2563v4.5132l-3.9082,2.2563s-3.9082-2.2563-3.9082-2.2563Z M12.8418,16.9895c-.1934-.1113-.4316-.1113-.625,0l-4.5332,2.6172c-.1934.1118-.3125.3184-.3125.5415v5.2349c0,.2231.1191.4297.3125.5415l4.5332,2.6172c.0967.0557.2046.0835.3125.0835s.2158-.0278.3125-.0835l4.5332-2.6172c.1934-.1118.3125-.3184.3125-.5415v-5.2349c0-.2231-.1191-.4297-.3125-.5415,0,0-4.5332-2.6172-4.5332-2.6172ZM16.4375,25.0222l-3.9082,2.2563-3.9082-2.2563v-4.5132l3.9082-2.2563,3.9082,2.2563v4.5132Z M12,30.3752h-6.375V5.6252h6.375c.3452,0,.625-.2798.625-.625s-.2798-.625-.625-.625h-7c-.3452,0-.625.2798-.625.625v26c0,.3452.2798.625.625.625h7c.3452,0,.625-.2798.625-.625s-.2798-.625-.625-.625Z M31,4.3752h-7c-.3452,0-.625.2798-.625.625s.2798.625.625.625h6.375v24.75h-6.375c-.3452,0-.625.2798-.625.625s.2798.625.625.625h7c.3452,0,.625-.2798.625-.625V5.0002c0-.3452-.2798-.625-.625-.625Z"></path>
   </svg>
 );
 
 const FeatureViewsIcon = () => (
-  <svg viewBox="0 0 36 36" fill="currentColor" width="16" height="16">
+  <svg viewBox="0 0 36 36" fill="currentColor" width="20" height="20">
     <path d="M25.625,22v-14c0-.34473-.27979-.625-.625-.625H5c-.34521,0-.625.28027-.625.625v14c0,.34473.27979.625.625.625h20c.34521,0,.625-.28027.625-.625ZM24.375,21.375H5.625v-12.75h18.75v12.75Z M28.625,25v-14c0-.34473-.27979-.625-.625-.625s-.625.28027-.625.625v13.375H8c-.34521,0-.625.28027-.625.625s.27979.625.625.625h20c.34521,0,.625-.28027.625-.625Z M31,13.375c-.34521,0-.625.28027-.625.625v13.375H11c-.34521,0-.625.28027-.625.625s.27979.625.625.625h20c.34521,0,.625-.28027.625-.625v-14c0-.34473-.27979-.625-.625-.625Z"></path>
   </svg>
 );
 
 const FeatureServicesIcon = () => (
-  <svg viewBox="0 0 36 36" fill="currentColor" width="16" height="16">
+  <svg viewBox="0 0 36 36" fill="currentColor" width="20" height="20">
     <path d="M16,7.375H5c-.34521,0-.625.28027-.625.625v8c0,.34473.27979.625.625.625h11c.34521,0,.625-.28027.625-.625v-8c0-.34473-.27979-.625-.625-.625ZM15.375,15.375H5.625v-6.75h9.75v6.75Z M31,7.375h-11c-.34521,0-.625.28027-.625.625v8c0,.34473.27979.625.625.625h11c.34521,0,.625-.28027.625-.625v-8c0-.34473-.27979-.625-.625-.625ZM30.375,15.375h-9.75v-6.75h9.75v6.75Z M16,19.375H5c-.34521,0-.625.28027-.625.625v8c0,.34473.27979.625.625.625h11c.34521,0,.625-.28027.625-.625v-8c0-.34473-.27979-.625-.625-.625ZM15.375,27.375H5.625v-6.75h9.75v6.75Z M31,19.375h-11c-.34521,0-.625.28027-.625.625v8c0,.34473.27979.625.625.625h11c.34521,0,.625-.28027.625-.625v-8c0-.34473-.27979-.625-.625-.625ZM30.375,27.375h-9.75v-6.75h9.75v6.75Z"></path>
   </svg>
 );
@@ -70,7 +70,7 @@ const FeatureServicesIcon = () => (
 // ============================================
 const NODE_COLORS = {
   entity: {
-    iconColor: '#f0ab00', // Gold/Orange for entity icons
+    iconColor: '#6a6e73', // Darker gray for better readability on canvas (matches PatternFly text color)
   },
   dataSource: {
     iconColor: '#0066cc', // Blue for data source icons
@@ -92,7 +92,7 @@ const HIGHLIGHTED_NODE_BORDER = '#0066cc';
 const NODE_PADDING_HORIZONTAL = 8; // Edge padding (left and right)
 const NODE_PADDING_VERTICAL = 4; // Vertical padding (top and bottom)
 const ELEMENT_GAP = 8; // Gap between Icon, Text, and Badge
-const ICON_SIZE = 24; // Icon size (standard PF icon size)
+const ICON_SIZE = 28; // Icon size (increased from 24 to 28 for better visibility)
 const BADGE_HEIGHT = 24; // Fixed badge height
 const MAX_NODE_WIDTH = 184; // Maximum node width before truncation
 const WIDTH_BUFFER = 4; // Breathing room buffer to prevent CSS truncation for short text due to sub-pixel font rendering
@@ -209,8 +209,8 @@ const NodeContent: React.FC<NodeContentProps> = ({
         {/* Icon */}
         <div style={{ 
           flexShrink: 0, 
-          width: 24, 
-          height: 24,
+          width: 28, 
+          height: 28,
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
@@ -269,9 +269,11 @@ const NodeContent: React.FC<NodeContentProps> = ({
 // ============================================
 interface FeatureStoreLineageProps {
   selectedFeatureStore: string;
+  hideEmptyStates?: boolean; // Skip empty states when used in detail pages
+  rootNodeId?: string; // Single resource mode: focus on a specific node (e.g., "featureview-fv-001")
 }
 
-export const FeatureStoreLineage: React.FC<FeatureStoreLineageProps> = ({ selectedFeatureStore }) => {
+export const FeatureStoreLineage: React.FC<FeatureStoreLineageProps> = ({ selectedFeatureStore, hideEmptyStates = false, rootNodeId }) => {
   const navigate = useNavigate();
   
   // State
@@ -287,6 +289,8 @@ export const FeatureStoreLineage: React.FC<FeatureStoreLineageProps> = ({ select
   const [isDragging, setIsDragging] = useState(false);
   const [dragStart, setDragStart] = useState({ x: 0, y: 0 });
   const containerRef = useRef<HTMLDivElement>(null);
+  const svgRef = useRef<SVGSVGElement>(null);
+  const graphGroupRef = useRef<SVGGElement>(null);
   // Popover state - only store the node ID, position calculated dynamically based on pan/zoom
   const [popoverNodeId, setPopoverNodeId] = useState<string | null>(null);
   // Popover position state - updated via useLayoutEffect for smooth positioning
@@ -301,41 +305,88 @@ export const FeatureStoreLineage: React.FC<FeatureStoreLineageProps> = ({ select
   const isCondensedView = zoom < ZOOM_THRESHOLD;
   
   // Generate lineage data
+  // In Single Resource Mode (rootNodeId present), bypass the "All feature stores" check
+  // and generate data for the feature store that contains the root node
   const lineageData = useMemo(() => {
+    // Single Resource Mode: If rootNodeId is provided, we need to find which feature store it belongs to
+    if (rootNodeId) {
+      // Extract resource type and ID from rootNodeId (e.g., "featureview-fv-001")
+      let resourceType: string | null = null;
+      let resourceId: string | null = null;
+      
+      if (rootNodeId.startsWith('entity-')) {
+        resourceType = 'entity';
+        resourceId = rootNodeId.replace('entity-', '');
+      } else if (rootNodeId.startsWith('datasource-')) {
+        resourceType = 'dataSource';
+        resourceId = rootNodeId.replace('datasource-', '');
+      } else if (rootNodeId.startsWith('featureview-')) {
+        resourceType = 'featureView';
+        resourceId = rootNodeId.replace('featureview-', '');
+      } else if (rootNodeId.startsWith('featureservice-')) {
+        resourceType = 'featureService';
+        resourceId = rootNodeId.replace('featureservice-', '');
+      }
+      
+      // Find the feature store for this resource
+      if (resourceType === 'featureView' && resourceId) {
+        const featureView = mockFeatureViews.find(fv => fv.id === resourceId);
+        if (featureView) {
+          return generateLineageData(featureView.featureStore);
+        }
+      } else if (resourceType === 'entity' && resourceId) {
+        const entity = mockEntities.find(e => e.id === resourceId);
+        if (entity) {
+          return generateLineageData(entity.featureStore);
+        }
+      } else if (resourceType === 'dataSource' && resourceId) {
+        const dataSource = mockDataSources.find(ds => ds.id === resourceId);
+        if (dataSource) {
+          return generateLineageData(dataSource.featureStore);
+        }
+      } else if (resourceType === 'featureService' && resourceId) {
+        const featureService = mockFeatureServices.find(fs => fs.id === resourceId);
+        if (featureService) {
+          return generateLineageData(featureService.featureStore);
+        }
+      }
+      
+      // Fallback: return empty if we can't find the resource
+      return { nodes: [], edges: [] };
+    }
+    
+    // Overview Mode: Normal behavior
     if (selectedFeatureStore === 'All feature stores') {
       return { nodes: [], edges: [] };
     }
     return generateLineageData(selectedFeatureStore);
-  }, [selectedFeatureStore]);
+  }, [selectedFeatureStore, rootNodeId]);
   
-  // Calculate filtered nodes and edges based on selected resource
+  // Calculate filtered nodes and edges based on selected resource OR rootNodeId
   const filteredLineageData = useMemo(() => {
-    if (!selectedResourceId) {
+    // Single Resource Mode: If rootNodeId is provided, filter to show only that node's connections
+    const nodeIdToFilter = rootNodeId || (selectedResourceId ? (() => {
+      // Map resource ID to graph node ID based on category
+      switch (selectedCategory) {
+        case 'Entity':
+          return `entity-${selectedResourceId}`;
+        case 'Data source':
+          return `datasource-${selectedResourceId}`;
+        case 'Feature view':
+          return `featureview-${selectedResourceId}`;
+        case 'Feature service':
+          return `featureservice-${selectedResourceId}`;
+        default:
+          return null;
+      }
+    })() : null);
+    
+    if (!nodeIdToFilter) {
       return lineageData;
     }
     
-    // Find the selected node ID in the lineage graph
-    let selectedNodeIdInGraph: string | null = null;
-    
-    // Map resource ID to graph node ID based on category
-    switch (selectedCategory) {
-      case 'Entity':
-        selectedNodeIdInGraph = `entity-${selectedResourceId}`;
-        break;
-      case 'Data source':
-        selectedNodeIdInGraph = `datasource-${selectedResourceId}`;
-        break;
-      case 'Feature view':
-        selectedNodeIdInGraph = `featureview-${selectedResourceId}`;
-        break;
-      case 'Feature service':
-        selectedNodeIdInGraph = `featureservice-${selectedResourceId}`;
-        break;
-    }
-    
-    if (!selectedNodeIdInGraph) {
-      return lineageData;
-    }
+    // Use the nodeIdToFilter (either from rootNodeId or selectedResourceId)
+    const selectedNodeIdInGraph = nodeIdToFilter;
     
     // Build adjacency maps for BFS
     const forwardMap = new Map<string, string[]>();
@@ -399,7 +450,7 @@ export const FeatureStoreLineage: React.FC<FeatureStoreLineageProps> = ({ select
       nodes: filteredNodes,
       edges: filteredEdges,
     };
-  }, [lineageData, selectedResourceId, selectedCategory]);
+  }, [lineageData, selectedResourceId, selectedCategory, rootNodeId]);
   
   // Get resource options based on selected category
   const resourceOptions = useMemo(() => {
@@ -756,6 +807,8 @@ export const FeatureStoreLineage: React.FC<FeatureStoreLineageProps> = ({ select
   // This ensures the graph is centered in the viewport with padding to account for the floating toolbar
   // Similar to controller.getGraph().fit(80) - centers graph with 80px padding
   const lastLayoutHashRef = useRef<string>('');
+  const hasCenteredRef = useRef<boolean>(false);
+  
   useEffect(() => {
     if (positionedNodes.length === 0 || !containerRef.current) {
       return;
@@ -899,6 +952,109 @@ export const FeatureStoreLineage: React.FC<FeatureStoreLineageProps> = ({ select
     });
   }, [canvasWidth, canvasHeight, positionedNodes.length, zoom]);
   
+  // Robust "Zoom to Fit" function using native bounding box measurement
+  const zoomToFit = useCallback(() => {
+    if (!svgRef.current || !graphGroupRef.current) return false;
+    
+    try {
+      // 1. Measure the CONTENT (the graph) using getBBox()
+      const graphBox = graphGroupRef.current.getBBox();
+      if (graphBox.width === 0 || graphBox.height === 0) {
+        // Content not yet rendered, skip
+        return false;
+      }
+      
+      // 2. Measure the CONTAINER (the viewing window)
+      const svgElement = svgRef.current;
+      const clientWidth = svgElement.clientWidth || svgElement.getBoundingClientRect().width;
+      const clientHeight = svgElement.clientHeight || svgElement.getBoundingClientRect().height;
+      
+      if (clientWidth === 0 || clientHeight === 0) {
+        // Container not yet sized, skip
+        return false;
+      }
+      
+      // 3. Calculate "Fit" Scale with padding
+      const padding = 40;
+      const scaleX = (clientWidth - padding * 2) / graphBox.width;
+      const scaleY = (clientHeight - padding * 2) / graphBox.height;
+      const scale = Math.min(scaleX, scaleY, 1); // Cap zoom at 1x so we don't zoom in too much on small graphs
+      
+      // 4. Calculate Center Translation
+      // We need to center the graph content within the viewport
+      const tx = (clientWidth - graphBox.width * scale) / 2 - graphBox.x * scale;
+      const ty = (clientHeight - graphBox.height * scale) / 2 - graphBox.y * scale;
+      
+      // 5. Apply Transform via state (since we're using React state, not D3 zoom behavior)
+      setZoom(scale);
+      setPan({ x: tx, y: ty });
+      
+      return true; // Success
+    } catch (error) {
+      // getBBox() can fail if the element is not yet in the DOM or not visible
+      console.warn('zoomToFit failed:', error);
+      return false;
+    }
+  }, []);
+  
+  // Reset centering ref when rootNodeId changes (switching between different resources)
+  useEffect(() => {
+    hasCenteredRef.current = false;
+  }, [rootNodeId]);
+  
+  // Robust "Zoom to Fit" with safety delay - waits for DOM to paint before measuring
+  // This ensures getBBox() returns accurate measurements after React has rendered
+  useEffect(() => {
+    const nodesCount = filteredLineageData.nodes.length;
+    const edgesCount = filteredLineageData.edges.length;
+    
+    if (nodesCount === 0 || positionedNodes.length === 0 || hasCenteredRef.current) {
+      return;
+    }
+    
+    // Wait for the DOM to paint so getBBox() is accurate
+    // React needs 1-2 frames to paint the DOM (especially text labels inside nodes)
+    const timer = setTimeout(() => {
+      if (zoomToFit()) {
+        hasCenteredRef.current = true;
+      }
+    }, 100); // 100ms delay to ensure DOM is fully painted
+    
+    return () => clearTimeout(timer);
+  }, [filteredLineageData.nodes.length, filteredLineageData.edges.length, positionedNodes.length, zoomToFit, rootNodeId]);
+  
+  // ResizeObserver: Watch for container size changes and re-center if needed
+  // This handles the race condition where the container height starts at 0 and grows later
+  useEffect(() => {
+    if (!containerRef.current) return;
+    
+    const observer = new ResizeObserver(() => {
+      // Check if we have valid dimensions and nodes
+      if (containerRef.current) {
+        const rect = containerRef.current.getBoundingClientRect();
+        const hasValidDimensions = rect.width > 0 && rect.height > 0;
+        const hasNodes = filteredLineageData.nodes.length > 0;
+        const hasPositionedNodes = positionedNodes.length > 0;
+        
+        // If we have valid dimensions, nodes, and positioned nodes, but haven't centered yet, center now
+        if (hasValidDimensions && hasNodes && hasPositionedNodes && !hasCenteredRef.current) {
+          // Use timeout to ensure DOM is painted
+          setTimeout(() => {
+            if (zoomToFit()) {
+              hasCenteredRef.current = true;
+            }
+          }, 100);
+        }
+      }
+    });
+    
+    observer.observe(containerRef.current);
+    
+    return () => {
+      observer.disconnect();
+    };
+  }, [filteredLineageData.nodes.length, positionedNodes.length, zoomToFit]);
+  
   // Helper function to handle node click and show popover with screen coordinates
   const handleNodeClick = useCallback((e: React.MouseEvent, node: LineageNodeType) => {
     e.stopPropagation();
@@ -955,27 +1111,19 @@ export const FeatureStoreLineage: React.FC<FeatureStoreLineageProps> = ({ select
     }
   };
   const handleFitToScreen = () => {
-    setZoom(1);
-    // Center the graph at zoom level 1
-    // Use double requestAnimationFrame to ensure layout has recalculated
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
-        centerGraph(1);
-      });
-    });
+    // Use zoomToFit for accurate bounding box measurement
+    setTimeout(() => {
+      zoomToFit();
+    }, 100);
   };
   const handleReset = () => {
-    setZoom(1);
     setSelectedNodeId(null);
     setPopoverNodeId(null);
     setPopoverPosition(null);
-    // Center the graph at zoom level 1
-    // Use double requestAnimationFrame to ensure layout has recalculated
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
-        centerGraph(1);
-      });
-    });
+    // Use zoomToFit for accurate bounding box measurement
+    setTimeout(() => {
+      zoomToFit();
+    }, 100);
   };
   
   // Get icon for node type
@@ -994,8 +1142,9 @@ export const FeatureStoreLineage: React.FC<FeatureStoreLineageProps> = ({ select
     }
   };
   
-  // Show empty state if "All feature stores" is selected
-  if (selectedFeatureStore === 'All feature stores') {
+  // Show empty state if "All feature stores" is selected (unless hidden or in Single Resource Mode)
+  // In Single Resource Mode (rootNodeId present), skip this check since we already know the feature store
+  if (!hideEmptyStates && !rootNodeId && selectedFeatureStore === 'All feature stores') {
     return (
       <EmptyState variant="lg">
         <Title headingLevel="h4" size="lg">
@@ -1011,8 +1160,8 @@ export const FeatureStoreLineage: React.FC<FeatureStoreLineageProps> = ({ select
     );
   }
   
-  // Check if there's any data
-  if (lineageData.nodes.length === 0) {
+  // Check if there's any data (unless empty states are hidden)
+  if (!hideEmptyStates && lineageData.nodes.length === 0) {
     return (
       <EmptyState variant="lg">
         <Title headingLevel="h4" size="lg">
@@ -1027,22 +1176,74 @@ export const FeatureStoreLineage: React.FC<FeatureStoreLineageProps> = ({ select
   
   // Render popover content for all node types
   const renderPopoverContent = (node: LineageNodeType) => {
-    // Extract resource name from label (e.g., "Entity: Customer" -> "Customer")
+    // Extract resource type from label (e.g., "Entity: Customer" -> "Entity")
     const labelParts = node.label.split(': ');
-    const resourceName = labelParts.length > 1 ? labelParts.slice(1).join(': ') : node.label;
+    const resourceType = labelParts.length > 1 ? labelParts[0] : node.type;
     
-    // Handle navigation to detail page - only for entity nodes
+    // Helper function to extract resource ID from node.id
+    const extractResourceId = (nodeId: string, nodeType: string): string => {
+      const prefixMap: Record<string, string> = {
+        'entity': 'entity-',
+        'dataSource': 'datasource-',
+        'featureView': 'featureview-',
+        'featureService': 'featureservice-',
+      };
+      const prefix = prefixMap[nodeType] || '';
+      if (prefix && nodeId.startsWith(prefix)) {
+        return nodeId.substring(prefix.length);
+      }
+      return nodeId;
+    };
+    
+    // Handle navigation to detail page for all resource types
     const handleDetailPageClick = () => {
-      if (node.type === 'entity') {
-        // Extract entity ID from node.id (format: "entity-entity-001" -> "entity-001")
-        // node.id is "entity-entity-001", so we remove the first "entity-" prefix
-        const entityId = node.id.startsWith('entity-') ? node.id.substring('entity-'.length) : node.id;
-        navigate(`/develop-train/feature-store/entities/${entityId}?featureStore=${encodeURIComponent(selectedFeatureStore)}`);
+      const resourceId = extractResourceId(node.id, node.type);
+      
+      switch (node.type) {
+        case 'entity':
+          navigate(`/develop-train/feature-store/entities/${resourceId}?featureStore=${encodeURIComponent(selectedFeatureStore)}`);
+          break;
+        case 'dataSource':
+          navigate(`/develop-train/feature-store/data-sources/${resourceId}?featureStore=${encodeURIComponent(selectedFeatureStore)}`);
+          break;
+        case 'featureView':
+          navigate(`/develop-train/feature-store/feature-views/${resourceId}?featureStore=${encodeURIComponent(selectedFeatureStore)}`);
+          break;
+        case 'featureService':
+          navigate(`/develop-train/feature-store/feature-services/${resourceId}?featureStore=${encodeURIComponent(selectedFeatureStore)}`);
+          break;
       }
     };
     
-    // Only make the button clickable for entity nodes
-    const isEntityNode = node.type === 'entity';
+    // Handle navigation to Features list with Feature view filter
+    const handleViewAllFeaturesClick = () => {
+      if (node.type === 'featureView') {
+        // Extract feature view name from label (e.g., "Batch FeatureView: user_transaction_aggregates" -> "user_transaction_aggregates")
+        // The label format is: "Batch FeatureView: name" or "On demand FeatureView: name"
+        // So we need to get everything after the first colon and space
+        const featureViewName = labelParts.length > 1 ? labelParts.slice(1).join(': ') : node.label;
+        // Navigate to Features list with feature view name as filter
+        navigate(`/develop-train/feature-store/features?featureStore=${encodeURIComponent(selectedFeatureStore)}&filterFeatureView=${encodeURIComponent(featureViewName)}`);
+      }
+    };
+    
+    // Get resource type display name
+    const getResourceTypeDisplayName = (type: string): string => {
+      switch (type) {
+        case 'entity':
+          return 'Entity';
+        case 'dataSource':
+          return 'Data source';
+        case 'featureView':
+          return 'Feature view';
+        case 'featureService':
+          return 'Feature service';
+        default:
+          return 'Resource';
+      }
+    };
+    
+    const resourceTypeDisplayName = getResourceTypeDisplayName(node.type);
     
     return (
       <div style={{ maxWidth: '320px' }}>
@@ -1066,22 +1267,38 @@ export const FeatureStoreLineage: React.FC<FeatureStoreLineageProps> = ({ select
                 </ListItem>
               )}
             </List>
-            <div style={{ marginTop: '8px' }}>
-              <Button variant="link" isInline isDisabled>
-                View all features
-              </Button>
-            </div>
           </>
         )}
         <div style={{ marginTop: '12px' }}>
-          <Button 
-            variant="link" 
-            isInline 
-            onClick={isEntityNode ? handleDetailPageClick : undefined}
-            isDisabled={!isEntityNode}
-          >
-            View {resourceName} detail page
-          </Button>
+          {node.type === 'featureView' ? (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+              <Button 
+                variant="secondary" 
+                size="sm"
+                onClick={handleDetailPageClick}
+                style={{ paddingLeft: '8px', paddingRight: '8px' }}
+              >
+                View {resourceTypeDisplayName} detail page
+              </Button>
+              {node.data.features && node.data.features.length > 0 && (
+                <Button 
+                  variant="link" 
+                  isInline 
+                  onClick={handleViewAllFeaturesClick}
+                >
+                  View all features
+                </Button>
+              )}
+            </div>
+          ) : (
+            <Button 
+              variant="link" 
+              isInline 
+              onClick={handleDetailPageClick}
+            >
+              View {resourceTypeDisplayName} detail page
+            </Button>
+          )}
         </div>
       </div>
     );
@@ -1274,12 +1491,14 @@ export const FeatureStoreLineage: React.FC<FeatureStoreLineageProps> = ({ select
         </div>
         {/* SVG Canvas */}
         <svg
+          ref={svgRef}
           width="100%"
           height="100%"
           style={{
             position: 'absolute',
             top: 0,
             left: 0,
+            overflow: 'hidden', // Ensure overflow is hidden for accurate calculations
           }}
           onClick={handleCanvasClick}
         >
@@ -1337,7 +1556,7 @@ export const FeatureStoreLineage: React.FC<FeatureStoreLineageProps> = ({ select
               })}
           </defs>
           
-          <g transform={`translate(${pan.x}, ${pan.y}) scale(${zoom})`}>
+          <g ref={graphGroupRef} transform={`translate(${pan.x}, ${pan.y}) scale(${zoom})`}>
             {/* Render Edges */}
             {positionedEdges.map((edge) => {
               const isEdgeHighlighted = selectedNodeId ? highlightedPath.edges.has(edge.id) : false;
@@ -1483,10 +1702,10 @@ export const FeatureStoreLineage: React.FC<FeatureStoreLineageProps> = ({ select
                     />
                     {/* Icon centered */}
                     <foreignObject 
-                      x={condensedSize / 2 - 8} 
-                      y={condensedSize / 2 - 8} 
-                      width={16} 
-                      height={16}
+                      x={condensedSize / 2 - 10} 
+                      y={condensedSize / 2 - 10} 
+                      width={20} 
+                      height={20}
                     >
                       <div style={{ 
                         display: 'flex', 
