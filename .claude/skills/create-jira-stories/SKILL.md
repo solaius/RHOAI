@@ -65,7 +65,7 @@ After user confirms, execute the full plan without further prompts:
    Project: RHOAIUX
    Issue Type: Task
    Priority: Undefined
-   Summary: [RHOAIUX] Epic Title
+   Summary: Epic Title
    Description: [Epic template with note to convert to Epic]
    ```
 
@@ -78,7 +78,7 @@ After user confirms, execute the full plan without further prompts:
    ```
    Issue Type: Story
    Priority: Undefined
-   Summary: [RHOAIUX] Story Title
+   Summary: Story Title
    Description: [Story template with parent Epic reference]
    ```
 

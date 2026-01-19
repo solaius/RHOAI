@@ -205,16 +205,16 @@ _Note: This [Epic/Story] was primarily drafted by AI (Claude) and reviewed by UX
 
 Epic summaries should follow this format:
 ```
-[RHOAIUX] [Feature/Area Name]
+[Feature/Area Name]
 ```
 
 Story summaries should be action-oriented:
 ```
-[RHOAIUX] [Design/Create/Explore/Review] [specific deliverable]
+[Design/Create/Explore/Review] [specific deliverable]
 ```
 
 Examples:
-- `[RHOAIUX] API Key Management UX` (Epic)
-- `[RHOAIUX] Design API Key list view with enhanced columns` (Story)
-- `[RHOAIUX] Explore combined Models list differentiating project vs. MaaS models` (Story)
-- `[RHOAIUX] Review Perses-based metrics implementation` (Story)
+- `API Key Management UX` (Epic)
+- `Design API Key list view with enhanced columns` (Story)
+- `Explore combined Models list differentiating project vs. MaaS models` (Story)
+- `Review Perses-based metrics implementation` (Story)
