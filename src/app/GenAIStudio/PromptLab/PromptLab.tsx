@@ -243,7 +243,7 @@ const PromptLab: React.FunctionComponent = () => {
               >
                 Name
               </Th>
-              <Th modifier="fitContent">Latest version</Th>
+              <Th modifier="fitContent" textCenter>Latest version</Th>
               <Th
                 modifier="fitContent"
                 sort={{
@@ -272,7 +272,7 @@ const PromptLab: React.FunctionComponent = () => {
                     {prompt.name}
                   </Button>
                 </Td>
-                <Td dataLabel="Latest version">{prompt.latestVersion}</Td>
+                <Td dataLabel="Latest version" textCenter>{prompt.latestVersion}</Td>
                 <Td dataLabel="Last modified">{formatDate(prompt.lastModified)}</Td>
                 <Td dataLabel="Commit message">
                   {prompt.commitMessage || '-'}
@@ -384,39 +384,22 @@ const PromptLab: React.FunctionComponent = () => {
   return (
     <>
       {/* Title Section */}
-      <PageSection id="prompt-lab-header">
-        <Flex alignItems={{ default: 'alignItemsCenter' }} spaceItems={{ default: 'spaceItemsSm' }}>
-          <FlexItem spacer={{ default: 'spacerSm' }}>
-            <div style={{ width: '40px', height: '40px', display: 'flex', alignItems: 'center' }}>
-              <PromptLabIcon withBackground size={32} />
-            </div>
-          </FlexItem>
+      <PageSection id="prompt-lab-header" style={{ borderBottom: '1px solid #d2d2d2' }}>
+        <Flex justifyContent={{ default: 'justifyContentSpaceBetween' }} alignItems={{ default: 'alignItemsCenter' }}>
           <FlexItem>
-            <Title headingLevel="h2" size="xl" id="prompt-lab-title">
-              Prompt lab
-            </Title>
-          </FlexItem>
-          <FlexItem>
-            <Button
-              variant="plain"
-              aria-label="More info"
-              id="prompt-lab-info-button"
-              icon={<OutlinedQuestionCircleIcon />}
-            />
-          </FlexItem>
-        </Flex>
-        <div style={{ color: 'var(--pf-v5-global--Color--200)', marginTop: 'var(--pf-v5-global--spacer--sm)' }}>
-          Manage and version prompts for AI systems
-        </div>
-      </PageSection>
-
-      {/* Project Selector */}
-      {flags.showProjectWorkspaceDropdowns && (
-        <PageSection style={{ paddingTop: '0.5rem', paddingBottom: '0.25rem' }} id="prompt-lab-project-selector">
-          <Toolbar>
-            <ToolbarContent>
-              <ToolbarGroup>
-                <ToolbarItem>
+            <Flex alignItems={{ default: 'alignItemsCenter' }}>
+              <FlexItem>
+                <div style={{ width: '40px', height: '40px', display: 'flex', alignItems: 'center' }}>
+                  <PromptLabIcon withBackground size={32} />
+                </div>
+              </FlexItem>
+              <FlexItem>
+                <Title headingLevel="h1" id="prompt-lab-title">
+                  Prompt management
+                </Title>
+              </FlexItem>
+              {flags.showProjectWorkspaceDropdowns && (
+                <FlexItem style={{ marginLeft: 'var(--pf-v6-global--spacer--xl)' }}>
                   <InputGroup>
                     <InputGroupItem>
                       <div className="pf-v6-c-input-group__text">
@@ -454,12 +437,18 @@ const PromptLab: React.FunctionComponent = () => {
                       </Select>
                     </InputGroupItem>
                   </InputGroup>
-                </ToolbarItem>
-              </ToolbarGroup>
-            </ToolbarContent>
-          </Toolbar>
-        </PageSection>
-      )}
+                </FlexItem>
+              )}
+            </Flex>
+          </FlexItem>
+
+          <FlexItem>
+            <Button variant="primary" onClick={handleCreatePrompt} id="create-prompt-header-button">
+              Create prompt
+            </Button>
+          </FlexItem>
+        </Flex>
+      </PageSection>
 
       {/* Main Toolbar and Content */}
       <PageSection style={{ paddingTop: '0.5rem' }} isFilled id="prompt-lab-content">
@@ -501,11 +490,6 @@ const PromptLab: React.FunctionComponent = () => {
                     />
                   </InputGroupItem>
                 </InputGroup>
-              </ToolbarItem>
-              <ToolbarItem>
-                <Button variant="primary" onClick={handleCreatePrompt} id="create-prompt-toolbar-button">
-                  Create prompt
-                </Button>
               </ToolbarItem>
             </ToolbarGroup>
             <ToolbarGroup align={{ default: 'alignEnd' }}>

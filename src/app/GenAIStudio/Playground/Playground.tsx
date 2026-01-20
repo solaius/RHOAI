@@ -37,11 +37,14 @@ import {
   ModalHeader,
   ModalVariant,
   PageSection,
+  Pagination,
   Popover,
+  SearchInput,
   Select,
   SelectList,
   SelectOption,
   Slider,
+  Spinner,
   Switch,
   TextArea,
   TextInput,
@@ -60,6 +63,8 @@ import {
 } from '@patternfly/react-table';
 import {
   AngleRightIcon,
+  CheckCircleIcon,
+  CheckIcon,
   CodeIcon,
   CogIcon,
   CubesIcon,
@@ -70,6 +75,7 @@ import {
   InfoCircleIcon,
   LightbulbIcon,
   LockIcon,
+  LockOpenIcon,
   OutlinedFolderIcon,
   OutlinedQuestionCircleIcon,
   PencilAltIcon,
@@ -113,8 +119,14 @@ const Playground: React.FunctionComponent = () => {
   const [isSystemPromptReadOnly, setIsSystemPromptReadOnly] = useState(false);
   const [isPromptEdited, setIsPromptEdited] = useState(false);
   const [isRagEnabled, setIsRagEnabled] = useState(true);
-  const [selectedModel, setSelectedModel] = useState('llama-3.1-8b-instruct');
+  const [selectedModel, setSelectedModel] = useState('');
   const [isModelSelectOpen, setIsModelSelectOpen] = useState(false);
+  const [reasoningLevel, setReasoningLevel] = useState('default');
+  const [isReasoningLevelOpen, setIsReasoningLevelOpen] = useState(false);
+
+  // Models with reasoning capability
+  const modelsWithReasoning = ['gpt-oss-20b', 'gpt-oss-120b', 'qwen3-14b', 'llama-3.2-11b', 'granite-4.0-h-small'];
+  const hasReasoning = modelsWithReasoning.includes(selectedModel);
   const [isLoadPromptModalOpen, setIsLoadPromptModalOpen] = useState(false);
   const [isSavePromptModalOpen, setIsSavePromptModalOpen] = useState(false);
   const [isEditPromptModalOpen, setIsEditPromptModalOpen] = useState(false);
@@ -130,9 +142,9 @@ const Playground: React.FunctionComponent = () => {
   
   // Knowledge tab dropdown state
   const [isVectorStoreDropdownOpen, setIsVectorStoreDropdownOpen] = useState(false);
-  const [openVectorStoreActionId, setOpenVectorStoreActionId] = useState<string | null>(null);
   const [isAddVectorStoreModalOpen, setIsAddVectorStoreModalOpen] = useState(false);
   const [editingVectorStore, setEditingVectorStore] = useState<any>(null);
+  const [vectorStoreToRemove, setVectorStoreToRemove] = useState<any>(null);
   
   // Header kebab menu state
   const [isKebabMenuOpen, setIsKebabMenuOpen] = useState(false);
@@ -151,28 +163,159 @@ const Playground: React.FunctionComponent = () => {
     { id: '3', name: 'HR benefits Q&A', type: 'External connection', provider: 'PGVector', selected: false, addedToKnowledge: false },
     { id: '4', name: 'Expense tracker', type: 'External connection', provider: 'Milvus', selected: false, addedToKnowledge: false },
   ]);
-  const [mcpServers] = useState([
-    { id: '1', name: 'Github', enabled: true, toolsCount: 12, hasAuth: true },
-    { id: '2', name: 'Kubernetes', enabled: true, toolsCount: 10, hasAuth: true },
-    { id: '3', name: 'Slack', enabled: false, toolsCount: 0, hasAuth: false },
-    { id: '4', name: 'Jira', enabled: false, toolsCount: 0, hasAuth: false },
-    { id: '5', name: 'PostgreSQL', enabled: false, toolsCount: 0, hasAuth: false },
+  const [mcpServers, setMcpServers] = useState([
+    { id: '1', name: 'Github', enabled: false, toolsCount: 0, totalTools: 12, hasAuth: false, connected: false },
+    { id: '2', name: 'Kubernetes', enabled: false, toolsCount: 0, totalTools: 21, hasAuth: false, connected: false },
+    { id: '3', name: 'Slack', enabled: false, toolsCount: 0, totalTools: 15, hasAuth: false, connected: false },
+    { id: '4', name: 'Jira', enabled: false, toolsCount: 0, totalTools: 8, hasAuth: false, connected: false },
+    { id: '5', name: 'PostgreSQL', enabled: false, toolsCount: 0, totalTools: 10, hasAuth: false, connected: false },
   ]);
-  
-  // Guardrails state - User input
-  const [jailbreaksEnabled, setJailbreaksEnabled] = useState(true);
-  const [contentModerationUserEnabled, setContentModerationUserEnabled] = useState(false);
-  const [piiUserEnabled, setPiiUserEnabled] = useState(false);
-  
-  // Guardrails state - Model output
-  const [contentModerationOutputEnabled, setContentModerationOutputEnabled] = useState(true);
-  const [piiOutputEnabled, setPiiOutputEnabled] = useState(true);
-  
-  // Content moderation sub-options (for Model output)
-  const [toxicityEnabled, setToxicityEnabled] = useState(true);
-  const [sexualContentEnabled, setSexualContentEnabled] = useState(true);
-  const [violenceEnabled, setViolenceEnabled] = useState(true);
-  const [harassmentEnabled, setHarassmentEnabled] = useState(true);
+
+  // MCP connection state management
+  const [connectingMcpId, setConnectingMcpId] = useState<string | null>(null);
+  const [isMcpConnectionModalOpen, setIsMcpConnectionModalOpen] = useState(false);
+  const [isMcpToolsModalOpen, setIsMcpToolsModalOpen] = useState(false);
+  const [selectedMcpServer, setSelectedMcpServer] = useState<any>(null);
+  const [mcpToolSelections, setMcpToolSelections] = useState<Record<string, boolean>>({});
+  const [mcpToolsSearchValue, setMcpToolsSearchValue] = useState('');
+  const [mcpToolsPage, setMcpToolsPage] = useState(1);
+  const mcpToolsPerPage = 10;
+
+  // Kubernetes MCP tools data
+  const kubernetesMcpTools = [
+    { name: 'configuration_view', description: 'Get the current Kubernetes configuration content as a kubeconfig YAML' },
+    { name: 'events_list', description: 'List all the Kubernetes events in the current cluster from all namespaces' },
+    { name: 'helm_install', description: 'Install a Helm chart in the current or provided namespace' },
+    { name: 'helm_list', description: 'List all the Helm releases in the current or provided namespace (or in all namespaces if specified)' },
+    { name: 'helm_uninstall', description: 'Uninstall a Helm release in the current or provided namespace' },
+    { name: 'namespace_create', description: 'Create the Kubernetes namespace in the current cluster' },
+    { name: 'namespace_delete', description: 'Delete the Kubernetes namespace in the current cluster' },
+    { name: 'namespaces_list', description: 'List all the Kubernetes namespaces in the current cluster' },
+    { name: 'pods_delete', description: 'Delete a Kubernetes Pod in the current or provided namespace with the provided name' },
+    { name: 'pods_exec', description: 'Execute a command in a Kubernetes Pod in the current or provided namespace with the provided name and command' },
+    { name: 'pods_list', description: 'List all the Kubernetes Pods in the current or provided namespace' },
+    { name: 'pods_log', description: 'Get the logs of a Kubernetes Pod in the current or provided namespace with the provided name' },
+    { name: 'pods_run', description: 'Run a new Kubernetes Pod in the current or provided namespace' },
+    { name: 'resources_create_or_update', description: 'Create or update a Kubernetes resource from a YAML or JSON definition' },
+    { name: 'resources_delete', description: 'Delete a Kubernetes resource by kind, name and optional namespace' },
+    { name: 'resources_get', description: 'Get a Kubernetes resource by kind, name and optional namespace' },
+    { name: 'resources_list', description: 'List Kubernetes resources by kind and optional namespace' },
+    { name: 'services_create', description: 'Create a new Kubernetes Service in the current or provided namespace' },
+    { name: 'services_delete', description: 'Delete a Kubernetes Service in the current or provided namespace' },
+    { name: 'services_list', description: 'List all the Kubernetes Services in the current or provided namespace' },
+    { name: 'cluster_info', description: 'Get basic information about the current Kubernetes cluster' },
+  ];
+
+  // MCP checkbox change handler
+  const handleMcpCheckboxChange = (serverId: string, checked: boolean) => {
+    const server = mcpServers.find(s => s.id === serverId);
+
+    if (checked) {
+      // Check if server was already authorized before
+      if (server?.hasAuth) {
+        // Already authorized - immediately re-enable without auth flow
+        setMcpServers(servers => servers.map(s =>
+          s.id === serverId ? { ...s, enabled: true, connected: true, toolsCount: s.totalTools } : s
+        ));
+      } else {
+        // First time - start connecting animation
+        setConnectingMcpId(serverId);
+
+        // After 2 seconds, complete connection
+        setTimeout(() => {
+          setConnectingMcpId(null);
+          setMcpServers(servers => servers.map(s =>
+            s.id === serverId ? { ...s, enabled: true, connected: true, hasAuth: true, toolsCount: s.totalTools } : s
+          ));
+          // Set the selected server and open connection modal
+          const updatedServer = { ...server, enabled: true, connected: true, hasAuth: true, toolsCount: server?.totalTools || 0 };
+          setSelectedMcpServer(updatedServer);
+          setIsMcpConnectionModalOpen(true);
+          // Initialize all tools as selected
+          if (server?.name === 'Kubernetes') {
+            const initialSelections: Record<string, boolean> = {};
+            kubernetesMcpTools.forEach(tool => {
+              initialSelections[tool.name] = true;
+            });
+            setMcpToolSelections(initialSelections);
+          }
+        }, 2000);
+      }
+    } else {
+      // Disable but keep hasAuth so re-enabling is instant
+      setMcpServers(servers => servers.map(s =>
+        s.id === serverId ? { ...s, enabled: false, connected: false, toolsCount: 0 } : s
+      ));
+    }
+  };
+
+  // Handle lock icon click
+  const handleLockClick = (server: any) => {
+    setSelectedMcpServer(server);
+    setIsMcpConnectionModalOpen(true);
+  };
+
+  // Handle tools count click
+  const handleToolsClick = (server: any) => {
+    setSelectedMcpServer(server);
+    if (server.name === 'Kubernetes' && Object.keys(mcpToolSelections).length === 0) {
+      const initialSelections: Record<string, boolean> = {};
+      kubernetesMcpTools.forEach(tool => {
+        initialSelections[tool.name] = true;
+      });
+      setMcpToolSelections(initialSelections);
+    }
+    setMcpToolsPage(1);
+    setMcpToolsSearchValue('');
+    setIsMcpToolsModalOpen(true);
+  };
+
+  // Handle MCP disconnect
+  const handleMcpDisconnect = (serverId: string) => {
+    setMcpServers(servers => servers.map(s =>
+      s.id === serverId ? { ...s, enabled: false, connected: false, hasAuth: false, toolsCount: 0 } : s
+    ));
+    setIsMcpConnectionModalOpen(false);
+    setSelectedMcpServer(null);
+  };
+
+  // Handle save tools selection
+  const handleSaveMcpTools = () => {
+    const selectedCount = Object.values(mcpToolSelections).filter(Boolean).length;
+    if (selectedMcpServer) {
+      setMcpServers(servers => servers.map(s =>
+        s.id === selectedMcpServer.id ? { ...s, toolsCount: selectedCount } : s
+      ));
+    }
+    setIsMcpToolsModalOpen(false);
+  };
+
+  // Get filtered and paginated tools
+  const getFilteredTools = () => {
+    let tools = kubernetesMcpTools;
+    if (mcpToolsSearchValue) {
+      tools = tools.filter(tool =>
+        tool.name.toLowerCase().includes(mcpToolsSearchValue.toLowerCase()) ||
+        tool.description.toLowerCase().includes(mcpToolsSearchValue.toLowerCase())
+      );
+    }
+    return tools;
+  };
+
+  const getPaginatedTools = () => {
+    const filtered = getFilteredTools();
+    const startIndex = (mcpToolsPage - 1) * mcpToolsPerPage;
+    return filtered.slice(startIndex, startIndex + mcpToolsPerPage);
+  };
+
+  // Count enabled MCP servers and total enabled tools
+  const enabledMcpCount = mcpServers.filter(s => s.enabled).length;
+  const totalEnabledMcpTools = mcpServers.filter(s => s.enabled).reduce((sum, s) => sum + s.toolsCount, 0);
+
+  // Guardrails state
+  const [guardrailsEnabled, setGuardrailsEnabled] = useState(false);
+  const [selectedGuardrailModel, setSelectedGuardrailModel] = useState('granite-guardian');
+  const [isGuardrailModelSelectOpen, setIsGuardrailModelSelectOpen] = useState(false);
   
   // Chat state
   const [chatHistory, setChatHistory] = useState<any[]>([]);
@@ -191,50 +334,27 @@ const Playground: React.FunctionComponent = () => {
   const [savePromptName, setSavePromptName] = useState('');
   const [savePromptAlias, setSavePromptAlias] = useState('');
 
-  // Calculate guardrails count
-  const guardrailsCount = React.useMemo(() => {
-    let count = 0;
-    
-    // User input guardrails
-    if (jailbreaksEnabled) count++;
-    if (contentModerationUserEnabled) count++;
-    if (piiUserEnabled) count++;
-    
-    // Model output guardrails
-    if (contentModerationOutputEnabled) {
-      count++; // Count the main content moderation toggle
-      // Count enabled sub-options
-      if (toxicityEnabled) count++;
-      if (sexualContentEnabled) count++;
-      if (violenceEnabled) count++;
-      if (harassmentEnabled) count++;
-    }
-    if (piiOutputEnabled) count++;
-    
-    return count;
-  }, [
-    jailbreaksEnabled, 
-    contentModerationUserEnabled, 
-    piiUserEnabled, 
-    contentModerationOutputEnabled, 
-    toxicityEnabled,
-    sexualContentEnabled,
-    violenceEnabled,
-    harassmentEnabled,
-    piiOutputEnabled
-  ]);
 
   // Build Panel using DrawerPanelContent
   const BuildPanelContent = (
-    <DrawerPanelContent isResizable minSize="400px" defaultSize="50%" id="build-panel-drawer">
+    <DrawerPanelContent isResizable minSize="400px" defaultSize="400px" id="build-panel-drawer">
       <DrawerContentBody style={{ padding: 0, height: '100%', display: 'flex', flexDirection: 'column' }}>
-        <div style={{  
-          borderBottom: '1px solid var(--pf-v6-global--BorderColor--100)',
-          padding: '1rem 1rem 0 1rem'
+        <style>{`
+          .config-toggle-group .pf-v6-c-toggle-group__button:not(.pf-m-selected) {
+            background-color: #ffffff !important;
+          }
+          #build-panel-drawer .pf-v6-c-drawer__panel-main {
+            padding-top: 0 !important;
+          }
+        `}</style>
+        <div style={{
+          backgroundColor: '#f0f0f0',
+          padding: '1rem',
+          borderBottom: '1px solid #d2d2d2'
         }}>
-          <Flex alignItems={{ default: 'alignItemsCenter' }} spaceItems={{ default: 'spaceItemsSm' }}>
+          <Flex alignItems={{ default: 'alignItemsCenter' }} spaceItems={{ default: 'spaceItemsSm' }} style={{ marginBottom: '1rem' }}>
             <FlexItem>
-              <div 
+              <div
                 style={{ width: '24px', height: '24px', display: 'flex', alignItems: 'center' }}
                 dangerouslySetInnerHTML={{ __html: AIIcon }}
               />
@@ -245,48 +365,79 @@ const Playground: React.FunctionComponent = () => {
               </Title>
             </FlexItem>
           </Flex>
-        </div>
 
-        <div style={{ padding: '1rem', borderBottom: '1px solid var(--pf-v6-global--BorderColor--100)' }}>
-          <ToggleGroup aria-label="Build panel options">
+          <ToggleGroup aria-label="Build panel options" className="config-toggle-group">
             <ToggleGroupItem
-              text="Model"
+              text={
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}>
+                  Model
+                  {selectedModel && (
+                    <Label color="green" isCompact>✓</Label>
+                  )}
+                </span>
+              }
               buttonId="model"
               isSelected={selectedBuildTab === 'model'}
               onChange={() => setSelectedBuildTab('model')}
             />
             <ToggleGroupItem
-              text="Prompt"
+              text={
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}>
+                  Prompt
+                  {systemPrompt.trim() && (
+                    <Label color="green" isCompact>✓</Label>
+                  )}
+                </span>
+              }
               buttonId="prompt-lab"
               isSelected={selectedBuildTab === 'prompt-lab'}
               onChange={() => setSelectedBuildTab('prompt-lab')}
             />
             <ToggleGroupItem
-              text="Knowledge"
-              buttonId="knowledge"
-              isSelected={selectedBuildTab === 'knowledge'}
-              onChange={() => setSelectedBuildTab('knowledge')}
-            />
-            <ToggleGroupItem
-              text="MCP"
-              buttonId="mcp"
-              isSelected={selectedBuildTab === 'mcp'}
-              onChange={() => setSelectedBuildTab('mcp')}
-            />
-            <ToggleGroupItem
               text={
-                <span style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}>
                   Guardrails
-                  {guardrailsCount > 0 && (
-                    <Badge isRead>
-                      {guardrailsCount}
-                    </Badge>
-                  )}
+                  <Label color={guardrailsEnabled ? 'green' : 'red'} isCompact>
+                    {guardrailsEnabled ? 'On' : 'Off'}
+                  </Label>
                 </span>
               }
               buttonId="guardrails"
               isSelected={selectedBuildTab === 'guardrails'}
               onChange={() => setSelectedBuildTab('guardrails')}
+            />
+          </ToggleGroup>
+
+          <div style={{ marginTop: '1rem', marginBottom: '0.5rem', fontSize: '0.875rem', fontWeight: 600, color: 'var(--pf-v6-global--Color--200)' }}>
+            Connectors
+          </div>
+
+          <ToggleGroup aria-label="Connector options" className="config-toggle-group">
+            <ToggleGroupItem
+              text={
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}>
+                  Knowledge
+                  <Label color={vectorStores.filter(s => s.selected).length > 0 ? 'green' : 'grey'} isCompact>
+                    {vectorStores.filter(s => s.selected).length}
+                  </Label>
+                </span>
+              }
+              buttonId="knowledge"
+              isSelected={selectedBuildTab === 'knowledge'}
+              onChange={() => setSelectedBuildTab('knowledge')}
+            />
+            <ToggleGroupItem
+              text={
+                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}>
+                  MCP
+                  <Label color={enabledMcpCount > 0 ? 'green' : 'grey'} isCompact>
+                    {enabledMcpCount}
+                  </Label>
+                </span>
+              }
+              buttonId="mcp"
+              isSelected={selectedBuildTab === 'mcp'}
+              onChange={() => setSelectedBuildTab('mcp')}
             />
           </ToggleGroup>
         </div>
@@ -298,7 +449,7 @@ const Playground: React.FunctionComponent = () => {
                 Model
               </Title>
               
-              <FormGroup label="Select model" fieldId="model-select-form" isRequired>
+              <FormGroup fieldId="model-select-form">
                 <Select
                   id="model-select"
                   isOpen={isModelSelectOpen}
@@ -316,29 +467,117 @@ const Playground: React.FunctionComponent = () => {
                       id="model-select-toggle"
                       style={{ width: '100%', maxWidth: '350px' }}
                     >
-                      {selectedModel === 'llama-3.1-8b-instruct' ? 'Llama 3.1 8B-Instruct' :
-                       selectedModel === 'mistral-7b-instruct' ? 'Mistral 7B-Instruct' :
-                       selectedModel === 'granite-8b-code' ? 'Granite 8B Code' :
-                       selectedModel === 'falcon-7b' ? 'Falcon 7B' :
-                       selectedModel === 'bloom-7b1' ? 'BLOOM 7B1' : 'Select model'}
+                      <Flex alignItems={{ default: 'alignItemsCenter' }} spaceItems={{ default: 'spaceItemsSm' }}>
+                        <FlexItem>
+                          {selectedModel === '' ? 'Choose a model' :
+                           selectedModel === 'gpt-oss-20b' ? 'gpt-oss-20b' :
+                           selectedModel === 'gpt-oss-120b' ? 'gpt-oss-120b' :
+                           selectedModel === 'qwen3-14b' ? 'Qwen3-14B' :
+                           selectedModel === 'llama-3.2-11b' ? 'llama-3.2-11b' :
+                           selectedModel === 'granite-4.0-h-small' ? 'granite-4.0-h-small' :
+                           selectedModel === 'ministral-3-8b' ? 'Ministral-3-8B' : 'Choose a model'}
+                        </FlexItem>
+                        {hasReasoning && (
+                          <FlexItem><Label color="green" isCompact>Reasoning</Label></FlexItem>
+                        )}
+                      </Flex>
                     </MenuToggle>
                   )}
                 >
                   <SelectList>
-                    <SelectOption value="llama-3.1-8b-instruct">Llama 3.1 8B-Instruct</SelectOption>
-                    <SelectOption value="mistral-7b-instruct">Mistral 7B-Instruct</SelectOption>
-                    <SelectOption value="granite-8b-code">Granite 8B Code</SelectOption>
-                    <SelectOption value="falcon-7b">Falcon 7B</SelectOption>
-                    <SelectOption value="bloom-7b1">BLOOM 7B1</SelectOption>
+                    <SelectOption value="gpt-oss-20b">
+                      <Flex alignItems={{ default: 'alignItemsCenter' }} spaceItems={{ default: 'spaceItemsSm' }}>
+                        <FlexItem>gpt-oss-20b</FlexItem>
+                        <FlexItem><Label color="green" isCompact>Reasoning</Label></FlexItem>
+                      </Flex>
+                    </SelectOption>
+                    <SelectOption value="gpt-oss-120b">
+                      <Flex alignItems={{ default: 'alignItemsCenter' }} spaceItems={{ default: 'spaceItemsSm' }}>
+                        <FlexItem>gpt-oss-120b</FlexItem>
+                        <FlexItem><Label color="green" isCompact>Reasoning</Label></FlexItem>
+                      </Flex>
+                    </SelectOption>
+                    <SelectOption value="qwen3-14b">
+                      <Flex alignItems={{ default: 'alignItemsCenter' }} spaceItems={{ default: 'spaceItemsSm' }}>
+                        <FlexItem>Qwen3-14B</FlexItem>
+                        <FlexItem><Label color="green" isCompact>Reasoning</Label></FlexItem>
+                      </Flex>
+                    </SelectOption>
+                    <SelectOption value="llama-3.2-11b">
+                      <Flex alignItems={{ default: 'alignItemsCenter' }} spaceItems={{ default: 'spaceItemsSm' }}>
+                        <FlexItem>llama-3.2-11b</FlexItem>
+                        <FlexItem><Label color="green" isCompact>Reasoning</Label></FlexItem>
+                      </Flex>
+                    </SelectOption>
+                    <SelectOption value="granite-4.0-h-small">
+                      <Flex alignItems={{ default: 'alignItemsCenter' }} spaceItems={{ default: 'spaceItemsSm' }}>
+                        <FlexItem>granite-4.0-h-small</FlexItem>
+                        <FlexItem><Label color="green" isCompact>Reasoning</Label></FlexItem>
+                      </Flex>
+                    </SelectOption>
+                    <SelectOption value="ministral-3-8b">Ministral-3-8B</SelectOption>
                   </SelectList>
                 </Select>
+                {!selectedModel && (
+                  <div style={{ textAlign: 'right', color: '#C9190B', fontSize: '0.875rem', marginTop: '0.25rem', maxWidth: '350px' }}>
+                    *A model must be selected
+                  </div>
+                )}
               </FormGroup>
 
-              <div style={{ paddingLeft: '16px', paddingRight: '16px' }}>
-                <FormGroup 
+              {/* Reasoning Level dropdown - only shown for models with reasoning */}
+              {hasReasoning && (
+                <FormGroup
                   label={
                     <span style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-                      Temperature
+                      Reasoning level
+                      <Tooltip content="Controls inference time scaling - how long a model thinks before responding. Requires a reasoning-capable model.">
+                        <OutlinedQuestionCircleIcon style={{ fontSize: '14px', color: 'var(--pf-v6-global--icon-Color--subtle)' }} />
+                      </Tooltip>
+                    </span>
+                  }
+                  fieldId="reasoning-level-select"
+                  style={{ marginTop: '1rem' }}
+                >
+                  <Select
+                    id="reasoning-level-select"
+                    isOpen={isReasoningLevelOpen}
+                    selected={reasoningLevel}
+                    onSelect={(_event, value) => {
+                      setReasoningLevel(value as string);
+                      setIsReasoningLevelOpen(false);
+                    }}
+                    onOpenChange={(isOpen) => setIsReasoningLevelOpen(isOpen)}
+                    toggle={(toggleRef) => (
+                      <MenuToggle
+                        ref={toggleRef}
+                        onClick={() => setIsReasoningLevelOpen(!isReasoningLevelOpen)}
+                        isExpanded={isReasoningLevelOpen}
+                        id="reasoning-level-toggle"
+                        style={{ width: '100%', maxWidth: '350px' }}
+                      >
+                        {reasoningLevel === 'default' ? 'Default' :
+                         reasoningLevel === 'low' ? 'Low' :
+                         reasoningLevel === 'medium' ? 'Medium' :
+                         reasoningLevel === 'high' ? 'High' : 'Select level'}
+                      </MenuToggle>
+                    )}
+                  >
+                    <SelectList>
+                      <SelectOption value="default">Default</SelectOption>
+                      <SelectOption value="low">Low</SelectOption>
+                      <SelectOption value="medium">Medium</SelectOption>
+                      <SelectOption value="high">High</SelectOption>
+                    </SelectList>
+                  </Select>
+                </FormGroup>
+              )}
+
+              <div style={{ paddingLeft: '16px', paddingRight: '16px' }}>
+                <FormGroup
+                  label={
+                    <span style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
+                      Temperature: 0 - 2
                       <Tooltip content="Controls randomness in the output. Lower values make the output more focused and deterministic, while higher values increase creativity and diversity.">
                         <OutlinedQuestionCircleIcon style={{ fontSize: '14px', color: 'var(--pf-v6-global--icon-Color--subtle)' }} />
                       </Tooltip>
@@ -347,22 +586,25 @@ const Playground: React.FunctionComponent = () => {
                   fieldId="temperature"
                   style={{ marginTop: '1.5rem' }}
                 >
-                  <Slider
-                    id="temperature"
-                    value={temperature}
-                    onChange={(_event, value) => setTemperature(value)}
-                    min={0}
-                    max={2}
-                    step={0.1}
-                    isInputVisible
-                    inputValue={temperature}
-                  />
+                  <div className="slider-fixed-input">
+                    <Slider
+                      id="temperature"
+                      value={temperature}
+                      onChange={(_event, value) => setTemperature(value)}
+                      min={0}
+                      max={2}
+                      step={0.1}
+                      isInputVisible
+                      inputValue={temperature}
+                      showBoundaries={false}
+                    />
+                  </div>
                 </FormGroup>
 
-                <FormGroup 
+                <FormGroup
                   label={
                     <span style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-                      Top P
+                      Top P: 0 - 1
                       <Tooltip content="Controls diversity via nucleus sampling. The model considers the smallest set of tokens whose cumulative probability exceeds the threshold. Lower values make output more focused.">
                         <OutlinedQuestionCircleIcon style={{ fontSize: '14px', color: 'var(--pf-v6-global--icon-Color--subtle)' }} />
                       </Tooltip>
@@ -371,22 +613,25 @@ const Playground: React.FunctionComponent = () => {
                   fieldId="top-p"
                   style={{ marginTop: '1rem' }}
                 >
-                  <Slider
-                    id="top-p"
-                    value={topP}
-                    onChange={(_event, value) => setTopP(value)}
-                    min={0}
-                    max={1}
-                    step={0.1}
-                    isInputVisible
-                    inputValue={topP}
-                  />
+                  <div className="slider-fixed-input">
+                    <Slider
+                      id="top-p"
+                      value={topP}
+                      onChange={(_event, value) => setTopP(value)}
+                      min={0}
+                      max={1}
+                      step={0.1}
+                      isInputVisible
+                      inputValue={topP}
+                      showBoundaries={false}
+                    />
+                  </div>
                 </FormGroup>
 
-                <FormGroup 
+                <FormGroup
                   label={
                     <span style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-                      Max token
+                      Max token: 1 - 4096
                       <Tooltip content="The maximum number of tokens to generate in the response. One token is roughly 4 characters. Higher values allow for longer responses.">
                         <OutlinedQuestionCircleIcon style={{ fontSize: '14px', color: 'var(--pf-v6-global--icon-Color--subtle)' }} />
                       </Tooltip>
@@ -395,22 +640,25 @@ const Playground: React.FunctionComponent = () => {
                   fieldId="max-tokens"
                   style={{ marginTop: '1rem' }}
                 >
-                  <Slider
-                    id="max-tokens"
-                    value={maxTokens}
-                    onChange={(_event, value) => setMaxTokens(value)}
-                    min={1}
-                    max={4096}
-                    step={1}
-                    isInputVisible
-                    inputValue={maxTokens}
-                  />
+                  <div className="slider-fixed-input">
+                    <Slider
+                      id="max-tokens"
+                      value={maxTokens}
+                      onChange={(_event, value) => setMaxTokens(value)}
+                      min={1}
+                      max={4096}
+                      step={1}
+                      isInputVisible
+                      inputValue={maxTokens}
+                      showBoundaries={false}
+                    />
+                  </div>
                 </FormGroup>
 
-                <FormGroup 
+                <FormGroup
                   label={
                     <span style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-                      Repetition
+                      Repetition: 0 - 2
                       <Tooltip content="Penalty for repeating tokens. Higher values discourage the model from repeating the same words or phrases. Values greater than 1.0 penalize repetition.">
                         <OutlinedQuestionCircleIcon style={{ fontSize: '14px', color: 'var(--pf-v6-global--icon-Color--subtle)' }} />
                       </Tooltip>
@@ -419,16 +667,19 @@ const Playground: React.FunctionComponent = () => {
                   fieldId="repetition"
                   style={{ marginTop: '1rem' }}
                 >
-                  <Slider
-                    id="repetition"
-                    value={repetition}
-                    onChange={(_event, value) => setRepetition(value)}
-                    min={0}
-                    max={2}
-                    step={0.1}
-                    isInputVisible
-                    inputValue={repetition}
-                  />
+                  <div className="slider-fixed-input">
+                    <Slider
+                      id="repetition"
+                      value={repetition}
+                      onChange={(_event, value) => setRepetition(value)}
+                      min={0}
+                      max={2}
+                      step={0.1}
+                      isInputVisible
+                      inputValue={repetition}
+                      showBoundaries={false}
+                    />
+                  </div>
                 </FormGroup>
               </div>
             </>
@@ -550,7 +801,7 @@ const Playground: React.FunctionComponent = () => {
                     style={{ width: '100%', marginBottom: '1rem', maxWidth: '350px' }}
                     id="vector-store-dropdown"
                   >
-                    Browse or add vector stores
+                    Available vector stores
                   </MenuToggle>
                 )}
                 id="vector-store-dropdown-menu"
@@ -558,63 +809,27 @@ const Playground: React.FunctionComponent = () => {
                 <Menu style={{ maxWidth: '350px' }}>
                   <MenuContent>
                     <MenuList>
-                      <MenuGroup label="Inline vector store">
-                        {vectorStores.filter(s => s.type === 'In memory').map((store) => (
-                          <MenuItem
-                            key={store.id}
-                            itemId={store.id}
-                            onClick={() => {
-                              setIsVectorStoreDropdownOpen(false);
-                              setVectorStores(stores =>
-                                stores.map(s =>
-                                  s.id === store.id ? { ...s, addedToKnowledge: true, selected: true } : s
-                                )
-                              );
-                            }}
-                          >
-                            <Flex justifyContent={{ default: 'justifyContentSpaceBetween' }} style={{ width: '100%' }}>
-                              <FlexItem>{store.name}</FlexItem>
-                              <FlexItem style={{ color: 'var(--pf-v6-global--Color--200)', fontSize: '0.875rem' }}>
-                                {store.provider}
-                              </FlexItem>
-                            </Flex>
-                          </MenuItem>
-                        ))}
-                      </MenuGroup>
-                      <Divider />
-                      <MenuGroup label="RAG vector stores">
-                        {vectorStores.filter(s => s.type === 'External connection').map((store) => (
-                          <MenuItem
-                            key={store.id}
-                            itemId={store.id}
-                            onClick={() => {
-                              setIsVectorStoreDropdownOpen(false);
-                              setVectorStores(stores =>
-                                stores.map(s =>
-                                  s.id === store.id ? { ...s, addedToKnowledge: true, selected: true } : s
-                                )
-                              );
-                            }}
-                          >
-                            <Flex justifyContent={{ default: 'justifyContentSpaceBetween' }} style={{ width: '100%' }}>
-                              <FlexItem>{store.name}</FlexItem>
-                              <FlexItem style={{ color: 'var(--pf-v6-global--Color--200)', fontSize: '0.875rem' }}>
-                                {store.provider}
-                              </FlexItem>
-                            </Flex>
-                          </MenuItem>
-                        ))}
-                      </MenuGroup>
-                      <Divider />
-                      <MenuItem
-                        icon={<PlusIcon />}
-                        onClick={() => {
-                          setIsVectorStoreDropdownOpen(false);
-                          setIsAddVectorStoreModalOpen(true);
-                        }}
-                      >
-                        Create new vector store
-                      </MenuItem>
+                      {vectorStores.filter(s => s.type === 'External connection').map((store) => (
+                        <MenuItem
+                          key={store.id}
+                          itemId={store.id}
+                          onClick={() => {
+                            setIsVectorStoreDropdownOpen(false);
+                            setVectorStores(stores =>
+                              stores.map(s =>
+                                s.id === store.id ? { ...s, addedToKnowledge: true, selected: true } : s
+                              )
+                            );
+                          }}
+                        >
+                          <Flex justifyContent={{ default: 'justifyContentSpaceBetween' }} style={{ width: '100%' }}>
+                            <FlexItem>{store.name}</FlexItem>
+                            <FlexItem style={{ color: 'var(--pf-v6-global--Color--200)', fontSize: '0.875rem' }}>
+                              {store.provider}
+                            </FlexItem>
+                          </Flex>
+                        </MenuItem>
+                      ))}
                     </MenuList>
                   </MenuContent>
                 </Menu>
@@ -663,41 +878,15 @@ const Playground: React.FunctionComponent = () => {
                         </Td>
                         <Td>{store.name}</Td>
                         <Td>{store.provider}</Td>
-                        <Td>
-                          <Dropdown
-                            isOpen={openVectorStoreActionId === store.id}
-                            onSelect={() => setOpenVectorStoreActionId(null)}
-                            onOpenChange={(isOpen: boolean) => setOpenVectorStoreActionId(isOpen ? store.id : null)}
-                            toggle={(toggleRef: React.Ref<MenuToggleElement>) => (
-                              <MenuToggle
-                                ref={toggleRef}
-                                variant="plain"
-                                onClick={() => setOpenVectorStoreActionId(openVectorStoreActionId === store.id ? null : store.id)}
-                                isExpanded={openVectorStoreActionId === store.id}
-                                id={`vs-actions-${store.id}`}
-                              >
-                                <EllipsisVIcon />
-                              </MenuToggle>
-                            )}
+                        <Td style={{ verticalAlign: 'middle' }}>
+                          <Button
+                            variant="plain"
+                            aria-label={`Remove ${store.name}`}
+                            onClick={() => setVectorStoreToRemove(store)}
+                            style={{ padding: 0 }}
                           >
-                            <DropdownList>
-                              <DropdownItem key="edit" onClick={() => {
-                                setEditingVectorStore(store);
-                                setIsAddVectorStoreModalOpen(true);
-                              }}>
-                                Edit vector store
-                              </DropdownItem>
-                              <DropdownItem key="remove" onClick={() => {
-                                setVectorStores(stores =>
-                                  stores.map(s =>
-                                    s.id === store.id ? { ...s, addedToKnowledge: false, selected: false } : s
-                                  )
-                                );
-                              }}>
-                                Remove vector store
-                              </DropdownItem>
-                            </DropdownList>
-                          </Dropdown>
+                            <TrashIcon />
+                          </Button>
                         </Td>
                       </Tr>
                     ))}
@@ -724,10 +913,10 @@ const Playground: React.FunctionComponent = () => {
                   <Title headingLevel="h3" size="md">MCP Servers</Title>
                 </FlexItem>
                 <FlexItem>
-                  <Label variant="outline" color="blue">2 enabled</Label>
+                  <Label variant="outline" color="blue">{totalEnabledMcpTools} tools enabled</Label>
                 </FlexItem>
               </Flex>
-              
+
               <Table variant="compact" aria-label="MCP Servers" id="mcp-servers-table">
                 <Thead>
                   <Tr>
@@ -741,12 +930,41 @@ const Playground: React.FunctionComponent = () => {
                   {mcpServers.map((server) => (
                     <Tr key={server.id}>
                       <Td>
-                        <Checkbox id={`mcp-${server.id}`} isChecked={server.enabled} aria-label={`Enable ${server.name}`} />
+                        <Checkbox
+                          id={`mcp-${server.id}`}
+                          isChecked={server.enabled}
+                          isDisabled={connectingMcpId === server.id}
+                          onChange={(_event, checked) => handleMcpCheckboxChange(server.id, checked)}
+                          aria-label={`Enable ${server.name}`}
+                        />
                       </Td>
                       <Td>{server.name}</Td>
-                      <Td>{server.toolsCount} enabled</Td>
                       <Td>
-                        <Button variant="plain" icon={<LockIcon />} isDisabled={!server.enabled} aria-label="Authorization" />
+                        <Label
+                          variant="outline"
+                          onClick={server.connected ? () => handleToolsClick(server) : undefined}
+                          style={{ cursor: server.connected ? 'pointer' : 'default' }}
+                        >
+                          {server.toolsCount} active
+                        </Label>
+                      </Td>
+                      <Td style={{ verticalAlign: 'middle', textAlign: 'center' }}>
+                        <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '36px' }}>
+                          {connectingMcpId === server.id ? (
+                            <Spinner size="md" aria-label="Connecting..." />
+                          ) : server.hasAuth ? (
+                            <Button
+                              variant="plain"
+                              onClick={() => handleLockClick(server)}
+                              aria-label="View connection"
+                              style={{ padding: 0 }}
+                            >
+                              <LockOpenIcon style={{ color: '#3E8635' }} />
+                            </Button>
+                          ) : (
+                            <LockIcon style={{ color: '#6A6E73' }} />
+                          )}
+                        </div>
                       </Td>
                     </Tr>
                   ))}
@@ -757,13 +975,18 @@ const Playground: React.FunctionComponent = () => {
           
           {selectedBuildTab === 'guardrails' && (
             <>
-              {/* Guardrails Header */}
-              <Flex alignItems={{ default: 'alignItemsCenter' }} spaceItems={{ default: 'spaceItemsSm' }} style={{ marginBottom: '1rem' }}>
+              {/* Guardrails Header with Toggle */}
+              <Flex alignItems={{ default: 'alignItemsCenter' }} justifyContent={{ default: 'justifyContentSpaceBetween' }} style={{ marginBottom: '1rem' }}>
                 <FlexItem>
                   <Title headingLevel="h3" size="md">Guardrails</Title>
                 </FlexItem>
                 <FlexItem>
-                  <Badge isRead>{guardrailsCount}</Badge>
+                  <Switch
+                    id="guardrails-master-toggle"
+                    isChecked={guardrailsEnabled}
+                    onChange={(_event, checked) => setGuardrailsEnabled(checked)}
+                    aria-label="Enable guardrails"
+                  />
                 </FlexItem>
               </Flex>
 
@@ -771,182 +994,110 @@ const Playground: React.FunctionComponent = () => {
               <FormGroup label="Model" fieldId="guardrails-model-select" style={{ marginBottom: '1.5rem' }}>
                 <Select
                   id="guardrails-model-select"
-                  isOpen={isModelSelectOpen}
-                  selected={selectedModel}
+                  isOpen={isGuardrailModelSelectOpen}
+                  selected={selectedGuardrailModel}
                   onSelect={(_event, value) => {
-                    setSelectedModel(value as string);
-                    setIsModelSelectOpen(false);
+                    setSelectedGuardrailModel(value as string);
+                    setIsGuardrailModelSelectOpen(false);
                   }}
-                  onOpenChange={(isOpen) => setIsModelSelectOpen(isOpen)}
+                  onOpenChange={(isOpen) => setIsGuardrailModelSelectOpen(isOpen)}
                   toggle={(toggleRef) => (
                     <MenuToggle
                       ref={toggleRef}
-                      onClick={() => setIsModelSelectOpen(!isModelSelectOpen)}
-                      isExpanded={isModelSelectOpen}
+                      onClick={() => setIsGuardrailModelSelectOpen(!isGuardrailModelSelectOpen)}
+                      isExpanded={isGuardrailModelSelectOpen}
                       id="guardrails-model-select-toggle"
                       style={{ width: '100%', maxWidth: '350px' }}
                     >
-                      {selectedModel === 'llama-3.1-8b-instruct' ? 'Llama 3.1 8B-Instruct' :
-                       selectedModel === 'mistral-7b-instruct' ? 'Mistral 7B-Instruct' :
-                       selectedModel === 'granite-8b-code' ? 'Granite 8B Code' :
-                       selectedModel === 'falcon-7b' ? 'Falcon 7B' :
-                       selectedModel === 'bloom-7b1' ? 'BLOOM 7B1' : 'Select model'}
+                      <Flex alignItems={{ default: 'alignItemsCenter' }} spaceItems={{ default: 'spaceItemsSm' }}>
+                        <FlexItem>
+                          {selectedGuardrailModel === 'granite-guardian' ? 'Granite Guardian' :
+                           selectedGuardrailModel === 'llama-guard' ? 'Llama Guard' :
+                           selectedGuardrailModel === 'llama-3.2-11b' ? 'Llama 3.2 11B' :
+                           selectedGuardrailModel === 'qwen-3.2-14b' ? 'Qwen 3.2 14B' : 'Select model'}
+                        </FlexItem>
+                        {(selectedGuardrailModel === 'granite-guardian' || selectedGuardrailModel === 'llama-guard') && (
+                          <FlexItem><Label color="green" isCompact>GRMDL</Label></FlexItem>
+                        )}
+                      </Flex>
                     </MenuToggle>
                   )}
                 >
                   <SelectList>
-                    <SelectOption value="llama-3.1-8b-instruct">Llama 3.1 8B-Instruct</SelectOption>
-                    <SelectOption value="mistral-7b-instruct">Mistral 7B-Instruct</SelectOption>
-                    <SelectOption value="granite-8b-code">Granite 8B Code</SelectOption>
-                    <SelectOption value="falcon-7b">Falcon 7B</SelectOption>
-                    <SelectOption value="bloom-7b1">BLOOM 7B1</SelectOption>
+                    <SelectOption value="granite-guardian">
+                      <Flex alignItems={{ default: 'alignItemsCenter' }} spaceItems={{ default: 'spaceItemsSm' }}>
+                        <FlexItem>Granite Guardian</FlexItem>
+                        <FlexItem><Label color="green" isCompact>GRMDL</Label></FlexItem>
+                      </Flex>
+                    </SelectOption>
+                    <SelectOption value="llama-guard">
+                      <Flex alignItems={{ default: 'alignItemsCenter' }} spaceItems={{ default: 'spaceItemsSm' }}>
+                        <FlexItem>Llama Guard</FlexItem>
+                        <FlexItem><Label color="green" isCompact>GRMDL</Label></FlexItem>
+                      </Flex>
+                    </SelectOption>
+                    <SelectOption value="llama-3.2-11b">Llama 3.2 11B</SelectOption>
+                    <SelectOption value="qwen-3.2-14b">Qwen 3.2 14B</SelectOption>
                   </SelectList>
                 </Select>
               </FormGroup>
 
               {/* User Input Section */}
-              <div style={{ marginBottom: '2rem' }}>
-                <Title headingLevel="h4" size="md" style={{ marginBottom: '1rem' }}>
+              <div style={{ marginBottom: '1.5rem' }}>
+                <Title headingLevel="h4" size="md" style={{ marginBottom: '0.75rem' }}>
                   User input
                 </Title>
-
-                {/* Jailbreaks and prompt attacks */}
-                <Flex alignItems={{ default: 'alignItemsCenter' }} spaceItems={{ default: 'spaceItemsSm' }} style={{ marginBottom: '1rem' }}>
-                  <FlexItem>
-                    <Switch
-                      id="guardrails-jailbreaks"
-                      isChecked={jailbreaksEnabled}
-                      onChange={(_event, checked) => setJailbreaksEnabled(checked)}
-                      aria-label="Enable jailbreaks protection"
-                    />
-                  </FlexItem>
-                  <FlexItem style={{ flex: 1, display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-                    Jailbreaks and prompt attacks
-                    <Tooltip content="Protects against attempts to bypass model safety measures and malicious prompt injection attacks">
-                      <OutlinedQuestionCircleIcon style={{ fontSize: '14px', color: 'var(--pf-v6-global--icon-Color--subtle)' }} />
-                    </Tooltip>
-                  </FlexItem>
-                </Flex>
-
-                {/* Content moderation - User input */}
-                <Flex alignItems={{ default: 'alignItemsCenter' }} spaceItems={{ default: 'spaceItemsSm' }} style={{ marginBottom: '1rem' }}>
-                  <FlexItem>
-                    <Switch
-                      id="guardrails-content-mod-user"
-                      isChecked={contentModerationUserEnabled}
-                      onChange={(_event, checked) => setContentModerationUserEnabled(checked)}
-                      aria-label="Enable content moderation for user input"
-                    />
-                  </FlexItem>
-                  <FlexItem style={{ flex: 1, display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-                    Content moderation
-                    <Tooltip content="Filters inappropriate content in user messages">
-                      <OutlinedQuestionCircleIcon style={{ fontSize: '14px', color: 'var(--pf-v6-global--icon-Color--subtle)' }} />
-                    </Tooltip>
-                  </FlexItem>
-                </Flex>
-
-                {/* PII - User input */}
-                <Flex alignItems={{ default: 'alignItemsCenter' }} spaceItems={{ default: 'spaceItemsSm' }}>
-                  <FlexItem>
-                    <Switch
-                      id="guardrails-pii-user"
-                      isChecked={piiUserEnabled}
-                      onChange={(_event, checked) => setPiiUserEnabled(checked)}
-                      aria-label="Enable PII detection for user input"
-                    />
-                  </FlexItem>
-                  <FlexItem style={{ flex: 1, display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-                    Personal identifiable information (PII)
-                    <Tooltip content="Detects and protects personally identifiable information in user messages">
-                      <OutlinedQuestionCircleIcon style={{ fontSize: '14px', color: 'var(--pf-v6-global--icon-Color--subtle)' }} />
-                    </Tooltip>
-                  </FlexItem>
-                </Flex>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', paddingLeft: '0.5rem' }}>
+                  <Flex alignItems={{ default: 'alignItemsCenter' }} spaceItems={{ default: 'spaceItemsSm' }}>
+                    <FlexItem>Jailbreaks and prompt attacks</FlexItem>
+                    <FlexItem>
+                      <Tooltip content="Protects against attempts to bypass model safety measures and malicious prompt injection attacks">
+                        <OutlinedQuestionCircleIcon style={{ fontSize: '14px', color: 'var(--pf-v6-global--icon-Color--subtle)' }} />
+                      </Tooltip>
+                    </FlexItem>
+                  </Flex>
+                  <Flex alignItems={{ default: 'alignItemsCenter' }} spaceItems={{ default: 'spaceItemsSm' }}>
+                    <FlexItem>Content moderation</FlexItem>
+                    <FlexItem>
+                      <Tooltip content="Filters inappropriate content in user messages">
+                        <OutlinedQuestionCircleIcon style={{ fontSize: '14px', color: 'var(--pf-v6-global--icon-Color--subtle)' }} />
+                      </Tooltip>
+                    </FlexItem>
+                  </Flex>
+                  <Flex alignItems={{ default: 'alignItemsCenter' }} spaceItems={{ default: 'spaceItemsSm' }}>
+                    <FlexItem>Personal identifiable information (PII)</FlexItem>
+                    <FlexItem>
+                      <Tooltip content="Detects and protects personally identifiable information in user messages">
+                        <OutlinedQuestionCircleIcon style={{ fontSize: '14px', color: 'var(--pf-v6-global--icon-Color--subtle)' }} />
+                      </Tooltip>
+                    </FlexItem>
+                  </Flex>
+                </div>
               </div>
 
               {/* Model Output Section */}
               <div>
-                <Title headingLevel="h4" size="md" style={{ marginBottom: '1rem' }}>
+                <Title headingLevel="h4" size="md" style={{ marginBottom: '0.75rem' }}>
                   Model output
                 </Title>
-
-                {/* Content moderation - Model output */}
-                <div style={{ marginBottom: '1rem' }}>
-                  <Flex alignItems={{ default: 'alignItemsCenter' }} spaceItems={{ default: 'spaceItemsSm' }} style={{ marginBottom: '0.5rem' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', paddingLeft: '0.5rem' }}>
+                  <Flex alignItems={{ default: 'alignItemsCenter' }} spaceItems={{ default: 'spaceItemsSm' }}>
+                    <FlexItem>Content moderation</FlexItem>
                     <FlexItem>
-                      <Switch
-                        id="guardrails-content-mod-output"
-                        isChecked={contentModerationOutputEnabled}
-                        onChange={(_event, checked) => {
-                          setContentModerationOutputEnabled(checked);
-                          // Optionally uncheck all sub-options when main toggle is off
-                          if (!checked) {
-                            setToxicityEnabled(false);
-                            setSexualContentEnabled(false);
-                            setViolenceEnabled(false);
-                            setHarassmentEnabled(false);
-                          }
-                        }}
-                        aria-label="Enable content moderation for model output"
-                      />
-                    </FlexItem>
-                    <FlexItem style={{ flex: 1, display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-                      Content moderation
                       <Tooltip content="Filters inappropriate content in model responses">
                         <OutlinedQuestionCircleIcon style={{ fontSize: '14px', color: 'var(--pf-v6-global--icon-Color--subtle)' }} />
                       </Tooltip>
                     </FlexItem>
                   </Flex>
-
-                  {/* Content Moderation Sub-options */}
-                  {contentModerationOutputEnabled && (
-                    <div style={{ marginLeft: '3rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                      <Checkbox
-                        id="toxicity-checkbox"
-                        label="Toxicity / Hate Speech"
-                        isChecked={toxicityEnabled}
-                        onChange={(_event, checked) => setToxicityEnabled(checked)}
-                      />
-                      <Checkbox
-                        id="sexual-content-checkbox"
-                        label="Sexual Content"
-                        isChecked={sexualContentEnabled}
-                        onChange={(_event, checked) => setSexualContentEnabled(checked)}
-                      />
-                      <Checkbox
-                        id="violence-checkbox"
-                        label="Violence / Self Harm"
-                        isChecked={violenceEnabled}
-                        onChange={(_event, checked) => setViolenceEnabled(checked)}
-                      />
-                      <Checkbox
-                        id="harassment-checkbox"
-                        label="Harassment"
-                        isChecked={harassmentEnabled}
-                        onChange={(_event, checked) => setHarassmentEnabled(checked)}
-                      />
-                    </div>
-                  )}
+                  <Flex alignItems={{ default: 'alignItemsCenter' }} spaceItems={{ default: 'spaceItemsSm' }}>
+                    <FlexItem>Personal identifiable information (PII)</FlexItem>
+                    <FlexItem>
+                      <Tooltip content="Detects and protects personally identifiable information in model responses">
+                        <OutlinedQuestionCircleIcon style={{ fontSize: '14px', color: 'var(--pf-v6-global--icon-Color--subtle)' }} />
+                      </Tooltip>
+                    </FlexItem>
+                  </Flex>
                 </div>
-
-                {/* PII - Model output */}
-                <Flex alignItems={{ default: 'alignItemsCenter' }} spaceItems={{ default: 'spaceItemsSm' }}>
-                  <FlexItem>
-                    <Switch
-                      id="guardrails-pii-output"
-                      isChecked={piiOutputEnabled}
-                      onChange={(_event, checked) => setPiiOutputEnabled(checked)}
-                      aria-label="Enable PII detection for model output"
-                    />
-                  </FlexItem>
-                  <FlexItem style={{ flex: 1, display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-                    Personal identifiable information (PII)
-                    <Tooltip content="Detects and protects personally identifiable information in model responses">
-                      <OutlinedQuestionCircleIcon style={{ fontSize: '14px', color: 'var(--pf-v6-global--icon-Color--subtle)' }} />
-                    </Tooltip>
-                  </FlexItem>
-                </Flex>
               </div>
             </>
           )}
@@ -1005,6 +1156,7 @@ const Playground: React.FunctionComponent = () => {
             <MessageBar
               value={inputValue}
               onSendMessage={(message) => {
+                if (!selectedModel) return;
                 const newMsg = {
                   id: Date.now().toString(),
                   role: 'user',
@@ -1016,9 +1168,16 @@ const Playground: React.FunctionComponent = () => {
                 setChatHistory([...chatHistory, newMsg]);
                 setInputValue('');
               }}
-              onChange={(_event, value) => setInputValue(String(value))}
+              onChange={(_event, value) => {
+                if (selectedModel) {
+                  setInputValue(String(value));
+                }
+              }}
               hasAttachButton={false}
-              hasMicrophoneButton
+              hasMicrophoneButton={!!selectedModel}
+              isSendButtonDisabled={!selectedModel}
+              isDisabled={!selectedModel}
+              placeholder={!selectedModel ? 'Please select a model to start chatting' : undefined}
             />
           </div>
         </ChatbotFooter>
@@ -1512,6 +1671,175 @@ const Playground: React.FunctionComponent = () => {
           >
             Cancel
           </Button>
+        </ModalFooter>
+      </Modal>
+
+      {/* Remove Vector Store Confirmation Modal */}
+      <Modal
+        variant={ModalVariant.small}
+        isOpen={vectorStoreToRemove !== null}
+        onClose={() => setVectorStoreToRemove(null)}
+        aria-labelledby="remove-vector-store-modal-title"
+        aria-describedby="remove-vector-store-modal-body"
+      >
+        <ModalHeader
+          title="Remove vector store?"
+          labelId="remove-vector-store-modal-title"
+        />
+        <ModalBody id="remove-vector-store-modal-body">
+          Are you sure you want to remove <strong>{vectorStoreToRemove?.name}</strong> from Knowledge?
+        </ModalBody>
+        <ModalFooter>
+          <Button
+            variant="danger"
+            onClick={() => {
+              if (vectorStoreToRemove) {
+                setVectorStores(stores =>
+                  stores.map(s =>
+                    s.id === vectorStoreToRemove.id ? { ...s, addedToKnowledge: false, selected: false } : s
+                  )
+                );
+              }
+              setVectorStoreToRemove(null);
+            }}
+          >
+            Remove
+          </Button>
+          <Button
+            variant="link"
+            onClick={() => setVectorStoreToRemove(null)}
+          >
+            Cancel
+          </Button>
+        </ModalFooter>
+      </Modal>
+
+      {/* MCP Connection Success Modal */}
+      <Modal
+        variant={ModalVariant.medium}
+        isOpen={isMcpConnectionModalOpen}
+        onClose={() => setIsMcpConnectionModalOpen(false)}
+        aria-labelledby="mcp-connection-modal-title"
+      >
+        <ModalHeader>
+          <Flex alignItems={{ default: 'alignItemsCenter' }} spaceItems={{ default: 'spaceItemsSm' }}>
+            <FlexItem><CheckCircleIcon color="var(--pf-v6-global--success-color--100)" /></FlexItem>
+            <FlexItem><Title headingLevel="h2" id="mcp-connection-modal-title">Connection successful</Title></FlexItem>
+          </Flex>
+        </ModalHeader>
+        <ModalBody>
+          <p>You are now connected to <strong>{selectedMcpServer?.name}-MCP-Server</strong>. You can use it directly in the playground chat.</p>
+          <Flex alignItems={{ default: 'alignItemsCenter' }} spaceItems={{ default: 'spaceItemsSm' }} style={{ marginTop: '1rem' }}>
+            <FlexItem>{selectedMcpServer?.toolsCount} out of {selectedMcpServer?.totalTools} tools are active.</FlexItem>
+            <FlexItem>
+              <Button
+                variant="link"
+                icon={<PencilAltIcon />}
+                onClick={() => {
+                  setIsMcpConnectionModalOpen(false);
+                  handleToolsClick(selectedMcpServer);
+                }}
+              >
+                Edit tool selection
+              </Button>
+            </FlexItem>
+          </Flex>
+        </ModalBody>
+        <ModalFooter>
+          <Button variant="primary" onClick={() => setIsMcpConnectionModalOpen(false)}>Save</Button>
+          <Button variant="link" onClick={() => handleMcpDisconnect(selectedMcpServer?.id)}>Disconnect</Button>
+        </ModalFooter>
+      </Modal>
+
+      {/* MCP Tools Selection Modal */}
+      <Modal
+        variant={ModalVariant.large}
+        isOpen={isMcpToolsModalOpen}
+        onClose={() => setIsMcpToolsModalOpen(false)}
+        aria-labelledby="mcp-tools-modal-title"
+      >
+        <ModalHeader title={`${selectedMcpServer?.name}-MCP-Server`} labelId="mcp-tools-modal-title" />
+        <ModalBody>
+          <Flex justifyContent={{ default: 'justifyContentSpaceBetween' }} alignItems={{ default: 'alignItemsCenter' }} style={{ marginBottom: '1rem' }}>
+            <FlexItem>
+              <SearchInput
+                placeholder="Find by name"
+                value={mcpToolsSearchValue}
+                onChange={(_event, value) => {
+                  setMcpToolsSearchValue(value);
+                  setMcpToolsPage(1);
+                }}
+                onClear={() => {
+                  setMcpToolsSearchValue('');
+                  setMcpToolsPage(1);
+                }}
+              />
+            </FlexItem>
+            <FlexItem>
+              {Object.values(mcpToolSelections).filter(Boolean).length} out of {kubernetesMcpTools.length} selected
+            </FlexItem>
+            <FlexItem>
+              <Pagination
+                itemCount={getFilteredTools().length}
+                perPage={mcpToolsPerPage}
+                page={mcpToolsPage}
+                onSetPage={(_event, page) => setMcpToolsPage(page)}
+                isCompact
+                widgetId="mcp-tools-pagination"
+              />
+            </FlexItem>
+          </Flex>
+
+          <Table variant="compact" aria-label="MCP Tools">
+            <Thead>
+              <Tr>
+                <Th width={10}>
+                  <Checkbox
+                    id="select-all-mcp-tools"
+                    isChecked={
+                      getFilteredTools().length > 0 &&
+                      getFilteredTools().every(tool => mcpToolSelections[tool.name])
+                    }
+                    onChange={(_event, checked) => {
+                      const newSelections = { ...mcpToolSelections };
+                      getFilteredTools().forEach(tool => {
+                        newSelections[tool.name] = checked;
+                      });
+                      setMcpToolSelections(newSelections);
+                    }}
+                    aria-label="Select all tools"
+                  />
+                </Th>
+                <Th>Tool name</Th>
+                <Th>Description</Th>
+              </Tr>
+            </Thead>
+            <Tbody>
+              {getPaginatedTools().map(tool => (
+                <Tr key={tool.name}>
+                  <Td>
+                    <Checkbox
+                      id={`tool-${tool.name}`}
+                      isChecked={mcpToolSelections[tool.name] || false}
+                      onChange={(_event, checked) => {
+                        setMcpToolSelections({
+                          ...mcpToolSelections,
+                          [tool.name]: checked
+                        });
+                      }}
+                      aria-label={`Select ${tool.name}`}
+                    />
+                  </Td>
+                  <Td>{tool.name}</Td>
+                  <Td>{tool.description}</Td>
+                </Tr>
+              ))}
+            </Tbody>
+          </Table>
+        </ModalBody>
+        <ModalFooter>
+          <Button variant="primary" onClick={handleSaveMcpTools}>Save</Button>
+          <Button variant="link" onClick={() => setIsMcpToolsModalOpen(false)}>Cancel</Button>
         </ModalFooter>
       </Modal>
     </>

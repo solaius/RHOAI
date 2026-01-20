@@ -38,7 +38,7 @@ const Models: React.FunctionComponent = () => {
                <Button
                  variant="link"
                  isInline
-                 onClick={() => window.open('http://localhost:9000/ai-hub/catalog', '_blank')}
+                 onClick={() => window.open('http://localhost:5176/ai-hub/catalog', '_blank')}
                  style={{ fontWeight: 'bold', fontSize: 'inherit', padding: 0 }}
                >
                  AI Hub

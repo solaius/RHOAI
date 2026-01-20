@@ -152,7 +152,7 @@ const routes: AppRouteConfig[] = [
   {
     element: <Connections />,
     exact: true,
-    label: 'Connections',
+    // label: 'Connections', // Hidden from nav - to be activated later
     path: '/connections',
     title: 'RHOAI 3.1 Console | Connections',
     icon: createConnectionsIcon(),
@@ -237,21 +237,21 @@ const routes: AppRouteConfig[] = [
       {
         element: <AutoRAG />,
         exact: true,
-        label: 'AutoRAG',
+        // label: 'AutoRAG', // Hidden from nav - to be activated later
         path: '/gen-ai-studio/autorag',
         title: 'RHOAI 3.1 Console | Gen AI Studio - AutoRAG',
       },
       {
         element: <PromptLab />,
         exact: true,
-        label: 'Prompt lab',
+        label: 'Prompt management',
         path: '/gen-ai-studio/prompt-lab',
-        title: 'RHOAI 3.1 Console | Gen AI Studio - Prompt Lab',
+        title: 'RHOAI 3.1 Console | Gen AI Studio - Prompt Management',
       },
       {
         element: <APIKeys />,
         exact: true,
-        label: 'API keys',
+        // label: 'API keys', // Hidden from nav - to be activated later
         path: '/gen-ai-studio/api-keys',
         title: 'RHOAI 3.1 Console | Gen AI Studio - API Keys',
       },
