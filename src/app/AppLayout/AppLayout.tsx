@@ -1,5 +1,5 @@
 import * as React from 'react';
-import { NavLink, useLocation, useNavigate, matchPath } from 'react-router-dom';
+import { NavLink, useLocation, useNavigate, matchPath, useSearchParams } from 'react-router-dom';
 import {
   Badge,
   Button,
@@ -51,6 +51,7 @@ const AppLayout: React.FunctionComponent<IAppLayout> = ({ children }) => {
   const { flags } = useFeatureFlags();
   const navigate = useNavigate();
   const location = useLocation();
+  const [searchParams] = useSearchParams();
   
   // Environment variable controls for prototype appearance
   const useGenericLogo = process.env.GENERIC_LOGO === 'true';
@@ -301,6 +302,19 @@ const AppLayout: React.FunctionComponent<IAppLayout> = ({ children }) => {
                 >
                   AI Engineer
                 </DropdownItem>
+                <DropdownItem 
+                  key="data-scientist"
+                  icon={<UserIcon />}
+                  onClick={() => {
+                    setUserProfile('Data Scientist');
+                  }}
+                  style={{ 
+                    fontWeight: userProfile === 'Data Scientist' ? '600' : '400',
+                    color: userProfile === 'Data Scientist' ? '#0066cc' : 'inherit'
+                  }}
+                >
+                  Data Scientist
+                </DropdownItem>
                 <Divider component="li" />
                 <DropdownItem 
                   key="profile"
@@ -334,6 +348,17 @@ const AppLayout: React.FunctionComponent<IAppLayout> = ({ children }) => {
       </MastheadContent>
     </Masthead>
   );
+
+  // Helper to preserve featureStore param for feature-store routes during cross-navigation
+  const getNavLinkPath = (path: string): string => {
+    if (path.includes('/feature-store/')) {
+      const featureStoreParam = searchParams.get('featureStore');
+      if (featureStoreParam) {
+        return `${path}?featureStore=${encodeURIComponent(featureStoreParam)}`;
+      }
+    }
+    return path;
+  };
 
   const renderNavItem = (route: IAppRoute, index: number, groupId?: string) => {
     const IconComponent = route.icon;
@@ -373,10 +398,22 @@ const AppLayout: React.FunctionComponent<IAppLayout> = ({ children }) => {
                 Tech Preview
               </Label>
             )}
+            {(route as any).inProgress && (
+              <Badge 
+                style={{ 
+                  backgroundColor: '#F32BC4',
+                  color: '#ffffff',
+                  fontSize: '10px'
+                }}
+                id={`${itemId}-in-progress-badge-disabled`}
+              >
+                WIP
+              </Badge>
+            )}
           </div>
         ) : (
           <NavLink
-            to={route.path}
+            to={getNavLinkPath(route.path)}
             style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}
           >
             <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
@@ -417,8 +454,8 @@ const AppLayout: React.FunctionComponent<IAppLayout> = ({ children }) => {
               >
                 <Badge 
                   style={{ 
-                    backgroundColor: '#f0ab00',
-                    color: '#151515',
+                    backgroundColor: '#F32BC4',
+                    color: '#ffffff',
                     fontSize: '10px'
                   }}
                   id={`${itemId}-new-badge`}
@@ -426,6 +463,18 @@ const AppLayout: React.FunctionComponent<IAppLayout> = ({ children }) => {
                   New
                 </Badge>
               </Tooltip>
+            )}
+            {(route as any).inProgress && (
+              <Badge 
+                style={{ 
+                  backgroundColor: '#F32BC4',
+                  color: '#ffffff',
+                  fontSize: '10px'
+                }}
+                id={`${itemId}-in-progress-badge`}
+              >
+                WIP
+              </Badge>
             )}
           </NavLink>
         )}

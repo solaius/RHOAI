@@ -1,17 +1,5 @@
-import * as React from 'react';
-import {
-  PageSection,
-  Content,
-  ContentVariants,
-} from '@patternfly/react-core';
+// Re-export the FeaturesListPage as the Features component
+export { FeaturesListPage as Features } from '../../../../pages/feature-store/features/FeaturesListPage';
 
-const Features: React.FunctionComponent = () => (
-  <PageSection>
-    <Content component={ContentVariants.h1}>Feature Store - Features</Content>
-    <Content component={ContentVariants.p}>
-      Browse and manage individual features in the feature store.
-    </Content>
-  </PageSection>
-);
-
-export { Features };
+// Re-export the FeatureDetailPage
+export { FeatureDetailPage } from '../../../../pages/feature-store/features/FeatureDetailPage';

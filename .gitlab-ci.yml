@@ -8,6 +8,7 @@ stages:
 
 variables:
   NODE_ENV: production
+  NODE_OPTIONS: "--max-old-space-size=3072"
 
 # Default settings for all jobs
 default:
@@ -23,6 +24,9 @@ default:
 
 build:
   stage: build
+  variables:
+    KUBERNETES_MEMORY_REQUEST: "2Gi"
+    KUBERNETES_MEMORY_LIMIT: "4Gi"
   rules:
     - if: $CI_COMMIT_BRANCH == "3.2"
   script:

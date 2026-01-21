@@ -54,7 +54,7 @@ spec:
   level: ${data.level}
   ${data.description ? `description: "${data.description}"` : '# description: ""'}
   groups:${data.groups.length > 0 ? data.groups.map(g => `\n    - ${g}`).join('') : '\n    []'}
-  models:${data.models.length > 0 ? data.models.map(m => `\n    - ${m}`).join('') : '\n    []'}
+  models:${data.models && data.models.length > 0 ? data.models.map(m => `\n    - ${m}`).join('') : '\n    []'}
   limits:${hasLimits ? limitsYaml : ' {}'}
 `;
     return yaml;
@@ -125,6 +125,7 @@ spec:
         } else if (trimmed.startsWith('- ') && currentSection === 'groups') {
           data.groups.push(trimmed.substring(2));
         } else if (trimmed.startsWith('- ') && currentSection === 'models') {
+          if (!data.models) data.models = [];
           data.models.push(trimmed.substring(2));
         } else if (trimmed.startsWith('apiKeyExpirationDays:')) {
           // Save any pending limit object
@@ -198,8 +199,7 @@ spec:
       parsed &&
       parsed.name.trim() !== '' &&
       parsed.level > 0 &&
-      parsed.groups.length > 0 &&
-      parsed.models.length > 0
+      parsed.groups.length > 0
     );
   };
 
