@@ -4,6 +4,12 @@ This repository contains a **design prototype** of OpenShift AI, created primari
 
 > **Important:** This is not production-ready code. It is a vibe-designed artifact built to support design work, facilitate stakeholder conversations, and explore UI/UX concepts for OpenShift AI.
 
+## 3.4 Prototype Link
+
+> [!TIP]
+> Updates to this prototype will be located at this URL a few minutes after merging:
+> https://rhoai-3-4-cb1313.pages.redhat.com
+
 ## Purpose
 
 - **Design exploration**: Rapidly prototype and iterate on UI concepts
