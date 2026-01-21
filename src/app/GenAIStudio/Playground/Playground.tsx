@@ -335,114 +335,68 @@ const Playground: React.FunctionComponent = () => {
   const [savePromptAlias, setSavePromptAlias] = useState('');
 
 
+  // Tab Bar Component - spans full width above chat and config panel
+  const TabBar = (
+    <div style={{
+      backgroundColor: '#ffffff',
+      padding: '0.75rem 1rem',
+      borderBottom: '1px solid #d2d2d2',
+      display: 'flex',
+      alignItems: 'center'
+    }}>
+      <ToggleGroup aria-label="Configuration options">
+        <ToggleGroupItem
+          text="Model"
+          buttonId="model"
+          isSelected={selectedBuildTab === 'model'}
+          onChange={() => setSelectedBuildTab('model')}
+        />
+        <ToggleGroupItem
+          text="Prompt"
+          buttonId="prompt-lab"
+          isSelected={selectedBuildTab === 'prompt-lab'}
+          onChange={() => setSelectedBuildTab('prompt-lab')}
+        />
+        <ToggleGroupItem
+          text={
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}>
+              Knowledge
+              {vectorStores.filter(s => s.selected).length > 0 && (
+                <Badge isRead>{vectorStores.filter(s => s.selected).length}</Badge>
+              )}
+            </span>
+          }
+          buttonId="knowledge"
+          isSelected={selectedBuildTab === 'knowledge'}
+          onChange={() => setSelectedBuildTab('knowledge')}
+        />
+        <ToggleGroupItem
+          text="MCP"
+          buttonId="mcp"
+          isSelected={selectedBuildTab === 'mcp'}
+          onChange={() => setSelectedBuildTab('mcp')}
+        />
+        <ToggleGroupItem
+          text={
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}>
+              Guardrails
+              <Label color={guardrailsEnabled ? 'green' : 'red'} isCompact>
+                {guardrailsEnabled ? 'On' : 'Off'}
+              </Label>
+            </span>
+          }
+          buttonId="guardrails"
+          isSelected={selectedBuildTab === 'guardrails'}
+          onChange={() => setSelectedBuildTab('guardrails')}
+        />
+      </ToggleGroup>
+    </div>
+  );
+
   // Build Panel using DrawerPanelContent
   const BuildPanelContent = (
-    <DrawerPanelContent isResizable minSize="400px" defaultSize="400px" id="build-panel-drawer">
-      <DrawerContentBody style={{ padding: 0, height: '100%', display: 'flex', flexDirection: 'column' }}>
-        <style>{`
-          .config-toggle-group .pf-v6-c-toggle-group__button:not(.pf-m-selected) {
-            background-color: #ffffff !important;
-          }
-          #build-panel-drawer .pf-v6-c-drawer__panel-main {
-            padding-top: 0 !important;
-          }
-        `}</style>
-        <div style={{
-          backgroundColor: '#f0f0f0',
-          padding: '1rem',
-          borderBottom: '1px solid #d2d2d2'
-        }}>
-          <Flex alignItems={{ default: 'alignItemsCenter' }} spaceItems={{ default: 'spaceItemsSm' }} style={{ marginBottom: '1rem' }}>
-            <FlexItem>
-              <div
-                style={{ width: '24px', height: '24px', display: 'flex', alignItems: 'center' }}
-                dangerouslySetInnerHTML={{ __html: AIIcon }}
-              />
-            </FlexItem>
-            <FlexItem>
-              <Title headingLevel="h2" size="lg">
-                Configuration builder
-              </Title>
-            </FlexItem>
-          </Flex>
-
-          <ToggleGroup aria-label="Build panel options" className="config-toggle-group">
-            <ToggleGroupItem
-              text={
-                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}>
-                  Model
-                  {selectedModel && (
-                    <Label color="green" isCompact>✓</Label>
-                  )}
-                </span>
-              }
-              buttonId="model"
-              isSelected={selectedBuildTab === 'model'}
-              onChange={() => setSelectedBuildTab('model')}
-            />
-            <ToggleGroupItem
-              text={
-                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}>
-                  Prompt
-                  {systemPrompt.trim() && (
-                    <Label color="green" isCompact>✓</Label>
-                  )}
-                </span>
-              }
-              buttonId="prompt-lab"
-              isSelected={selectedBuildTab === 'prompt-lab'}
-              onChange={() => setSelectedBuildTab('prompt-lab')}
-            />
-            <ToggleGroupItem
-              text={
-                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}>
-                  Guardrails
-                  <Label color={guardrailsEnabled ? 'green' : 'red'} isCompact>
-                    {guardrailsEnabled ? 'On' : 'Off'}
-                  </Label>
-                </span>
-              }
-              buttonId="guardrails"
-              isSelected={selectedBuildTab === 'guardrails'}
-              onChange={() => setSelectedBuildTab('guardrails')}
-            />
-          </ToggleGroup>
-
-          <div style={{ marginTop: '1rem', marginBottom: '0.5rem', fontSize: '0.875rem', fontWeight: 600, color: 'var(--pf-v6-global--Color--200)' }}>
-            Connectors
-          </div>
-
-          <ToggleGroup aria-label="Connector options" className="config-toggle-group">
-            <ToggleGroupItem
-              text={
-                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}>
-                  Knowledge
-                  <Label color={vectorStores.filter(s => s.selected).length > 0 ? 'green' : 'grey'} isCompact>
-                    {vectorStores.filter(s => s.selected).length}
-                  </Label>
-                </span>
-              }
-              buttonId="knowledge"
-              isSelected={selectedBuildTab === 'knowledge'}
-              onChange={() => setSelectedBuildTab('knowledge')}
-            />
-            <ToggleGroupItem
-              text={
-                <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}>
-                  MCP
-                  <Label color={enabledMcpCount > 0 ? 'green' : 'grey'} isCompact>
-                    {enabledMcpCount}
-                  </Label>
-                </span>
-              }
-              buttonId="mcp"
-              isSelected={selectedBuildTab === 'mcp'}
-              onChange={() => setSelectedBuildTab('mcp')}
-            />
-          </ToggleGroup>
-        </div>
-        
-        <div style={{ flex: 1, overflow: 'auto', padding: '1rem' }}>
+    <DrawerPanelContent isResizable minSize="380px" defaultSize="380px" id="build-panel-drawer">
+      <DrawerContentBody style={{ padding: '1rem', height: '100%', overflow: 'auto' }}>
           {selectedBuildTab === 'model' && (
             <>
               <Title headingLevel="h3" size="md" style={{ marginBottom: '1rem' }}>
@@ -1101,7 +1055,6 @@ const Playground: React.FunctionComponent = () => {
               </div>
             </>
           )}
-        </div>
       </DrawerContentBody>
     </DrawerPanelContent>
   );
@@ -1274,16 +1227,22 @@ const Playground: React.FunctionComponent = () => {
   );
 
   const MainContent = (
-    <div style={{ display: 'flex', height: 'calc(100vh - 200px)', width: '100%' }}>
-      <Drawer isExpanded isInline position="left" style={{ flex: 1, minWidth: 0 }}>
-        <DrawerContent panelContent={BuildPanelContent}>
-          <DrawerContentBody style={{ padding: 0, display: 'flex', flexDirection: 'column', height: '100%' }}>
-            <div style={{ flex: 1, minWidth: 0, width: '100%' }}>
-              <ChatPanel />
-            </div>
-          </DrawerContentBody>
-        </DrawerContent>
-      </Drawer>
+    <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 200px)', width: '100%' }}>
+      {/* Tab Bar - spans full width above chat and config */}
+      {TabBar}
+
+      {/* Main Content - Config Panel + Chat */}
+      <div style={{ flex: 1, overflow: 'hidden' }}>
+        <Drawer isExpanded isInline position="left" style={{ height: '100%' }}>
+          <DrawerContent panelContent={BuildPanelContent}>
+            <DrawerContentBody style={{ padding: 0, display: 'flex', flexDirection: 'column', height: '100%' }}>
+              <div style={{ flex: 1, minWidth: 0, width: '100%' }}>
+                <ChatPanel />
+              </div>
+            </DrawerContentBody>
+          </DrawerContent>
+        </Drawer>
+      </div>
     </div>
   );
 

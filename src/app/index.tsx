@@ -9,11 +9,14 @@ import { FeatureFlagsProvider } from '@app/utils/FeatureFlagsContext';
 import { UserProfileProvider } from '@app/utils/UserProfileContext';
 import '@app/app.css';
 
+// Get basename from environment for GitHub Pages deployment
+const basename = process.env.ASSET_PATH?.replace(/\/$/, '') || '';
+
 const App: React.FunctionComponent = () => (
   <FeatureFlagsProvider>
     <UserProfileProvider>
       <ThemeProvider>
-        <Router>
+        <Router basename={basename}>
           <AppLayout>
             <AppRoutes />
           </AppLayout>

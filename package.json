@@ -1,14 +1,16 @@
 {
-  "name": "patternfly-seed",
+  "name": "rhoai-prototype",
   "version": "0.0.2",
-  "description": "An open source build scaffolding utility for web apps.",
-  "repository": "https://github.com/patternfly/patternfly-react-seed.git",
-  "homepage": "https://patternfly-react-seed.surge.sh",
+  "description": "Red Hat OpenShift AI UI Prototype",
+  "repository": "https://github.com/solaius/RHOAI.git",
+  "homepage": "https://solaius.github.io/RHOAI",
   "license": "MIT",
   "private": true,
   "scripts": {
     "prebuild": "npm run type-check && npm run clean",
     "build": "webpack --config webpack.prod.js",
+    "predeploy": "npx cross-env MSYS_NO_PATHCONV=1 ASSET_PATH=/RHOAI/ npm run build",
+    "deploy": "gh-pages -d dist -r https://github.com/solaius/RHOAI.git",
     "start": "sirv dist --cors --single --host --port 8080",
     "start:dev": "webpack serve --color --progress --config webpack.dev.js",
     "test": "jest",
@@ -24,6 +26,8 @@
     "clean": "rimraf dist"
   },
   "devDependencies": {
+    "cross-env": "^7.0.3",
+    "gh-pages": "^6.1.1",
     "@testing-library/jest-dom": "^6.6.3",
     "@testing-library/react": "^16.2.0",
     "@testing-library/user-event": "^14.6.1",
