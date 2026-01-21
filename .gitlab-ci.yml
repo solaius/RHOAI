@@ -1,5 +1,5 @@
 # GitLab Pages for Node.js Web App
-# Configured to deploy from 'gitlab-pages' branch to keep main branch clean
+# Supports parallel deployments for all branches and merge requests
 image: registry.redhat.io/ubi8/nodejs-18:latest
 
 stages:
@@ -10,47 +10,53 @@ variables:
   NODE_ENV: production
   NODE_OPTIONS: "--max-old-space-size=3072"
 
-# Default settings for all jobs
 default:
   tags:
     - itup-alm-arm
-
-# Cache disabled due to S3 upload timeouts in Red Hat GitLab environment
-# cache:
-#   key: ${CI_COMMIT_REF_SLUG}
-#   paths:
-#     - .npm/
-#   policy: pull-push
 
 build:
   stage: build
   variables:
     KUBERNETES_MEMORY_REQUEST: "2Gi"
     KUBERNETES_MEMORY_LIMIT: "4Gi"
-  rules:
-    - if: $CI_COMMIT_BRANCH == "3.2"
   script:
-    - echo "Installing dependencies (including devDependencies for build tools)..."
     - npm ci --include=dev
-    - echo "Setting up environment for build..."
     - export PATH="$PWD/node_modules/.bin:$PATH"
-    - echo "Verifying build tools are available..."
-    - which tsc || echo "TypeScript compiler not found - will use npx fallback"
-    - echo "Running build process..."
     - npm run build
-    - echo "Preparing files for GitLab Pages..."
-    # GitLab Pages expects files in a 'public' directory
     - mv dist public
   artifacts:
     paths:
       - public
+  rules:
+    - if: $CI_COMMIT_BRANCH
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
 
 pages:
   stage: deploy
-  rules:
-    - if: $CI_COMMIT_BRANCH == "3.2"
+  variables:
+    PAGES_PREFIX: ""
   script:
-    - echo "Deploying to GitLab Pages..."
+    - echo "Deploying to GitLab Pages at ${CI_PAGES_URL}"
+  pages:
+    path_prefix: "$PAGES_PREFIX"
+  environment:
+    name: "Pages ${PAGES_PREFIX}"
+    url: $CI_PAGES_URL
   artifacts:
     paths:
       - public
+  rules:
+    # Default branch gets root URL
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+    # Other branches get /<branch> URL
+    - if: $CI_COMMIT_BRANCH && $CI_COMMIT_BRANCH != $CI_DEFAULT_BRANCH
+      variables:
+        PAGES_PREFIX: "$CI_COMMIT_BRANCH"
+    # MR previews get /mr-<IID> URL, expire after 2 weeks
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+      when: manual
+      variables:
+        PAGES_PREFIX: "mr-$CI_MERGE_REQUEST_IID"
+      pages:
+        path_prefix: "mr-$CI_MERGE_REQUEST_IID"
+        expire_in: 2 weeks
