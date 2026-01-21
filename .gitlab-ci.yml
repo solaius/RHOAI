@@ -39,6 +39,7 @@ pages:
     - echo "Deploying to GitLab Pages at ${CI_PAGES_URL}"
   pages:
     path_prefix: "$PAGES_PREFIX"
+    expire_in: 2 weeks
   environment:
     name: "Pages ${PAGES_PREFIX}"
     url: $CI_PAGES_URL
@@ -46,17 +47,14 @@ pages:
     paths:
       - public
   rules:
-    # Default branch gets root URL
+    # Default branch gets root URL (no prefix = main deployment, won't expire)
     - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
     # Other branches get /<branch> URL
     - if: $CI_COMMIT_BRANCH && $CI_COMMIT_BRANCH != $CI_DEFAULT_BRANCH
       variables:
         PAGES_PREFIX: "$CI_COMMIT_BRANCH"
-    # MR previews get /mr-<IID> URL, expire after 2 weeks
+    # MR previews get /mr-<IID> URL
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
       when: manual
       variables:
         PAGES_PREFIX: "mr-$CI_MERGE_REQUEST_IID"
-      pages:
-        path_prefix: "mr-$CI_MERGE_REQUEST_IID"
-        expire_in: 2 weeks
