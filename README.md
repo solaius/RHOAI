@@ -26,31 +26,9 @@ npm install && npm run start:dev
 
 The prototype will be available at `http://localhost:9000`.
 
-## Development Scripts
-
-```sh
-# Install development/build dependencies
-npm install
-
-# Start the development server
-npm run start:dev
-
-# Run a production build (outputs to "dist" dir)
-npm run build
-
-# Run the test suite
-npm run test
-
-# Run the linter
-npm run lint
-
-# Run the code formatter
-npm run format
-```
-
 ## Prototype Appearance Configuration
 
-The prototype supports configurable appearance settings to prepare it for different contexts (e.g., user research, demos). Create a `.env` file in the root directory with the following options:
+The prototype supports configurable appearance settings to prepare it for different contexts (e.g., user research, demos). Adjust the `.env` file in the root directory with the following options:
 
 ```sh
 # Use generic "AI Platform" text instead of branded logo
@@ -102,7 +80,3 @@ When contributing to this prototype:
 - Focus on design fidelity and user experience over code quality
 - Use PatternFly components and patterns where possible
 - Document any new features or design concepts in the `.design/` directory
-
-## License
-
-See [LICENSE](./LICENSE) for details.
