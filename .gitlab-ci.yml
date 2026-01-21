@@ -17,8 +17,8 @@ default:
 build:
   stage: build
   variables:
-    KUBERNETES_MEMORY_REQUEST: "2Gi"
-    KUBERNETES_MEMORY_LIMIT: "4Gi"
+    KUBERNETES_MEMORY_REQUEST: "4Gi"
+    KUBERNETES_MEMORY_LIMIT: "8Gi"
   script:
     - npm ci --include=dev
     - export PATH="$PWD/node_modules/.bin:$PATH"
