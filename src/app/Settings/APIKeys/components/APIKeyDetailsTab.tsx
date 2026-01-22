@@ -10,8 +10,9 @@ import {
   Divider,
   CodeBlock,
   CodeBlockCode,
+  Label,
 } from '@patternfly/react-core';
-import { APIKey } from '../types';
+import { APIKey, APIKeyStatus } from '../types';
 
 interface APIKeyDetailsTabProps {
   apiKey: APIKey;
@@ -28,6 +29,33 @@ const APIKeyDetailsTab: React.FunctionComponent<APIKeyDetailsTabProps> = ({ apiK
     });
   };
 
+  const formatLastUsedDate = (date?: Date): string => {
+    if (!date) return 'Never';
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffMins = Math.floor(diffMs / (1000 * 60));
+    const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+    
+    if (diffMins < 1) return 'Just now';
+    if (diffMins < 60) return `${diffMins} minute${diffMins === 1 ? '' : 's'} ago`;
+    if (diffHours < 24) return `${diffHours} hour${diffHours === 1 ? '' : 's'} ago`;
+    if (diffDays < 7) return `${diffDays} day${diffDays === 1 ? '' : 's'} ago`;
+    
+    return formatDate(date);
+  };
+
+  const getStatusLabel = (status: APIKeyStatus) => {
+    const statusMap = {
+      Active: { color: 'green' as const, label: 'Active' },
+      Expired: { color: 'red' as const, label: 'Expired' },
+      Disabled: { color: 'grey' as const, label: 'Disabled' },
+      Inactive: { color: 'orange' as const, label: 'Inactive' },
+    };
+    const { color, label } = statusMap[status];
+    return <Label id={`status-${status.toLowerCase()}`} color={color}>{label}</Label>;
+  };
+
   return (
     <PageSection>
       <Content component={ContentVariants.h2} id="api-key-details-heading" style={{ marginTop: '1rem' }}>
@@ -40,9 +68,9 @@ const APIKeyDetailsTab: React.FunctionComponent<APIKeyDetailsTabProps> = ({ apiK
         </DescriptionListGroup>
 
         <DescriptionListGroup>
-          <DescriptionListTerm>Date created</DescriptionListTerm>
+          <DescriptionListTerm>Status</DescriptionListTerm>
           <DescriptionListDescription>
-            {formatDate(apiKey.dateCreated)}
+            {getStatusLabel(apiKey.status)}
           </DescriptionListDescription>
         </DescriptionListGroup>
 
@@ -53,14 +81,26 @@ const APIKeyDetailsTab: React.FunctionComponent<APIKeyDetailsTabProps> = ({ apiK
           </DescriptionListDescription>
         </DescriptionListGroup>
 
-        {apiKey.limits?.expirationDate && (
-          <DescriptionListGroup>
-            <DescriptionListTerm>Expiration date</DescriptionListTerm>
-            <DescriptionListDescription>
-              {formatDate(apiKey.limits.expirationDate)}
-            </DescriptionListDescription>
-          </DescriptionListGroup>
-        )}
+        <DescriptionListGroup>
+          <DescriptionListTerm>Date created</DescriptionListTerm>
+          <DescriptionListDescription>
+            {formatDate(apiKey.dateCreated)}
+          </DescriptionListDescription>
+        </DescriptionListGroup>
+
+        <DescriptionListGroup>
+          <DescriptionListTerm>Expiration date</DescriptionListTerm>
+          <DescriptionListDescription>
+            {apiKey.limits?.expirationDate ? formatDate(apiKey.limits.expirationDate) : 'Never'}
+          </DescriptionListDescription>
+        </DescriptionListGroup>
+
+        <DescriptionListGroup>
+          <DescriptionListTerm>Last invoked</DescriptionListTerm>
+          <DescriptionListDescription>
+            {formatLastUsedDate(apiKey.dateLastUsed)}
+          </DescriptionListDescription>
+        </DescriptionListGroup>
       </DescriptionList>
 
       <Divider style={{ marginTop: '2rem', marginBottom: '2rem' }} />
