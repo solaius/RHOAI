@@ -20,7 +20,7 @@ build:default:
   variables:
     KUBERNETES_MEMORY_REQUEST: "4Gi"
     KUBERNETES_MEMORY_LIMIT: "8Gi"
-    ASSET_PATH: "/${CI_PROJECT_PATH}/"
+    ASSET_PATH: "/"
   script:
     - npm ci --include=dev
     - export PATH="$PWD/node_modules/.bin:$PATH"
@@ -38,7 +38,7 @@ build:branch:
   variables:
     KUBERNETES_MEMORY_REQUEST: "4Gi"
     KUBERNETES_MEMORY_LIMIT: "8Gi"
-    ASSET_PATH: "/${CI_PROJECT_PATH}/${CI_COMMIT_BRANCH}/"
+    ASSET_PATH: "/${CI_COMMIT_BRANCH}/"
   script:
     - npm ci --include=dev
     - export PATH="$PWD/node_modules/.bin:$PATH"
@@ -56,7 +56,7 @@ build:mr:
   variables:
     KUBERNETES_MEMORY_REQUEST: "4Gi"
     KUBERNETES_MEMORY_LIMIT: "8Gi"
-    ASSET_PATH: "/${CI_PROJECT_PATH}/mr-${CI_MERGE_REQUEST_IID}/"
+    ASSET_PATH: "/mr-${CI_MERGE_REQUEST_IID}/"
   script:
     - npm ci --include=dev
     - export PATH="$PWD/node_modules/.bin:$PATH"
