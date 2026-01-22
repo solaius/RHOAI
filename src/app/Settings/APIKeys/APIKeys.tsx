@@ -208,17 +208,24 @@ const APIKeys: React.FunctionComponent = () => {
                   style={{ cursor: 'pointer' }}
                 >
                   <Td dataLabel="Name">
-                    <Button 
-                      variant="link" 
-                      isInline 
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleRowClick(apiKey.id);
-                      }}
-                      id={`api-key-link-${apiKey.id}`}
-                    >
-                      {apiKey.name}
-                    </Button>
+                    <div>
+                      <Button 
+                        variant="link" 
+                        isInline 
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleRowClick(apiKey.id);
+                        }}
+                        id={`api-key-link-${apiKey.id}`}
+                      >
+                        {apiKey.name}
+                      </Button>
+                      {apiKey.description && (
+                        <div style={{ fontSize: '0.875rem', color: 'var(--pf-t--global--text--color--subtle)' }}>
+                          {apiKey.description}
+                        </div>
+                      )}
+                    </div>
                   </Td>
                   <Td dataLabel="Status">
                     {getStatusLabel(apiKey.status)}

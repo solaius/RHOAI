@@ -23,8 +23,8 @@ export const mockPolicies: Policy[] = [
 export const mockAPIKeys: APIKey[] = [
   {
     id: 'key-0',
-    name: 'personal-key',
-    description: '',
+    name: 'Personal Key',
+    description: 'Personal development and testing key for local experiments',
     apiKey: 'sk-personal0123456789abcdefghijklmn',
     status: 'Active',
     owner: { type: 'User', name: 'username-here' },
@@ -42,8 +42,8 @@ export const mockAPIKeys: APIKey[] = [
   },
   {
     id: 'key-2',
-    name: 'production-workload-key',
-    description: '',
+    name: 'Production Workloads',
+    description: 'High-throughput key for production customer-facing applications',
     apiKey: 'sk-abcdef1234567890abcdef1234567890',
     status: 'Active',
     owner: { type: 'User', name: 'username-here' },
@@ -61,8 +61,8 @@ export const mockAPIKeys: APIKey[] = [
   },
   {
     id: 'key-3',
-    name: 'research-project-key',
-    description: '',
+    name: 'Research Project',
+    description: 'Key for ML research team experiments with code generation models',
     apiKey: 'sk-fedcba0987654321fedcba0987654321',
     status: 'Disabled',
     owner: { type: 'User', name: 'username-here' },
@@ -80,8 +80,8 @@ export const mockAPIKeys: APIKey[] = [
   },
   {
     id: 'key-4',
-    name: 'legacy-integration-key',
-    description: '',
+    name: 'Legacy Integration',
+    description: 'Deprecated key from old integration - pending removal',
     apiKey: 'sk-expired123456789abcdefghijklmno',
     status: 'Expired',
     owner: { type: 'User', name: 'username-here' },
@@ -99,8 +99,8 @@ export const mockAPIKeys: APIKey[] = [
   },
   {
     id: 'key-5',
-    name: 'playground-free',
-    description: '',
+    name: 'Playground',
+    description: 'Key for interactive playground testing and demos',
     apiKey: 'sk-playground0987654321fedcbafedcba',
     status: 'Active',
     owner: { type: 'User', name: 'username-here' },
@@ -118,8 +118,8 @@ export const mockAPIKeys: APIKey[] = [
   },
   {
     id: 'key-6',
-    name: 'orphaned-key',
-    description: '',
+    name: 'Customer Support Bot',
+    description: 'Key associated with deleted tier - requires reassignment',
     apiKey: 'sk-orphaned0987654321abcdefghijklmn',
     status: 'Inactive',
     owner: { type: 'User', name: 'username-here' },
