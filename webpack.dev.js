@@ -1,11 +1,14 @@
 /* eslint-disable @typescript-eslint/no-var-requires */
 
+// Load .env file for local configuration
+require('dotenv').config();
+
 const path = require('path');
 const { merge } = require('webpack-merge');
 const common = require('./webpack.common.js');
 const { stylePaths } = require('./stylePaths');
 const HOST = process.env.HOST || 'localhost';
-const PORT = process.env.PORT || '5176';
+const PORT = process.env.PORT || '9000';
 
 module.exports = merge(common('development'), {
   mode: 'development',
