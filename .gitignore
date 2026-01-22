@@ -11,8 +11,13 @@ storybook-static
 .env.local
 .history
 .vscode
-package-lock.json
 nvmrc
+
+# Local Claude Code settings
+.claude/settings.local.json
+
+# Playwright MCP screenshots
+.playwright-mcp/
 
 # MCP configuration with sensitive data
 # (keep .cursormcp.example in git as a template)
