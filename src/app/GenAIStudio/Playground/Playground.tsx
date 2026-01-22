@@ -119,7 +119,7 @@ const Playground: React.FunctionComponent = () => {
   const [isSystemPromptReadOnly, setIsSystemPromptReadOnly] = useState(false);
   const [isPromptEdited, setIsPromptEdited] = useState(false);
   const [isRagEnabled, setIsRagEnabled] = useState(true);
-  const [selectedModel, setSelectedModel] = useState('');
+  const [selectedModel, setSelectedModel] = useState('gpt-oss-20b');
   const [isModelSelectOpen, setIsModelSelectOpen] = useState(false);
   const [reasoningLevel, setReasoningLevel] = useState('default');
   const [isReasoningLevelOpen, setIsReasoningLevelOpen] = useState(false);
@@ -472,11 +472,6 @@ const Playground: React.FunctionComponent = () => {
                     <SelectOption value="ministral-3-8b">Ministral-3-8B</SelectOption>
                   </SelectList>
                 </Select>
-                {!selectedModel && (
-                  <div style={{ textAlign: 'right', color: '#C9190B', fontSize: '0.875rem', marginTop: '0.25rem', maxWidth: '350px' }}>
-                    *A model must be selected
-                  </div>
-                )}
               </FormGroup>
 
               {/* Reasoning Level dropdown - only shown for models with reasoning */}
@@ -1060,7 +1055,7 @@ const Playground: React.FunctionComponent = () => {
   );
 
   // Chat Panel Component
-  const ChatPanel = () => (
+  const ChatPanel = (
     <div style={{ height: '100%' }}>
       <Chatbot displayMode={ChatbotDisplayMode.embedded}>
         <ChatbotContent>
@@ -1109,28 +1104,35 @@ const Playground: React.FunctionComponent = () => {
             <MessageBar
               value={inputValue}
               onSendMessage={(message) => {
-                if (!selectedModel) return;
-                const newMsg = {
+                const userAvatar = `data:image/svg+xml,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 36 36"><circle cx="18" cy="18" r="18" fill="#d2d2d2"/><circle cx="18" cy="14" r="6" fill="#8a8d90"/><path d="M6 32c0-6.627 5.373-12 12-12s12 5.373 12 12" fill="#8a8d90"/></svg>')}`;
+                const userMsg = {
                   id: Date.now().toString(),
                   role: 'user',
                   content: message,
                   name: 'User',
-                  avatar: 'U',
+                  avatar: userAvatar,
                   timestamp: new Date().toLocaleTimeString()
                 };
-                setChatHistory([...chatHistory, newMsg]);
+                const updatedHistory = [...chatHistory, userMsg];
+                setChatHistory(updatedHistory);
                 setInputValue('');
+
+                // Simulate bot response after a brief delay
+                setTimeout(() => {
+                  const botMsg = {
+                    id: (Date.now() + 1).toString(),
+                    role: 'bot',
+                    content: 'This is a simulated response. In a real implementation, this would be the model\'s response to your message.',
+                    name: 'Bot',
+                    avatar: `data:image/svg+xml,${encodeURIComponent(ChatbotIcon)}`,
+                    timestamp: new Date().toLocaleTimeString()
+                  };
+                  setChatHistory(prev => [...prev, botMsg]);
+                }, 1000);
               }}
-              onChange={(_event, value) => {
-                if (selectedModel) {
-                  setInputValue(String(value));
-                }
-              }}
+              onChange={(_event, value) => setInputValue(String(value))}
               hasAttachButton={false}
-              hasMicrophoneButton={!!selectedModel}
-              isSendButtonDisabled={!selectedModel}
-              isDisabled={!selectedModel}
-              placeholder={!selectedModel ? 'Please select a model to start chatting' : undefined}
+              hasMicrophoneButton
             />
           </div>
         </ChatbotFooter>
@@ -1237,7 +1239,7 @@ const Playground: React.FunctionComponent = () => {
           <DrawerContent panelContent={BuildPanelContent}>
             <DrawerContentBody style={{ padding: 0, display: 'flex', flexDirection: 'column', height: '100%' }}>
               <div style={{ flex: 1, minWidth: 0, width: '100%' }}>
-                <ChatPanel />
+                {ChatPanel}
               </div>
             </DrawerContentBody>
           </DrawerContent>
