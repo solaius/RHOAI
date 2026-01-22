@@ -14,11 +14,13 @@ default:
   tags:
     - itup-alm-arm
 
-build:
+# Build for default branch (root deployment)
+build:default:
   stage: build
   variables:
     KUBERNETES_MEMORY_REQUEST: "4Gi"
     KUBERNETES_MEMORY_LIMIT: "8Gi"
+    ASSET_PATH: "/${CI_PROJECT_PATH}/"
   script:
     - npm ci --include=dev
     - export PATH="$PWD/node_modules/.bin:$PATH"
@@ -28,7 +30,42 @@ build:
     paths:
       - public
   rules:
-    - if: $CI_COMMIT_BRANCH
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+
+# Build for non-default branches (branch subdirectory deployment)
+build:branch:
+  stage: build
+  variables:
+    KUBERNETES_MEMORY_REQUEST: "4Gi"
+    KUBERNETES_MEMORY_LIMIT: "8Gi"
+    ASSET_PATH: "/${CI_PROJECT_PATH}/${CI_COMMIT_BRANCH}/"
+  script:
+    - npm ci --include=dev
+    - export PATH="$PWD/node_modules/.bin:$PATH"
+    - npm run build
+    - mv dist public
+  artifacts:
+    paths:
+      - public
+  rules:
+    - if: $CI_COMMIT_BRANCH && $CI_COMMIT_BRANCH != $CI_DEFAULT_BRANCH
+
+# Build for merge request previews
+build:mr:
+  stage: build
+  variables:
+    KUBERNETES_MEMORY_REQUEST: "4Gi"
+    KUBERNETES_MEMORY_LIMIT: "8Gi"
+    ASSET_PATH: "/${CI_PROJECT_PATH}/mr-${CI_MERGE_REQUEST_IID}/"
+  script:
+    - npm ci --include=dev
+    - export PATH="$PWD/node_modules/.bin:$PATH"
+    - npm run build
+    - mv dist public
+  artifacts:
+    paths:
+      - public
+  rules:
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
 
 pages:
