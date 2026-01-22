@@ -68,30 +68,62 @@ build:mr:
   rules:
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
 
-pages:
+# Pages deployment for default branch (root URL)
+pages:default:
   stage: deploy
-  variables:
-    PAGES_PREFIX: ""
+  needs:
+    - job: build:default
+      artifacts: true
   script:
     - echo "Deploying to GitLab Pages at ${CI_PAGES_URL}"
   pages:
-    path_prefix: "$PAGES_PREFIX"
-    expire_in: 2 weeks
+    path_prefix: ""
   environment:
-    name: "Pages ${PAGES_PREFIX}"
+    name: "Pages (main)"
     url: $CI_PAGES_URL
   artifacts:
     paths:
       - public
   rules:
-    # Default branch gets root URL (no prefix = main deployment, won't expire)
     - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
-    # Other branches get /<branch> URL
+
+# Pages deployment for non-default branches (/<branch> URL)
+pages:branch:
+  stage: deploy
+  needs:
+    - job: build:branch
+      artifacts: true
+  script:
+    - echo "Deploying to GitLab Pages at ${CI_PAGES_URL}/${CI_COMMIT_BRANCH}"
+  pages:
+    path_prefix: "$CI_COMMIT_BRANCH"
+    expire_in: 2 weeks
+  environment:
+    name: "Pages ($CI_COMMIT_BRANCH)"
+    url: "${CI_PAGES_URL}/${CI_COMMIT_BRANCH}"
+  artifacts:
+    paths:
+      - public
+  rules:
     - if: $CI_COMMIT_BRANCH && $CI_COMMIT_BRANCH != $CI_DEFAULT_BRANCH
-      variables:
-        PAGES_PREFIX: "$CI_COMMIT_BRANCH"
-    # MR previews get /mr-<IID> URL
+
+# Pages deployment for merge request previews (/mr-<IID> URL)
+pages:mr:
+  stage: deploy
+  needs:
+    - job: build:mr
+      artifacts: true
+  script:
+    - echo "Deploying MR preview to ${CI_PAGES_URL}/mr-${CI_MERGE_REQUEST_IID}"
+  pages:
+    path_prefix: "mr-$CI_MERGE_REQUEST_IID"
+    expire_in: 2 weeks
+  environment:
+    name: "Pages (MR-$CI_MERGE_REQUEST_IID)"
+    url: "${CI_PAGES_URL}/mr-${CI_MERGE_REQUEST_IID}"
+  artifacts:
+    paths:
+      - public
+  rules:
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
       when: manual
-      variables:
-        PAGES_PREFIX: "mr-$CI_MERGE_REQUEST_IID"
