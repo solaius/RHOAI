@@ -1,17 +1,5 @@
-import * as React from 'react';
-import {
-  PageSection,
-  Content,
-  ContentVariants,
-} from '@patternfly/react-core';
+// Re-export the FeatureViewsListPage as the FeatureViews component
+export { FeatureViewsListPage as FeatureViews } from '../../../../pages/feature-store/feature-views/FeatureViewsListPage';
 
-const FeatureViews: React.FunctionComponent = () => (
-  <PageSection>
-    <Content component={ContentVariants.h1}>Feature Store - Feature Views</Content>
-    <Content component={ContentVariants.p}>
-      Create and manage feature views for data transformation and feature engineering.
-    </Content>
-  </PageSection>
-);
-
-export { FeatureViews };
+// Re-export the FeatureViewDetailPage
+export { FeatureViewDetailPage } from '../../../../pages/feature-store/feature-views/FeatureViewDetailPage';

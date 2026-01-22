@@ -241,37 +241,6 @@ const CreateAPIKeyModal: React.FunctionComponent<CreateAPIKeyModalProps> = ({ is
     >
       <ModalHeader title="Create API key" />
       <ModalBody>
-        {userTier && (
-          <Alert
-            variant="info"
-            isInline
-            title="Your tier"
-            style={{ marginBottom: '1rem' }}
-            id="tier-info-alert"
-          >
-            <div style={{ marginBottom: '0.5rem' }}>
-              You are assigned to: <strong>{userTier.name}</strong>{' '}
-              <Badge isRead>Level {userTier.level}</Badge>
-            </div>
-            <div style={{ fontSize: '0.875rem' }}>
-              <strong>Inherited limits:</strong>
-              <ul style={{ marginTop: '0.25rem', marginBottom: '0.25rem' }}>
-                {userTier.limits.tokenLimits && userTier.limits.tokenLimits.length > 0 && 
-                  userTier.limits.tokenLimits.map((limit, idx) => (
-                    <li key={`token-${idx}`}>Token limit: {limit.amount.toLocaleString()} tokens per {limit.quantity} {limit.unit}</li>
-                  ))
-                }
-                {userTier.limits.rateLimits && userTier.limits.rateLimits.length > 0 &&
-                  userTier.limits.rateLimits.map((limit, idx) => (
-                    <li key={`rate-${idx}`}>Rate limit: {limit.amount.toLocaleString()} requests per {limit.quantity} {limit.unit}</li>
-                  ))
-                }
-                <li>Accessible models: {userTier.models.length}</li>
-              </ul>
-            </div>
-          </Alert>
-        )}
-
         <Form id="create-api-key-form">
           <FormGroup label="Name" isRequired fieldId="api-key-name">
             <TextInput

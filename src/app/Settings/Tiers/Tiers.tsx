@@ -137,7 +137,7 @@ const Tiers: React.FunctionComponent = () => {
       tier.name.toLowerCase(), // Column 0: Name
       tier.level, // Column 1: Level
       tier.groups.length, // Column 2: Groups
-      tier.models.length, // Column 3: Models
+      tier.models?.length ?? 0, // Column 3: Models
       // Column 4: Limits - we'll sort by total token limits
       (tier.limits.tokenLimits?.[0]?.amount || 0) + (tier.limits.rateLimits?.[0]?.amount || 0),
     ];
@@ -309,7 +309,7 @@ const Tiers: React.FunctionComponent = () => {
                   </Td>
                   <Td dataLabel="Models">
                     <Badge id={`tier-models-${tier.id}`} isRead>
-                      {tier.models.length} {tier.models.length === 1 ? 'Model' : 'Models'}
+                      {tier.models?.length ?? 0} {(tier.models?.length ?? 0) === 1 ? 'Model' : 'Models'}
                     </Badge>
                   </Td>
                   <Td dataLabel="Limits">

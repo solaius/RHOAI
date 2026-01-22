@@ -13,9 +13,12 @@ This folder contains custom commands that make it easier to work with Claude in 
 │   ├── design-guidelines.md      # PatternFly & accessibility standards
 │   ├── event-tracking-guide.md   # Event tracking planning guide
 │   └── create-team-report.md     # Generate daily Slack discussion summaries
-└── commands/                          # Custom commands you can use
-    ├── review-design.md               # Get comprehensive design feedback
-    └── check-patternfly-compliance.md # Verify PatternFly usage
+├── commands/                          # Custom commands you can use
+│   ├── review-design.md               # Get comprehensive design feedback
+│   └── check-patternfly-compliance.md # Verify PatternFly usage
+└── skills/                            # Specialized capabilities
+    ├── resolve-conflicts/             # Git merge conflict resolution
+    └── create-jira-stories/           # Bulk create Jira Epics & Stories
 ```
 
 ## 🎯 How This Works
@@ -77,6 +80,41 @@ Or for a specific time period:
 - An index file listing all generated reports
 
 **Channels monitored**: Automatically reads channel list from `.design/team/team-context-sources.md`
+
+---
+
+### Skills
+
+Skills are specialized capabilities for complex, multi-step tasks. Claude will use these automatically when relevant, or you can reference them directly.
+
+#### Create Jira Stories (`@skills/create-jira-stories/SKILL.md`)
+Bulk-create Jira Epics and Stories for RHOAI UX work with proper templates, labels, and organization.
+
+**When to use**: When you have a planning document and need to create multiple Jira issues.
+
+**Example**:
+```
+@skills/create-jira-stories/SKILL.md
+
+Create Jira stories based on this planning document:
+[paste your planning content or reference a file]
+```
+
+**What you'll get**:
+- Summary of what will be created, then one "GO" to execute
+- Epics and their Stories created together (Epic 1 + Stories, then Epic 2 + Stories, etc.)
+- Automatic labeling (problem statements, activity types)
+- Progress updates as each Epic group completes
+- Final report with all Jira keys and manual steps needed
+
+**Note**: Due to Jira API limitations, some manual steps are required after creation (converting Tasks to Epics, linking Stories to Epics, setting story points).
+
+---
+
+#### Resolve Conflicts (`@skills/resolve-conflicts/SKILL.md`)
+Structured approach to resolving Git merge conflicts safely.
+
+**When to use**: When you have merge conflicts and need help resolving them.
 
 ---
 
@@ -191,6 +229,7 @@ This is a working UI prototype for Red Hat OpenShift AI, built with PatternFly (
 3. **Verify consistency**: Use `@check-patternfly-compliance.md` to ensure PatternFly compliance
 4. **Plan event tracking**: Use `@workflows/event-tracking-guide.md` for guided help with analytics planning
 5. **Generate team summaries**: Use `@workflows/create-team-report.md` to create weekly digests of Slack discussions
+6. **Create Jira stories**: Use `@skills/create-jira-stories/SKILL.md` to bulk-create Epics and Stories from a planning doc
 
 ## 💡 Tips
 

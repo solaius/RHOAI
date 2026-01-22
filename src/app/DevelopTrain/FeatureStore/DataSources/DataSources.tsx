@@ -1,17 +1,5 @@
-import * as React from 'react';
-import {
-  PageSection,
-  Content,
-  ContentVariants,
-} from '@patternfly/react-core';
+// Re-export the DataSourcesListPage as the DataSources component
+export { DataSourcesListPage as DataSources } from '../../../../pages/feature-store/data-sources/DataSourcesListPage';
 
-const DataSources: React.FunctionComponent = () => (
-  <PageSection>
-    <Content component={ContentVariants.h1}>Feature Store - Data Sources</Content>
-    <Content component={ContentVariants.p}>
-      Configure and manage data sources for the feature store.
-    </Content>
-  </PageSection>
-);
-
-export { DataSources };
+// Re-export the DataSourceDetailPage
+export { DataSourceDetailPage } from '../../../../pages/feature-store/data-sources/DataSourceDetailPage';

@@ -50,12 +50,12 @@ import { FeatureFlags } from '@app/FeatureFlags/FeatureFlags';
 import { Workbenches } from '@app/DevelopTrain/Workbenches/Workbenches';
 import { FeatureStore } from '@app/DevelopTrain/FeatureStore/FeatureStore';
 import { Overview } from '@app/DevelopTrain/FeatureStore/Overview/Overview';
-import { Entities } from '@app/DevelopTrain/FeatureStore/Entities/Entities';
-import { DataSources } from '@app/DevelopTrain/FeatureStore/DataSources/DataSources';
-import { DataSets } from '@app/DevelopTrain/FeatureStore/DataSets/DataSets';
-import { Features } from '@app/DevelopTrain/FeatureStore/Features/Features';
-import { FeatureViews } from '@app/DevelopTrain/FeatureStore/FeatureViews/FeatureViews';
-import { FeatureServices } from '@app/DevelopTrain/FeatureStore/FeatureServices/FeatureServices';
+import { Entities, EntityDetailPage } from '@app/DevelopTrain/FeatureStore/Entities/Entities';
+import { DataSources, DataSourceDetailPage } from '@app/DevelopTrain/FeatureStore/DataSources/DataSources';
+import { DataSets, DatasetDetailPage } from '@app/DevelopTrain/FeatureStore/DataSets/DataSets';
+import { Features, FeatureDetailPage } from '@app/DevelopTrain/FeatureStore/Features/Features';
+import { FeatureViews, FeatureViewDetailPage } from '@app/DevelopTrain/FeatureStore/FeatureViews/FeatureViews';
+import { FeatureServices, FeatureServiceDetailPage } from '@app/DevelopTrain/FeatureStore/FeatureServices/FeatureServices';
 import { PipelineDefinitions } from '@app/DevelopTrain/Pipelines/PipelineDefinitions/PipelineDefinitions';
 import { Runs } from '@app/DevelopTrain/Pipelines/Runs/Runs';
 import { Artifacts } from '@app/DevelopTrain/Pipelines/Artifacts/Artifacts';
@@ -156,6 +156,12 @@ const routes: AppRouteConfig[] = [
     path: '/connections',
     title: 'RHOAI 3.1 Console | Connections',
     icon: createConnectionsIcon(),
+  },
+  {
+    element: <ProjectDetail />,
+    exact: true,
+    path: '/projects/:projectId',
+    title: 'RHOAI 3.1 Console | Project Details',
   },
   {
     label: 'AI hub',
@@ -298,11 +304,23 @@ const routes: AppRouteConfig[] = [
             title: 'RHOAI 3.1 Console | Feature Store - Entities',
           },
           {
+            element: <EntityDetailPage />,
+            exact: true,
+            path: '/develop-train/feature-store/entities/:entityId',
+            title: 'RHOAI 3.1 Console | Feature Store - Entity Details',
+          },
+          {
             element: <DataSources />,
             exact: true,
             label: 'Data sources',
             path: '/develop-train/feature-store/data-sources',
             title: 'RHOAI 3.1 Console | Feature Store - Data Sources',
+          },
+          {
+            element: <DataSourceDetailPage />,
+            exact: true,
+            path: '/develop-train/feature-store/data-sources/:dataSourceId',
+            title: 'RHOAI 3.1 Console | Feature Store - Data Source Details',
           },
           {
             element: <DataSets />,
@@ -312,11 +330,23 @@ const routes: AppRouteConfig[] = [
             title: 'RHOAI 3.1 Console | Feature Store - Data Sets',
           },
           {
+            element: <DatasetDetailPage />,
+            exact: true,
+            path: '/develop-train/feature-store/data-sets/:datasetId',
+            title: 'RHOAI 3.1 Console | Feature Store - Dataset Details',
+          },
+          {
             element: <Features />,
             exact: true,
             label: 'Features',
             path: '/develop-train/feature-store/features',
             title: 'RHOAI 3.1 Console | Feature Store - Features',
+          },
+          {
+            element: <FeatureDetailPage />,
+            exact: true,
+            path: '/develop-train/feature-store/features/:featureId',
+            title: 'RHOAI 3.1 Console | Feature Store - Feature Details',
           },
           {
             element: <FeatureViews />,
@@ -326,11 +356,23 @@ const routes: AppRouteConfig[] = [
             title: 'RHOAI 3.1 Console | Feature Store - Feature Views',
           },
           {
+            element: <FeatureViewDetailPage />,
+            exact: true,
+            path: '/develop-train/feature-store/feature-views/:featureViewId',
+            title: 'RHOAI 3.1 Console | Feature Store - Feature View Details',
+          },
+          {
             element: <FeatureServices />,
             exact: true,
             label: 'Feature services',
             path: '/develop-train/feature-store/feature-services',
             title: 'RHOAI 3.1 Console | Feature Store - Feature Services',
+          },
+          {
+            element: <FeatureServiceDetailPage />,
+            exact: true,
+            path: '/develop-train/feature-store/feature-services/:featureServiceId',
+            title: 'RHOAI 3.1 Console | Feature Store - Feature Service Details',
           },
         ],
       },
@@ -381,6 +423,13 @@ const routes: AppRouteConfig[] = [
         path: '/develop-train/experiments',
         title: 'RHOAI 3.1 Console | Develop & Train - Experiments',
       },
+      {
+        element: <TrainingJobs />,
+        exact: true,
+        label: 'Training jobs',
+        path: '/develop-train/training-jobs',
+        title: 'RHOAI 3.1 Console | Develop & Train - Training Jobs',
+      },
     ],
   },
   {
@@ -400,14 +449,8 @@ const routes: AppRouteConfig[] = [
         label: 'Workload metrics',
         path: '/observe-monitor/workload-metrics',
         title: 'RHOAI 3.1 Console | Observe & Monitor - Workload Metrics',
-      },
-      {
-        element: <TrainingJobs />,
-        exact: true,
-        label: 'Training jobs',
-        path: '/observe-monitor/training-jobs',
-        title: 'RHOAI 3.1 Console | Observe & Monitor - Training Jobs',
-      },
+        inProgress: true,
+      } as any,
     ],
   },
   {

@@ -17,6 +17,7 @@ import {
   Dropdown,
   DropdownList,
   DropdownItem,
+  Divider,
 } from '@patternfly/react-core';
 import {
   Table,
@@ -26,18 +27,30 @@ import {
   Th,
   Td,
 } from '@patternfly/react-table';
-import { PlusIcon } from '@patternfly/react-icons';
+import { PlusIcon, EllipsisVIcon } from '@patternfly/react-icons';
 import { mockAPIKeys, getModelById } from './mockData';
 import { APIKey, APIKeyStatus } from './types';
-import { CreateAPIKeyModal, DeleteAPIKeyModal, DeleteAllAPIKeysModal } from './components';
+import { CreateAPIKeyModal, DeleteAPIKeyModal } from './components';
 
 const APIKeys: React.FunctionComponent = () => {
   const navigate = useNavigate();
+  const [apiKeys, setApiKeys] = React.useState<APIKey[]>(mockAPIKeys);
   const [isCreateModalOpen, setIsCreateModalOpen] = React.useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = React.useState(false);
-  const [isDeleteAllModalOpen, setIsDeleteAllModalOpen] = React.useState(false);
-  const [isActionsDropdownOpen, setIsActionsDropdownOpen] = React.useState(false);
   const [selectedAPIKey, setSelectedAPIKey] = React.useState<APIKey | null>(null);
+  const [openKebabMenus, setOpenKebabMenus] = React.useState<Set<string>>(new Set());
+
+  const toggleKebabMenu = (id: string) => {
+    setOpenKebabMenus((prev) => {
+      const newSet = new Set(prev);
+      if (newSet.has(id)) {
+        newSet.delete(id);
+      } else {
+        newSet.add(id);
+      }
+      return newSet;
+    });
+  };
 
   const formatAPIKey = (apiKey: string): string => {
     return apiKey.substring(0, 9) + '...';
@@ -71,6 +84,7 @@ const APIKeys: React.FunctionComponent = () => {
       Expired: { color: 'red' as const, label: 'Expired' },
       Disabled: { color: 'grey' as const, label: 'Disabled' },
       Inactive: { color: 'orange' as const, label: 'Inactive' },
+      Revoked: { color: 'red' as const, label: 'Revoked' },
     };
     const { color, label } = statusMap[status];
     
@@ -112,6 +126,30 @@ const APIKeys: React.FunctionComponent = () => {
     });
   };
 
+  const formatLastUsedDate = (date?: Date): string => {
+    if (!date) return 'Never';
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffMins = Math.floor(diffMs / (1000 * 60));
+    const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+    
+    if (diffMins < 1) return 'Just now';
+    if (diffMins < 60) return `${diffMins} minute${diffMins === 1 ? '' : 's'} ago`;
+    if (diffHours < 24) return `${diffHours} hour${diffHours === 1 ? '' : 's'} ago`;
+    if (diffDays < 7) return `${diffDays} day${diffDays === 1 ? '' : 's'} ago`;
+    
+    return date.toLocaleDateString('en-US', { 
+      year: 'numeric', 
+      month: 'short', 
+      day: 'numeric' 
+    });
+  };
+
+  const handleRowClick = (keyId: string) => {
+    navigate(`/gen-ai-studio/api-keys/${keyId}`);
+  };
+
   const handleDeleteAPIKey = (apiKey: APIKey) => {
     setSelectedAPIKey(apiKey);
     setIsDeleteModalOpen(true);
@@ -122,14 +160,28 @@ const APIKeys: React.FunctionComponent = () => {
     // TODO: Implement actual delete functionality
   };
 
-  const handleDeleteAllKeys = () => {
-    console.log('Deleting all API keys');
-    // TODO: Implement actual delete all functionality
+  const handleToggleAPIKeyStatus = (apiKey: APIKey) => {
+    setApiKeys((prevKeys) =>
+      prevKeys.map((key) => {
+        if (key.id === apiKey.id) {
+          const newStatus: APIKeyStatus = key.status === 'Disabled' ? 'Active' : 'Disabled';
+          return { ...key, status: newStatus };
+        }
+        return key;
+      })
+    );
   };
 
-  const handleToggleAPIKeyStatus = (apiKey: APIKey) => {
-    console.log('Toggling API key status:', apiKey.id);
-    // TODO: Implement actual toggle functionality
+  const handleToggleRevokeAPIKey = (apiKey: APIKey) => {
+    setApiKeys((prevKeys) =>
+      prevKeys.map((key) => {
+        if (key.id === apiKey.id) {
+          const newStatus: APIKeyStatus = key.status === 'Revoked' ? 'Active' : 'Revoked';
+          return { ...key, status: newStatus };
+        }
+        return key;
+      })
+    );
   };
 
   const handleCreateAPIKey = () => {
@@ -138,44 +190,7 @@ const APIKeys: React.FunctionComponent = () => {
 
   return (
     <PageSection>
-      <Flex justifyContent={{ default: 'justifyContentSpaceBetween' }} alignItems={{ default: 'alignItemsCenter' }}>
-        <FlexItem>
-          <Content component={ContentVariants.h1}>API keys</Content>
-        </FlexItem>
-        <FlexItem>
-          <Dropdown
-            id="api-keys-actions-dropdown"
-            isOpen={isActionsDropdownOpen}
-            onOpenChange={(isOpen: boolean) => setIsActionsDropdownOpen(isOpen)}
-            popperProps={{ position: 'right' }}
-            toggle={(toggleRef) => (
-              <MenuToggle
-                id="api-keys-actions-toggle"
-                ref={toggleRef}
-                onClick={() => setIsActionsDropdownOpen(!isActionsDropdownOpen)}
-                isExpanded={isActionsDropdownOpen}
-                variant="secondary"
-                aria-label="Actions"
-              >
-                Actions
-              </MenuToggle>
-            )}
-          >
-            <DropdownList>
-              <DropdownItem
-                id="revoke-all-keys-action"
-                key="revoke-all"
-                onClick={() => {
-                  setIsActionsDropdownOpen(false);
-                  setIsDeleteAllModalOpen(true);
-                }}
-              >
-                Revoke all API keys
-              </DropdownItem>
-            </DropdownList>
-          </Dropdown>
-        </FlexItem>
-      </Flex>
+      <Content component={ContentVariants.h1}>API keys</Content>
       <Content component={ContentVariants.p}>
         Manage personal API keys that can be used to access AI asset endpoints.
       </Content>
@@ -194,29 +209,124 @@ const APIKeys: React.FunctionComponent = () => {
         </ToolbarContent>
       </Toolbar>
 
-      <Table aria-label="API Keys table">
+      <Table aria-label="API Keys table" id="api-keys-table">
             <Thead>
               <Tr>
                 <Th>Name</Th>
                 <Th>Status</Th>
-                <Th>Creation date</Th>
-                <Th>Expiration date</Th>
+                <Th>Created</Th>
+                <Th>Expires</Th>
+                <Th>Last invoked</Th>
+                <Th screenReaderText="Actions" />
               </Tr>
             </Thead>
             <Tbody>
-              {mockAPIKeys.map((apiKey) => (
-                <Tr key={apiKey.id}>
+              {apiKeys.map((apiKey) => (
+                <Tr 
+                  key={apiKey.id}
+                  isClickable
+                  onRowClick={() => handleRowClick(apiKey.id)}
+                  style={{ cursor: 'pointer' }}
+                >
                   <Td dataLabel="Name">
-                    {apiKey.name}
+                    <div>
+                      <Button 
+                        variant="link" 
+                        isInline 
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleRowClick(apiKey.id);
+                        }}
+                        id={`api-key-link-${apiKey.id}`}
+                      >
+                        {apiKey.name}
+                      </Button>
+                      {apiKey.description && (
+                        <div style={{ fontSize: '0.875rem', color: 'var(--pf-t--global--text--color--subtle)' }}>
+                          {apiKey.description}
+                        </div>
+                      )}
+                    </div>
                   </Td>
                   <Td dataLabel="Status">
                     {getStatusLabel(apiKey.status)}
                   </Td>
-                  <Td dataLabel="Creation date">
+                  <Td dataLabel="Created">
                     {formatCreationDate(apiKey.dateCreated)}
                   </Td>
-                  <Td dataLabel="Expiration date">
+                  <Td dataLabel="Expires">
                     {formatExpirationDate(apiKey.limits?.expirationDate)}
+                  </Td>
+                  <Td dataLabel="Last invoked">
+                    {formatLastUsedDate(apiKey.dateLastUsed)}
+                  </Td>
+                  <Td isActionCell>
+                    <Dropdown
+                      isOpen={openKebabMenus.has(apiKey.id)}
+                      onOpenChange={(isOpen) => {
+                        if (!isOpen) {
+                          setOpenKebabMenus((prev) => {
+                            const newSet = new Set(prev);
+                            newSet.delete(apiKey.id);
+                            return newSet;
+                          });
+                        }
+                      }}
+                      popperProps={{ position: 'right' }}
+                      toggle={(toggleRef) => (
+                        <MenuToggle
+                          ref={toggleRef}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            toggleKebabMenu(apiKey.id);
+                          }}
+                          variant="plain"
+                          aria-label={`Actions for ${apiKey.name}`}
+                          isExpanded={openKebabMenus.has(apiKey.id)}
+                          id={`api-key-actions-${apiKey.id}`}
+                        >
+                          <EllipsisVIcon />
+                        </MenuToggle>
+                      )}
+                    >
+                      <DropdownList>
+                        <DropdownItem
+                          key="toggle-status"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleToggleAPIKeyStatus(apiKey);
+                            toggleKebabMenu(apiKey.id);
+                          }}
+                          id={`toggle-status-${apiKey.id}`}
+                        >
+                          {apiKey.status === 'Disabled' ? 'Enable' : 'Disable'}
+                        </DropdownItem>
+                        <DropdownItem
+                          key="revoke"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleToggleRevokeAPIKey(apiKey);
+                            toggleKebabMenu(apiKey.id);
+                          }}
+                          id={`revoke-key-${apiKey.id}`}
+                        >
+                          {apiKey.status === 'Revoked' ? 'Unrevoke' : 'Revoke'}
+                        </DropdownItem>
+                        <Divider component="li" key="separator" />
+                        <DropdownItem
+                          key="delete"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDeleteAPIKey(apiKey);
+                            toggleKebabMenu(apiKey.id);
+                          }}
+                          id={`delete-key-${apiKey.id}`}
+                          isDanger
+                        >
+                          Delete
+                        </DropdownItem>
+                      </DropdownList>
+                    </Dropdown>
                   </Td>
                 </Tr>
               ))}
@@ -233,13 +343,6 @@ const APIKeys: React.FunctionComponent = () => {
         onClose={() => setIsDeleteModalOpen(false)}
         apiKey={selectedAPIKey}
         onDelete={handleDeleteConfirm}
-      />
-
-      <DeleteAllAPIKeysModal
-        isOpen={isDeleteAllModalOpen}
-        onClose={() => setIsDeleteAllModalOpen(false)}
-        onDelete={handleDeleteAllKeys}
-        keyCount={mockAPIKeys.length}
       />
     </PageSection>
   );
