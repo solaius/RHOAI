@@ -182,7 +182,7 @@ const MCPDeployments: React.FunctionComponent = () => {
               <Th width={10}>API protocol</Th>
               <Th width={10}>Last deployed</Th>
               <Th width={10}>Status</Th>
-              <Th width={5}></Th>
+              <Th></Th>
             </Tr>
           </Thead>
           <Tbody>
