@@ -24,6 +24,7 @@ import { DeployModelWizard } from '@app/AIAssets/Deployments/DeployModelWizard';
 import { MVPServers } from '@app/AIAssets/MVPServers/MVPServers';
 import { MCPServerDetails } from '@app/AIAssets/MVPServers/MCPServerDetails';
 import { SearchResults } from '@app/AIAssets/MVPServers/SearchResults';
+import { MCPCatalog, MCPCatalogDetails, MCPDeployments } from '@app/AIHub/MCPServers';
 import { CreateGuardrail } from '@app/AIAssets/Guardrails/CreateGuardrail';
 import { Guardrails } from '@app/AIAssets/Guardrails/Guardrails';
 import AvailableAIAssets from '@app/AIAssets/AvailableAIAssets/AvailableAIAssets';
@@ -168,25 +169,49 @@ const routes: AppRouteConfig[] = [
     icon: createAiHubNavIcon(),
     routes: [
       {
-        element: <ModelCatalog />,
-        exact: true,
-        label: 'Catalog',
-        path: '/ai-hub/catalog',
-        title: 'RHOAI 3.1 Console | AI Hub - Catalog',
+        label: 'Models',
+        routes: [
+          {
+            element: <ModelCatalog />,
+            exact: true,
+            label: 'Catalog',
+            path: '/ai-hub/models/catalog',
+            title: 'RHOAI 3.1 Console | AI Hub - Model Catalog',
+          },
+          {
+            element: <ModelRegistry />,
+            exact: true,
+            label: 'Registry',
+            path: '/ai-hub/models/registry',
+            title: 'RHOAI 3.1 Console | AI Hub - Model Registry',
+          },
+          {
+            element: <Deployments />,
+            exact: true,
+            label: 'Deployments',
+            path: '/ai-hub/models/deployments',
+            title: 'RHOAI 3.1 Console | AI Hub - Model Deployments',
+          },
+        ],
       },
       {
-        element: <ModelRegistry />,
-        exact: true,
-        label: 'Registry',
-        path: '/ai-hub/registry',
-        title: 'RHOAI 3.1 Console | AI Hub - Registry',
-      },
-      {
-        element: <Deployments />,
-        exact: true,
-        label: 'Deployments',
-        path: '/ai-hub/deployments',
-        title: 'RHOAI 3.1 Console | AI Hub - Deployments',
+        label: 'MCP servers',
+        routes: [
+          {
+            element: <MCPCatalog />,
+            exact: true,
+            label: 'MCP catalog',
+            path: '/ai-hub/mcp/catalog',
+            title: 'RHOAI 3.1 Console | AI Hub - MCP Catalog',
+          },
+          {
+            element: <MCPDeployments />,
+            exact: true,
+            label: 'Deployments',
+            path: '/ai-hub/mcp/deployments',
+            title: 'RHOAI 3.1 Console | AI Hub - MCP Deployments',
+          },
+        ],
       },
     ],
   },
@@ -586,8 +611,14 @@ const routes: AppRouteConfig[] = [
   {
     element: <DeployModelWizard />,
     exact: true,
-    path: '/ai-hub/deployments/deploy',
+    path: '/ai-hub/models/deployments/deploy',
     title: 'RHOAI 3.1 Console | Deploy Model',
+  },
+  {
+    element: <MCPCatalogDetails />,
+    exact: true,
+    path: '/ai-hub/mcp/catalog/:serverSlug',
+    title: 'RHOAI 3.1 Console | MCP Server Details',
   },
   {
     element: <PromptDetails />,
@@ -598,7 +629,7 @@ const routes: AppRouteConfig[] = [
   {
     element: <RegisterModel />,
     exact: true,
-    path: '/ai-hub/registry/new-model',
+    path: '/ai-hub/models/registry/new-model',
     title: 'RHOAI 3.1 Console | Register Model',
   },
   {
