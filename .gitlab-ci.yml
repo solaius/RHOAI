@@ -22,15 +22,7 @@ build:
   script:
     - npm ci --include=dev
     - export PATH="$PWD/node_modules/.bin:$PATH"
-    # Determine ASSET_PATH based on branch
-    - |
-      if [ "$CI_COMMIT_BRANCH" = "$CI_DEFAULT_BRANCH" ]; then
-        ASSET_PATH="/"
-      else
-        ASSET_PATH="/${CI_COMMIT_BRANCH}/"
-      fi
-      echo "Building with ASSET_PATH=${ASSET_PATH}"
-      ASSET_PATH="${ASSET_PATH}" npm run build
+    - npm run build
     - mv dist public
   artifacts:
     paths:
@@ -45,13 +37,11 @@ pages:
     PAGES_PREFIX: ""
   script:
     - echo "Deploying to GitLab Pages at ${CI_PAGES_URL}"
-    - ls -la public/
-    - head -50 public/index.html
   pages:
     path_prefix: "$PAGES_PREFIX"
     expire_in: 2 weeks
   environment:
-    name: pages/$CI_COMMIT_BRANCH
+    name: "Pages ${PAGES_PREFIX}"
     url: $CI_PAGES_URL
   artifacts:
     paths:
