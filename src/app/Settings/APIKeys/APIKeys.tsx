@@ -34,6 +34,7 @@ import { CreateAPIKeyModal, DeleteAPIKeyModal } from './components';
 
 const APIKeys: React.FunctionComponent = () => {
   const navigate = useNavigate();
+  const [apiKeys, setApiKeys] = React.useState<APIKey[]>(mockAPIKeys);
   const [isCreateModalOpen, setIsCreateModalOpen] = React.useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = React.useState(false);
   const [selectedAPIKey, setSelectedAPIKey] = React.useState<APIKey | null>(null);
@@ -83,6 +84,7 @@ const APIKeys: React.FunctionComponent = () => {
       Expired: { color: 'red' as const, label: 'Expired' },
       Disabled: { color: 'grey' as const, label: 'Disabled' },
       Inactive: { color: 'orange' as const, label: 'Inactive' },
+      Revoked: { color: 'red' as const, label: 'Revoked' },
     };
     const { color, label } = statusMap[status];
     
@@ -159,8 +161,27 @@ const APIKeys: React.FunctionComponent = () => {
   };
 
   const handleToggleAPIKeyStatus = (apiKey: APIKey) => {
-    console.log('Toggling API key status:', apiKey.id);
-    // TODO: Implement actual toggle functionality
+    setApiKeys((prevKeys) =>
+      prevKeys.map((key) => {
+        if (key.id === apiKey.id) {
+          const newStatus: APIKeyStatus = key.status === 'Disabled' ? 'Active' : 'Disabled';
+          return { ...key, status: newStatus };
+        }
+        return key;
+      })
+    );
+  };
+
+  const handleToggleRevokeAPIKey = (apiKey: APIKey) => {
+    setApiKeys((prevKeys) =>
+      prevKeys.map((key) => {
+        if (key.id === apiKey.id) {
+          const newStatus: APIKeyStatus = key.status === 'Revoked' ? 'Active' : 'Revoked';
+          return { ...key, status: newStatus };
+        }
+        return key;
+      })
+    );
   };
 
   const handleCreateAPIKey = () => {
@@ -200,7 +221,7 @@ const APIKeys: React.FunctionComponent = () => {
               </Tr>
             </Thead>
             <Tbody>
-              {mockAPIKeys.map((apiKey) => (
+              {apiKeys.map((apiKey) => (
                 <Tr 
                   key={apiKey.id}
                   isClickable
@@ -284,12 +305,12 @@ const APIKeys: React.FunctionComponent = () => {
                           key="revoke"
                           onClick={(e) => {
                             e.stopPropagation();
-                            handleToggleAPIKeyStatus(apiKey);
+                            handleToggleRevokeAPIKey(apiKey);
                             toggleKebabMenu(apiKey.id);
                           }}
                           id={`revoke-key-${apiKey.id}`}
                         >
-                          Revoke
+                          {apiKey.status === 'Revoked' ? 'Unrevoke' : 'Revoke'}
                         </DropdownItem>
                         <Divider component="li" key="separator" />
                         <DropdownItem
