@@ -14,116 +14,57 @@ default:
   tags:
     - itup-alm-arm
 
-# Build for default branch (root deployment)
-build:default:
+build:
   stage: build
   variables:
     KUBERNETES_MEMORY_REQUEST: "4Gi"
     KUBERNETES_MEMORY_LIMIT: "8Gi"
-    ASSET_PATH: "/"
   script:
     - npm ci --include=dev
     - export PATH="$PWD/node_modules/.bin:$PATH"
-    - npm run build
+    # Determine ASSET_PATH based on branch
+    - |
+      if [ "$CI_COMMIT_BRANCH" = "$CI_DEFAULT_BRANCH" ]; then
+        ASSET_PATH="/"
+      else
+        ASSET_PATH="/${CI_COMMIT_BRANCH}/"
+      fi
+      echo "Building with ASSET_PATH=${ASSET_PATH}"
+      ASSET_PATH="${ASSET_PATH}" npm run build
     - mv dist public
   artifacts:
     paths:
       - public
   rules:
-    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
-
-# Build for non-default branches (branch subdirectory deployment)
-build:branch:
-  stage: build
-  variables:
-    KUBERNETES_MEMORY_REQUEST: "4Gi"
-    KUBERNETES_MEMORY_LIMIT: "8Gi"
-    ASSET_PATH: "/${CI_COMMIT_BRANCH}/"
-  script:
-    - npm ci --include=dev
-    - export PATH="$PWD/node_modules/.bin:$PATH"
-    - npm run build
-    - mv dist public
-  artifacts:
-    paths:
-      - public
-  rules:
-    - if: $CI_COMMIT_BRANCH && $CI_COMMIT_BRANCH != $CI_DEFAULT_BRANCH
-
-# Build for merge request previews
-build:mr:
-  stage: build
-  variables:
-    KUBERNETES_MEMORY_REQUEST: "4Gi"
-    KUBERNETES_MEMORY_LIMIT: "8Gi"
-    ASSET_PATH: "/mr-${CI_MERGE_REQUEST_IID}/"
-  script:
-    - npm ci --include=dev
-    - export PATH="$PWD/node_modules/.bin:$PATH"
-    - npm run build
-    - mv dist public
-  artifacts:
-    paths:
-      - public
-  rules:
+    - if: $CI_COMMIT_BRANCH
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
 
-# Pages deployment for default branch (root URL)
-pages:default:
+pages:
   stage: deploy
-  needs:
-    - job: build:default
-      artifacts: true
+  variables:
+    PAGES_PREFIX: ""
   script:
     - echo "Deploying to GitLab Pages at ${CI_PAGES_URL}"
+    - ls -la public/
+    - head -50 public/index.html
   pages:
-    path_prefix: ""
+    path_prefix: "$PAGES_PREFIX"
+    expire_in: 2 weeks
   environment:
-    name: "Pages - main"
+    name: pages/$CI_COMMIT_BRANCH
     url: $CI_PAGES_URL
   artifacts:
     paths:
       - public
   rules:
+    # Default branch gets root URL (no prefix = main deployment, won't expire)
     - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
-
-# Pages deployment for non-default branches (/<branch> URL)
-pages:branch:
-  stage: deploy
-  needs:
-    - job: build:branch
-      artifacts: true
-  script:
-    - echo "Deploying to GitLab Pages at ${CI_PAGES_URL}/${CI_COMMIT_BRANCH}"
-  pages:
-    path_prefix: "$CI_COMMIT_BRANCH"
-    expire_in: 2 weeks
-  environment:
-    name: "Pages - $CI_COMMIT_BRANCH"
-    url: "${CI_PAGES_URL}/${CI_COMMIT_BRANCH}"
-  artifacts:
-    paths:
-      - public
-  rules:
+    # Other branches get /<branch> URL
     - if: $CI_COMMIT_BRANCH && $CI_COMMIT_BRANCH != $CI_DEFAULT_BRANCH
-
-# Pages deployment for merge request previews (/mr-<IID> URL)
-pages:mr:
-  stage: deploy
-  needs:
-    - job: build:mr
-      artifacts: true
-  script:
-    - echo "Deploying MR preview to ${CI_PAGES_URL}/mr-${CI_MERGE_REQUEST_IID}"
-  pages:
-    path_prefix: "mr-$CI_MERGE_REQUEST_IID"
-    expire_in: 2 weeks
-  environment:
-    name: "Pages - MR-$CI_MERGE_REQUEST_IID"
-    url: "${CI_PAGES_URL}/mr-${CI_MERGE_REQUEST_IID}"
-  artifacts:
-    paths:
-      - public
-  rules:
+      variables:
+        PAGES_PREFIX: "$CI_COMMIT_BRANCH"
+    # MR previews get /mr-<IID> URL
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
       when: manual
+      variables:
+        PAGES_PREFIX: "mr-$CI_MERGE_REQUEST_IID"
