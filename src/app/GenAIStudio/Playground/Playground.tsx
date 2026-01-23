@@ -250,9 +250,9 @@ const Playground: React.FunctionComponent = () => {
         setThinkingDots(prev => prev.length >= 3 ? '' : prev + '.');
       }, 400);
       return () => clearInterval(interval);
-    } else {
-      setThinkingDots('');
     }
+    setThinkingDots('');
+    return undefined;
   }, [isPanel1Thinking, isPanel2Thinking]);
 
   // Llama Stack code snippet for View Code modal
@@ -597,7 +597,6 @@ print("agent>", response.output_text)`;
           activeKey={selectedBuildTab}
           onSelect={(_event, tabIndex) => setSelectedBuildTab(tabIndex as string)}
           id="build-panel-tabs"
-          hasOverflowScroll={false}
           style={{ flex: 1, '--pf-v6-c-tabs--before--BorderBottomWidth': '0' } as React.CSSProperties}
         >
           <Tab eventKey="model" title={<TabTitleText>Model</TabTitleText>} />
@@ -1354,7 +1353,7 @@ print("agent>", response.output_text)`;
   );
 
   // Compare mode message handler
-  const handleCompareSendMessage = (message: string) => {
+  const handleCompareSendMessage = (message: string | number) => {
     const userAvatar = `data:image/svg+xml,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 36 36"><circle cx="18" cy="18" r="18" fill="#d2d2d2"/><circle cx="18" cy="14" r="6" fill="#8a8d90"/><path d="M6 32c0-6.627 5.373-12 12-12s12 5.373 12 12" fill="#8a8d90"/></svg>')}`;
     const timestamp = new Date().toLocaleTimeString();
     const userMsg = {
@@ -1568,7 +1567,7 @@ print("agent>", response.output_text)`;
       </div>
       {/* Chat Body */}
       <div style={{ flex: 1, minHeight: 0 }}>
-        <Chatbot displayMode={ChatbotDisplayMode.embedded} className="pf-chatbot-white-bg" style={{ height: '100%' }}>
+        <Chatbot displayMode={ChatbotDisplayMode.embedded} className="pf-chatbot-white-bg">
           <ChatbotContent>
             <MessageBox>
               {history.length === 0 ? (
@@ -1755,7 +1754,7 @@ print("agent>", response.output_text)`;
             )}
           </div>
           <div style={{ flex: 1, minHeight: 0 }}>
-            <Chatbot displayMode={ChatbotDisplayMode.embedded} className="pf-chatbot-white-bg" style={{ height: '100%' }}>
+            <Chatbot displayMode={ChatbotDisplayMode.embedded} className="pf-chatbot-white-bg">
               <ChatbotContent>
                 <MessageBox>
                   {chatHistory.length === 0 ? (
@@ -1813,7 +1812,7 @@ print("agent>", response.output_text)`;
             )}
           </div>
           <div style={{ flex: 1, minHeight: 0 }}>
-            <Chatbot displayMode={ChatbotDisplayMode.embedded} className="pf-chatbot-white-bg" style={{ height: '100%' }}>
+            <Chatbot displayMode={ChatbotDisplayMode.embedded} className="pf-chatbot-white-bg">
               <ChatbotContent>
                 <MessageBox>
                   {chatHistory2.length === 0 ? (
