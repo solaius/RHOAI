@@ -55,3 +55,75 @@ body.fidelity-low * {
 .slider-fixed-input input[type="number"] {
   -moz-appearance: textfield;
 }
+
+/* Playground overlay panel toggle button */
+.playground-panel-toggle button:hover {
+  background-color: var(--pf-v6-global--BackgroundColor--200);
+}
+
+/* Ensure DrawerPanelContent has relative positioning for toggle button */
+#build-panel-drawer {
+  position: relative;
+  overflow: visible;
+}
+
+/* Panel toggle button shadow for better visibility */
+#build-panel-drawer .pf-v6-c-button.pf-m-tertiary {
+  box-shadow: 2px 0 4px rgba(0, 0, 0, 0.1);
+}
+
+/* Playground chatbot white background */
+.pf-chatbot-white-bg,
+.pf-chatbot-white-bg .pf-chatbot__content,
+.pf-chatbot-white-bg .pf-chatbot__messagebox {
+  background-color: #ffffff !important;
+}
+
+/* Playground chatbot footer white background */
+.pf-chatbot-white-bg .pf-chatbot__footer {
+  background-color: #ffffff !important;
+}
+
+/* Playground chatbot message bar border */
+.pf-chatbot-white-bg .pf-chatbot__message-bar {
+  border: 1px solid var(--pf-t--global--border--color--default) !important;
+}
+
+/* Playground page - prevent outer scrollbar */
+.playground-page {
+  overflow: hidden !important;
+}
+
+.playground-page .pf-v6-c-page__main-section {
+  overflow: hidden !important;
+}
+
+/* Playground chatbot - hide scrollbar track, only show thumb when scrolling needed */
+.pf-chatbot-white-bg .pf-chatbot__content {
+  overflow-y: auto !important;
+  scrollbar-width: thin; /* Firefox */
+  scrollbar-color: transparent transparent; /* Firefox - hide by default */
+}
+
+.pf-chatbot-white-bg .pf-chatbot__content:hover {
+  scrollbar-color: var(--pf-t--global--border--color--default) transparent; /* Firefox - show on hover */
+}
+
+/* WebKit browsers (Chrome, Safari, Edge) */
+.pf-chatbot-white-bg .pf-chatbot__content::-webkit-scrollbar {
+  width: 6px;
+  background: transparent;
+}
+
+.pf-chatbot-white-bg .pf-chatbot__content::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.pf-chatbot-white-bg .pf-chatbot__content::-webkit-scrollbar-thumb {
+  background: transparent;
+  border-radius: 3px;
+}
+
+.pf-chatbot-white-bg .pf-chatbot__content:hover::-webkit-scrollbar-thumb {
+  background: var(--pf-t--global--border--color--default);
+}
