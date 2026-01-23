@@ -52,7 +52,7 @@ const RegisterModel: React.FunctionComponent = () => {
   const [isFeatureModalOpen, setIsFeatureModalOpen] = useState(false);
 
   const handleCancel = () => {
-    navigate('/ai-hub/registry');
+    navigate('/ai-hub/models/registry');
   };
 
   const handleRegister = () => {
@@ -78,7 +78,7 @@ const RegisterModel: React.FunctionComponent = () => {
     <>
       <PageSection variant="default">
         <Breadcrumb>
-          <BreadcrumbItem to="/ai-hub/registry">
+          <BreadcrumbItem to="/ai-hub/models/registry">
             Model registry - registry
           </BreadcrumbItem>
           <BreadcrumbItem isActive>

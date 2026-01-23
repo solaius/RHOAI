@@ -659,7 +659,7 @@ const Deployments: React.FunctionComponent = () => {
                 </InputGroup>
               </ToolbarItem>
               <ToolbarItem>
-                <Button variant="primary" onClick={() => navigate('/ai-hub/deployments/deploy')}>
+                <Button variant="primary" onClick={() => navigate('/ai-hub/models/deployments/deploy')}>
                   Deploy model
                 </Button>
               </ToolbarItem>

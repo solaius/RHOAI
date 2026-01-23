@@ -350,7 +350,7 @@ export const RegistryModelsTab: React.FunctionComponent = () => {
                 <Button
                   variant="primary"
                   onClick={() => {
-                    navigate('/ai-hub/registry/new-model');
+                    navigate('/ai-hub/models/registry/new-model');
                   }}
                   style={{
                     borderTopRightRadius: 0,

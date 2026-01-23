@@ -128,14 +128,14 @@ const DeployModelWizard: React.FunctionComponent = () => {
 
   const handleClose = () => {
     // Navigate back to deployments list
-    navigate('/ai-hub/deployments');
+    navigate('/ai-hub/models/deployments');
   };
 
   const handleDeploy = () => {
     // Add deployment logic here
     console.log('Model deployed successfully');
     // Navigate back to deployments list
-    navigate('/ai-hub/deployments');
+    navigate('/ai-hub/models/deployments');
   };
 
   // Step 1: Source model

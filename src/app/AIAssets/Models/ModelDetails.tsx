@@ -211,7 +211,7 @@ const ModelDetails: React.FunctionComponent<ModelDetailsProps> = () => {
     const catalogParams = new URLSearchParams(searchParams);
     catalogParams.delete('tab'); // Remove details-page-specific param
     const paramString = catalogParams.toString();
-    return `/ai-hub/catalog${paramString ? `?${paramString}` : ''}`;
+    return `/ai-hub/models/catalog${paramString ? `?${paramString}` : ''}`;
   }, [searchParams]);
   
   // Active tab state - check URL param for tab selection
@@ -877,7 +877,7 @@ const ModelDetails: React.FunctionComponent<ModelDetailsProps> = () => {
       <PageSection>
         <Title headingLevel="h1" size="2xl">Model Not Found</Title>
         <p>The requested model could not be found.</p>
-        <Button variant="primary" onClick={() => navigate('/ai-hub/catalog')}>
+        <Button variant="primary" onClick={() => navigate('/ai-hub/models/catalog')}>
           Back to Model Catalog
         </Button>
       </PageSection>
@@ -893,7 +893,7 @@ const ModelDetails: React.FunctionComponent<ModelDetailsProps> = () => {
     searchParams.forEach((value, key) => {
       params.set(key, value);
     });
-    navigate(`/ai-hub/catalog?${params.toString()}`);
+    navigate(`/ai-hub/models/catalog?${params.toString()}`);
   };
 
   return (
