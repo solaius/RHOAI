@@ -640,10 +640,19 @@ print("agent>", response.output_text)`;
   };
 
   // Handle exit compare mode
-  const handleExitCompare = () => {
+  const [isCloseCompareModalOpen, setIsCloseCompareModalOpen] = useState(false);
+  const [closingChatNumber, setClosingChatNumber] = useState<1 | 2>(1);
+
+  const handleExitCompareClick = (chatNumber: 1 | 2) => {
+    setClosingChatNumber(chatNumber);
+    setIsCloseCompareModalOpen(true);
+  };
+
+  const handleConfirmExitCompare = () => {
     setIsCompareMode(false);
     setChatHistory2([]);
     setActiveSettingsPanel(null);
+    setIsCloseCompareModalOpen(false);
   };
 
   // Guardrails state
@@ -672,7 +681,31 @@ print("agent>", response.output_text)`;
   // Build Panel using DrawerPanelContent
   const BuildPanelContent = (
     <DrawerPanelContent isResizable minSize="500px" defaultSize="550px" id="build-panel-drawer">
-      {/* Header with Tabs and Chevron */}
+      {/* Configure Header */}
+      <div
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
+          padding: '1rem',
+          borderBottom: '1px solid var(--pf-v6-global--BorderColor--100)',
+          backgroundColor: 'var(--pf-v6-global--BackgroundColor--100)'
+        }}
+      >
+        <Title headingLevel="h2" size="xl">
+          {isCompareMode ? `Configure${activeSettingsPanel ? ` - Chat ${activeSettingsPanel}` : ''}` : 'Configure'}
+        </Title>
+        <Button
+          variant="plain"
+          onClick={() => setIsPanelExpanded(false)}
+          aria-label="Close settings panel"
+          style={{ padding: '4px' }}
+        >
+          <TimesIcon />
+        </Button>
+      </div>
+
+      {/* Tabs Row */}
       <div
         style={{
           display: 'flex',
@@ -730,25 +763,10 @@ print("agent>", response.output_text)`;
             }
           />
         </Tabs>
-
-        {/* Close button - inside panel, next to slider */}
-        <Button
-          variant="plain"
-          onClick={() => setIsPanelExpanded(false)}
-          aria-label="Collapse settings panel"
-          style={{
-            padding: '8px',
-            marginLeft: '4px',
-            marginRight: '4px',
-            color: 'var(--pf-v6-global--primary-color--100)'
-          }}
-        >
-          <TimesIcon />
-        </Button>
       </div>
 
       {/* Tab Content */}
-      <DrawerContentBody style={{ padding: '1rem', height: 'calc(100% - 48px)', overflow: 'auto' }}>
+      <DrawerContentBody style={{ padding: '1rem', height: 'calc(100% - 110px)', overflow: 'auto' }}>
           {selectedBuildTab === 'model' && (
             (() => {
               // Determine which panel's state to use
@@ -1516,6 +1534,33 @@ print("agent>", response.output_text)`;
     }
   };
 
+  // Helper to render message with expandable metrics
+  const renderMessageWithMetrics = (msg: any) => {
+    if (msg.role === 'bot' && msg.metrics) {
+      const isExpanded = expandedMetrics[msg.id] || false;
+      return (
+        <div key={msg.id}>
+          <Message {...msg} />
+          <div style={{ marginLeft: '3.5rem', marginTop: '-0.5rem', marginBottom: '1rem' }}>
+            <ExpandableSection
+              toggleText={isExpanded ? 'Hide metrics' : 'Show metrics'}
+              onToggle={() => setExpandedMetrics(prev => ({ ...prev, [msg.id]: !isExpanded }))}
+              isExpanded={isExpanded}
+              isIndented
+            >
+              <Flex spaceItems={{ default: 'spaceItemsSm' }} style={{ marginTop: '0.5rem' }}>
+                <Label isCompact variant="outline">{msg.metrics.time}</Label>
+                <Label isCompact variant="outline">Tokens: {msg.metrics.tokens}</Label>
+                <Label isCompact variant="outline">TTFT: {msg.metrics.ttft}</Label>
+              </Flex>
+            </ExpandableSection>
+          </div>
+        </div>
+      );
+    }
+    return <Message key={msg.id} {...msg} />;
+  };
+
   // Chat Panel Component
   const ChatPanel = (
     <div style={{ height: '100%', display: 'flex', flexDirection: 'column', backgroundColor: '#ffffff' }}>
@@ -2023,33 +2068,6 @@ print("agent>", response.output_text)`;
     </Select>
   );
 
-  // Helper to render message with expandable metrics
-  const renderMessageWithMetrics = (msg: any) => {
-    if (msg.role === 'bot' && msg.metrics) {
-      const isExpanded = expandedMetrics[msg.id] || false;
-      return (
-        <div key={msg.id}>
-          <Message {...msg} />
-          <div style={{ marginLeft: '3.5rem', marginTop: '-0.5rem', marginBottom: '1rem' }}>
-            <ExpandableSection
-              toggleText={isExpanded ? 'Hide metrics' : 'Show metrics'}
-              onToggle={() => setExpandedMetrics(prev => ({ ...prev, [msg.id]: !isExpanded }))}
-              isExpanded={isExpanded}
-              isIndented
-            >
-              <Flex spaceItems={{ default: 'spaceItemsSm' }} style={{ marginTop: '0.5rem' }}>
-                <Label isCompact variant="outline">{msg.metrics.time}</Label>
-                <Label isCompact variant="outline">Tokens: {msg.metrics.tokens}</Label>
-                <Label isCompact variant="outline">TTFT: {msg.metrics.ttft}</Label>
-              </Flex>
-            </ExpandableSection>
-          </div>
-        </div>
-      );
-    }
-    return <Message key={msg.id} {...msg} />;
-  };
-
   // Handler for gear icon clicks - toggle between panels
   const handlePanel1GearClick = () => {
     if (activeSettingsPanel === 1 && isPanelExpanded) {
@@ -2084,7 +2102,11 @@ print("agent>", response.output_text)`;
             <Flex justifyContent={{ default: 'justifyContentSpaceBetween' }} alignItems={{ default: 'alignItemsCenter' }}>
               <FlexItem>
                 <Flex alignItems={{ default: 'alignItemsCenter' }} spaceItems={{ default: 'spaceItemsSm' }}>
-                  <FlexItem style={{ fontWeight: 600 }}>Model 1</FlexItem>
+                  <FlexItem style={{ fontWeight: 600, fontSize: '1rem' }}>Chat 1</FlexItem>
+                  <FlexItem style={{ display: 'flex', alignItems: 'center' }}>
+                    <div style={{ width: '1px', height: '1rem', backgroundColor: '#d2d2d2' }} />
+                  </FlexItem>
+                  <FlexItem style={{ fontWeight: 600 }}>Model</FlexItem>
                   <FlexItem>
                     {renderCompareModelSelect(1, selectedModel, isCompareModel1Open, setIsCompareModel1Open, setSelectedModel)}
                   </FlexItem>
@@ -2096,7 +2118,7 @@ print("agent>", response.output_text)`;
                 </Flex>
               </FlexItem>
               <FlexItem>
-                <Button variant="plain" onClick={handleExitCompare} aria-label="Close panel">
+                <Button variant="plain" onClick={() => handleExitCompareClick(1)} aria-label="Close panel">
                   <TimesIcon />
                 </Button>
               </FlexItem>
@@ -2138,7 +2160,11 @@ print("agent>", response.output_text)`;
             <Flex justifyContent={{ default: 'justifyContentSpaceBetween' }} alignItems={{ default: 'alignItemsCenter' }}>
               <FlexItem>
                 <Flex alignItems={{ default: 'alignItemsCenter' }} spaceItems={{ default: 'spaceItemsSm' }}>
-                  <FlexItem style={{ fontWeight: 600 }}>Model 2</FlexItem>
+                  <FlexItem style={{ fontWeight: 600, fontSize: '1rem' }}>Chat 2</FlexItem>
+                  <FlexItem style={{ display: 'flex', alignItems: 'center' }}>
+                    <div style={{ width: '1px', height: '1rem', backgroundColor: '#d2d2d2' }} />
+                  </FlexItem>
+                  <FlexItem style={{ fontWeight: 600 }}>Model</FlexItem>
                   <FlexItem>
                     {renderCompareModelSelect(2, selectedModel2, isCompareModel2Open, setIsCompareModel2Open, setSelectedModel2)}
                   </FlexItem>
@@ -2150,7 +2176,7 @@ print("agent>", response.output_text)`;
                 </Flex>
               </FlexItem>
               <FlexItem>
-                <Button variant="plain" onClick={handleExitCompare} aria-label="Close panel">
+                <Button variant="plain" onClick={() => handleExitCompareClick(2)} aria-label="Close panel">
                   <TimesIcon />
                 </Button>
               </FlexItem>
@@ -2891,6 +2917,25 @@ print("agent>", response.output_text)`;
         <ModalFooter>
           <Button variant="primary" onClick={handleStartCompare}>Continue</Button>
           <Button variant="link" onClick={() => setIsCompareConfirmModalOpen(false)}>Cancel</Button>
+        </ModalFooter>
+      </Modal>
+
+      {/* Close Compare Confirmation Modal */}
+      <Modal
+        variant="small"
+        isOpen={isCloseCompareModalOpen}
+        onClose={() => setIsCloseCompareModalOpen(false)}
+        aria-labelledby="close-compare-modal-title"
+        aria-describedby="close-compare-modal-body"
+      >
+        <ModalHeader title="Close Chat Compare?" labelId="close-compare-modal-title" />
+        <ModalBody id="close-compare-modal-body">
+          <p>The chat configuration for Chat {closingChatNumber} will be lost.</p>
+          <p>Are you sure you would like to close?</p>
+        </ModalBody>
+        <ModalFooter>
+          <Button variant="primary" onClick={handleConfirmExitCompare}>Close</Button>
+          <Button variant="link" onClick={() => setIsCloseCompareModalOpen(false)}>Cancel</Button>
         </ModalFooter>
       </Modal>
 
