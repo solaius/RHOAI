@@ -65,8 +65,6 @@ import {
   Td,
 } from '@patternfly/react-table';
 import {
-  AngleDoubleLeftIcon,
-  AngleDoubleRightIcon,
   AngleRightIcon,
   CheckCircleIcon,
   ColumnsIcon,
@@ -222,6 +220,16 @@ const Playground: React.FunctionComponent = () => {
   const [panel1Metrics, setPanel1Metrics] = useState({ avgTime: 0, totalTokens: 0, avgTtft: 0, responseCount: 0 });
   const [panel2Metrics, setPanel2Metrics] = useState({ avgTime: 0, totalTokens: 0, avgTtft: 0, responseCount: 0 });
 
+  // Cumulative metrics for single chat mode
+  const [singleChatMetrics, setSingleChatMetrics] = useState({ avgTime: 0, totalTokens: 0, avgTtft: 0, responseCount: 0 });
+
+  // Thinking state for single chat mode
+  const [isSingleChatThinking, setIsSingleChatThinking] = useState(false);
+  const [singleChatThinkingMessage, setSingleChatThinkingMessage] = useState('');
+
+  // Model dropdown open state for single chat header
+  const [isSingleChatModelOpen, setIsSingleChatModelOpen] = useState(false);
+
   // Thinking state for animated messages
   const [isPanel1Thinking, setIsPanel1Thinking] = useState(false);
   const [isPanel2Thinking, setIsPanel2Thinking] = useState(false);
@@ -245,7 +253,7 @@ const Playground: React.FunctionComponent = () => {
 
   // Animate the thinking dots
   React.useEffect(() => {
-    if (isPanel1Thinking || isPanel2Thinking) {
+    if (isPanel1Thinking || isPanel2Thinking || isSingleChatThinking) {
       const interval = setInterval(() => {
         setThinkingDots(prev => prev.length >= 3 ? '' : prev + '.');
       }, 400);
@@ -253,7 +261,7 @@ const Playground: React.FunctionComponent = () => {
     }
     setThinkingDots('');
     return undefined;
-  }, [isPanel1Thinking, isPanel2Thinking]);
+  }, [isPanel1Thinking, isPanel2Thinking, isSingleChatThinking]);
 
   // Llama Stack code snippet for View Code modal
   const llamaStackCodeSnippet = `# Llama Stack Quickstart Script
@@ -551,34 +559,6 @@ print("agent>", response.output_text)`;
   const [savePromptName, setSavePromptName] = useState('');
   const [savePromptAlias, setSavePromptAlias] = useState('');
 
-  // Collapsed Panel Toggle Button - shown when panel is collapsed
-  const CollapsedPanelToggle = (
-    <div
-      style={{
-        position: 'absolute',
-        left: 0,
-        top: '16px',
-        zIndex: 200
-      }}
-    >
-      <Button
-        variant="plain"
-        onClick={() => setIsPanelExpanded(true)}
-        aria-label="Expand settings panel"
-        style={{
-          padding: '12px 8px',
-          borderRadius: '0 4px 4px 0',
-          backgroundColor: '#ffffff',
-          border: '1px solid var(--pf-v6-global--BorderColor--100)',
-          borderLeft: 'none',
-          boxShadow: '2px 2px 8px rgba(0, 0, 0, 0.15)',
-          color: 'var(--pf-v6-global--primary-color--100)'
-        }}
-      >
-        <AngleDoubleRightIcon />
-      </Button>
-    </div>
-  );
 
   // Build Panel using DrawerPanelContent
   const BuildPanelContent = (
@@ -642,7 +622,7 @@ print("agent>", response.output_text)`;
           />
         </Tabs>
 
-        {/* Chevron toggle button - inside panel, next to slider */}
+        {/* Close button - inside panel, next to slider */}
         <Button
           variant="plain"
           onClick={() => setIsPanelExpanded(false)}
@@ -654,7 +634,7 @@ print("agent>", response.output_text)`;
             color: 'var(--pf-v6-global--primary-color--100)'
           }}
         >
-          <AngleDoubleLeftIcon />
+          <TimesIcon />
         </Button>
       </div>
 
@@ -1265,90 +1245,219 @@ print("agent>", response.output_text)`;
     </DrawerPanelContent>
   );
 
+  // Handler for single chat gear icon click
+  const handleSingleChatGearClick = () => {
+    if (isPanelExpanded) {
+      setIsPanelExpanded(false);
+    } else {
+      setActiveSettingsPanel(1);
+      setIsPanelExpanded(true);
+    }
+  };
+
   // Chat Panel Component
   const ChatPanel = (
-    <div style={{ height: '100%', backgroundColor: '#ffffff' }}>
-      <Chatbot displayMode={ChatbotDisplayMode.embedded} className="pf-chatbot-white-bg">
-        <ChatbotContent>
-          <MessageBox>
-            {chatHistory.length === 0 ? (
-              <>
-                <ChatbotWelcomePrompt
-                  title="Hello!"
-                  description="Welcome to the playground"
-                />
-                
-                {/* Full-width image card */}
-                <div style={{ margin: '1rem 0', opacity: 0.5 }}>
-                  <div 
-                    style={{ 
-                      width: '100%',
-                      maxHeight: 'calc(100% - 16px)',
-                      overflow: 'hidden'
-                    }}
-                    dangerouslySetInnerHTML={{ __html: PlaceholderImage }}
+    <div style={{ height: '100%', display: 'flex', flexDirection: 'column', backgroundColor: '#ffffff' }}>
+      {/* Header with model dropdown, metrics, and gear icon */}
+      <div style={{ padding: '0.75rem 1rem 1rem 1rem', borderBottom: '1px solid var(--pf-t--global--border--color--default)' }}>
+        <Flex alignItems={{ default: 'alignItemsCenter' }} spaceItems={{ default: 'spaceItemsSm' }}>
+          <FlexItem style={{ fontWeight: 600 }}>Model</FlexItem>
+          <FlexItem>
+            <Select
+              isOpen={isSingleChatModelOpen}
+              selected={selectedModel}
+              onSelect={(_event, value) => {
+                setSelectedModel(value as string);
+                setIsSingleChatModelOpen(false);
+              }}
+              onOpenChange={setIsSingleChatModelOpen}
+              popperProps={{ appendTo: 'inline' }}
+              toggle={(toggleRef) => (
+                <MenuToggle
+                  ref={toggleRef}
+                  onClick={() => setIsSingleChatModelOpen(!isSingleChatModelOpen)}
+                  isExpanded={isSingleChatModelOpen}
+                  isFullWidth
+                  style={{ minWidth: '160px' }}
+                >
+                  <Flex alignItems={{ default: 'alignItemsCenter' }} spaceItems={{ default: 'spaceItemsSm' }}>
+                    <FlexItem>
+                      {selectedModel === 'gpt-oss-20b' ? 'gpt-oss-20b' :
+                       selectedModel === 'gpt-oss-120b' ? 'gpt-oss-120b' :
+                       selectedModel === 'qwen3-14b' ? 'Qwen3-14B' :
+                       selectedModel === 'llama-3.2-11b' ? 'llama-3.2-11b' :
+                       selectedModel === 'granite-4.0-h-small' ? 'granite-4.0-h-small' :
+                       selectedModel === 'ministral-3-8b' ? 'Ministral-3-8B' : selectedModel}
+                    </FlexItem>
+                    {modelsWithReasoning.includes(selectedModel) && (
+                      <FlexItem><Label color="green" isCompact>Reasoning</Label></FlexItem>
+                    )}
+                  </Flex>
+                </MenuToggle>
+              )}
+            >
+              <SelectList>
+                <SelectOption value="gpt-oss-20b">
+                  <Flex alignItems={{ default: 'alignItemsCenter' }} spaceItems={{ default: 'spaceItemsSm' }}>
+                    <FlexItem>gpt-oss-20b</FlexItem>
+                    <FlexItem><Label color="green" isCompact>Reasoning</Label></FlexItem>
+                  </Flex>
+                </SelectOption>
+                <SelectOption value="gpt-oss-120b">
+                  <Flex alignItems={{ default: 'alignItemsCenter' }} spaceItems={{ default: 'spaceItemsSm' }}>
+                    <FlexItem>gpt-oss-120b</FlexItem>
+                    <FlexItem><Label color="green" isCompact>Reasoning</Label></FlexItem>
+                  </Flex>
+                </SelectOption>
+                <SelectOption value="qwen3-14b">
+                  <Flex alignItems={{ default: 'alignItemsCenter' }} spaceItems={{ default: 'spaceItemsSm' }}>
+                    <FlexItem>Qwen3-14B</FlexItem>
+                    <FlexItem><Label color="green" isCompact>Reasoning</Label></FlexItem>
+                  </Flex>
+                </SelectOption>
+                <SelectOption value="llama-3.2-11b">
+                  <Flex alignItems={{ default: 'alignItemsCenter' }} spaceItems={{ default: 'spaceItemsSm' }}>
+                    <FlexItem>llama-3.2-11b</FlexItem>
+                    <FlexItem><Label color="green" isCompact>Reasoning</Label></FlexItem>
+                  </Flex>
+                </SelectOption>
+                <SelectOption value="granite-4.0-h-small">
+                  <Flex alignItems={{ default: 'alignItemsCenter' }} spaceItems={{ default: 'spaceItemsSm' }}>
+                    <FlexItem>granite-4.0-h-small</FlexItem>
+                    <FlexItem><Label color="green" isCompact>Reasoning</Label></FlexItem>
+                  </Flex>
+                </SelectOption>
+                <SelectOption value="ministral-3-8b">Ministral-3-8B</SelectOption>
+              </SelectList>
+            </Select>
+          </FlexItem>
+          <FlexItem>
+            <Button variant="plain" onClick={handleSingleChatGearClick} aria-label="Settings">
+              <CogIcon />
+            </Button>
+          </FlexItem>
+        </Flex>
+        {/* Show thinking animation or metrics */}
+        {isSingleChatThinking ? (
+          <div style={{ marginTop: '0.5rem', color: 'var(--pf-v6-global--Color--200)', fontStyle: 'italic' }}>
+            <span style={{ marginRight: '0.25rem' }}>*</span>
+            <span>{singleChatThinkingMessage}{thinkingDots}</span>
+          </div>
+        ) : singleChatMetrics.responseCount > 0 && (
+          <Flex spaceItems={{ default: 'spaceItemsSm' }} style={{ marginTop: '0.5rem' }}>
+            <Label isCompact variant="outline">{singleChatMetrics.avgTime.toFixed(2)} s</Label>
+            <Label isCompact variant="outline">T: {singleChatMetrics.totalTokens}</Label>
+            <Label isCompact variant="outline">TTFT: {Math.round(singleChatMetrics.avgTtft)}ms</Label>
+          </Flex>
+        )}
+      </div>
+      {/* Chat Body */}
+      <div style={{ flex: 1, minHeight: 0 }}>
+        <Chatbot displayMode={ChatbotDisplayMode.embedded} className="pf-chatbot-white-bg">
+          <ChatbotContent>
+            <MessageBox>
+              {chatHistory.length === 0 ? (
+                <>
+                  <ChatbotWelcomePrompt
+                    title="Hello!"
+                    description="Welcome to the playground"
                   />
-                </div>
 
-                {/* Initial bot message */}
-                <Message
-                  id="initial-bot-message"
-                  role="bot"
-                  name="Bot"
-                  content="Before you begin chatting, you can change the model, edit the system prompt, adjust model parameters to fit your specific use case."
-                  avatar={`data:image/svg+xml,${encodeURIComponent(ChatbotIcon)}`}
-                  timestamp={`${selectedModel.split('-')[0].charAt(0).toUpperCase() + selectedModel.split('-')[0].slice(1)} 3.1 8B-Instruct · 1:30 PM`}
-                />
-              </>
-            ) : (
-              chatHistory.map((msg) => (
-                <Message key={msg.id} {...msg} />
-              ))
-            )}
-          </MessageBox>
-        </ChatbotContent>
-        <ChatbotFooter>
-          <div style={{
-            borderTop: '1px solid var(--pf-v6-global--BorderColor--100)',
-            padding: '1rem',
-            backgroundColor: '#ffffff'
-          }}>
-            <MessageBar
-              value={inputValue}
-              onSendMessage={(message) => {
-                const userAvatar = `data:image/svg+xml,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 36 36"><circle cx="18" cy="18" r="18" fill="#d2d2d2"/><circle cx="18" cy="14" r="6" fill="#8a8d90"/><path d="M6 32c0-6.627 5.373-12 12-12s12 5.373 12 12" fill="#8a8d90"/></svg>')}`;
-                const userMsg = {
-                  id: Date.now().toString(),
-                  role: 'user',
-                  content: message,
-                  name: 'User',
-                  avatar: userAvatar,
-                  timestamp: new Date().toLocaleTimeString()
-                };
-                const updatedHistory = [...chatHistory, userMsg];
-                setChatHistory(updatedHistory);
-                setInputValue('');
+                  {/* Full-width image card */}
+                  <div style={{ margin: '1rem 0', opacity: 0.5 }}>
+                    <div
+                      style={{
+                        width: '100%',
+                        maxHeight: 'calc(100% - 16px)',
+                        overflow: 'hidden'
+                      }}
+                      dangerouslySetInnerHTML={{ __html: PlaceholderImage }}
+                    />
+                  </div>
 
-                // Simulate bot response after a brief delay
-                setTimeout(() => {
-                  const botMsg = {
-                    id: (Date.now() + 1).toString(),
-                    role: 'bot',
-                    content: 'This is a simulated response. In a real implementation, this would be the model\'s response to your message.',
-                    name: 'Bot',
-                    avatar: `data:image/svg+xml,${encodeURIComponent(ChatbotIcon)}`,
+                  {/* Initial bot message */}
+                  <Message
+                    id="initial-bot-message"
+                    role="bot"
+                    name="Bot"
+                    content="Before you begin chatting, you can change the model, edit the system prompt, adjust model parameters to fit your specific use case."
+                    avatar={`data:image/svg+xml,${encodeURIComponent(ChatbotIcon)}`}
+                    timestamp={`${selectedModel.split('-')[0].charAt(0).toUpperCase() + selectedModel.split('-')[0].slice(1)} 3.1 8B-Instruct · 1:30 PM`}
+                  />
+                </>
+              ) : (
+                chatHistory.map((msg) => renderMessageWithMetrics(msg))
+              )}
+            </MessageBox>
+          </ChatbotContent>
+          <ChatbotFooter>
+            <div style={{
+              borderTop: '1px solid var(--pf-v6-global--BorderColor--100)',
+              padding: '1rem',
+              backgroundColor: '#ffffff'
+            }}>
+              <MessageBar
+                value={inputValue}
+                onSendMessage={(message) => {
+                  const userAvatar = `data:image/svg+xml,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 36 36"><circle cx="18" cy="18" r="18" fill="#d2d2d2"/><circle cx="18" cy="14" r="6" fill="#8a8d90"/><path d="M6 32c0-6.627 5.373-12 12-12s12 5.373 12 12" fill="#8a8d90"/></svg>')}`;
+                  const userMsg = {
+                    id: Date.now().toString(),
+                    role: 'user',
+                    content: message,
+                    name: 'User',
+                    avatar: userAvatar,
                     timestamp: new Date().toLocaleTimeString()
                   };
-                  setChatHistory(prev => [...prev, botMsg]);
-                }, 1000);
-              }}
-              onChange={(_event, value) => setInputValue(String(value))}
-              hasAttachButton={false}
-              hasMicrophoneButton
-            />
-          </div>
-        </ChatbotFooter>
-      </Chatbot>
+                  const updatedHistory = [...chatHistory, userMsg];
+                  setChatHistory(updatedHistory);
+                  setInputValue('');
+
+                  // Start thinking animation
+                  setIsSingleChatThinking(true);
+                  setSingleChatThinkingMessage(thinkingMessages[Math.floor(Math.random() * thinkingMessages.length)]);
+
+                  // Generate random metrics
+                  const time = (Math.random() * 30 + 20).toFixed(2);
+                  const tokens = Math.floor(Math.random() * 200 + 150);
+                  const ttft = Math.floor(Math.random() * 150 + 100);
+
+                  // Simulate bot response after a brief delay
+                  setTimeout(() => {
+                    const botMsg = {
+                      id: (Date.now() + 1).toString(),
+                      role: 'bot',
+                      content: 'This is a simulated response. In a real implementation, this would be the model\'s response to your message.',
+                      name: 'Bot',
+                      avatar: `data:image/svg+xml,${encodeURIComponent(ChatbotIcon)}`,
+                      timestamp: new Date().toLocaleTimeString(),
+                      metrics: { time: `${time} s`, tokens: tokens, ttft: `${ttft}ms` }
+                    };
+                    setChatHistory(prev => [...prev, botMsg]);
+                    setIsSingleChatThinking(false);
+
+                    // Update cumulative metrics
+                    setSingleChatMetrics(prev => {
+                      const newCount = prev.responseCount + 1;
+                      const newAvgTime = ((prev.avgTime * prev.responseCount) + parseFloat(time)) / newCount;
+                      const newTotalTokens = prev.totalTokens + tokens;
+                      const newAvgTtft = ((prev.avgTtft * prev.responseCount) + ttft) / newCount;
+                      return {
+                        avgTime: newAvgTime,
+                        totalTokens: newTotalTokens,
+                        avgTtft: newAvgTtft,
+                        responseCount: newCount
+                      };
+                    });
+                  }, 2000);
+                }}
+                onChange={(_event, value) => setInputValue(String(value))}
+                hasAttachButton={false}
+                hasMicrophoneButton
+              />
+            </div>
+          </ChatbotFooter>
+        </Chatbot>
+      </div>
     </div>
   );
 
@@ -1541,21 +1650,17 @@ print("agent>", response.output_text)`;
                   </SelectList>
                 </Select>
               </FlexItem>
-            </Flex>
-          </FlexItem>
-          <FlexItem>
-            <Flex spaceItems={{ default: 'spaceItemsSm' }}>
               <FlexItem>
                 <Button variant="plain" onClick={onToggleSettings} aria-label="Settings">
                   <CogIcon />
                 </Button>
               </FlexItem>
-              <FlexItem>
-                <Button variant="plain" onClick={onClose} aria-label="Close panel">
-                  <TimesIcon />
-                </Button>
-              </FlexItem>
             </Flex>
+          </FlexItem>
+          <FlexItem>
+            <Button variant="plain" onClick={onClose} aria-label="Close panel">
+              <TimesIcon />
+            </Button>
           </FlexItem>
         </Flex>
         {/* Metrics row */}
@@ -1722,21 +1827,17 @@ print("agent>", response.output_text)`;
                   <FlexItem>
                     {renderCompareModelSelect(1, selectedModel, isCompareModel1Open, setIsCompareModel1Open, setSelectedModel)}
                   </FlexItem>
-                </Flex>
-              </FlexItem>
-              <FlexItem>
-                <Flex spaceItems={{ default: 'spaceItemsSm' }}>
                   <FlexItem>
                     <Button variant="plain" onClick={handlePanel1GearClick} aria-label="Settings">
                       <CogIcon />
                     </Button>
                   </FlexItem>
-                  <FlexItem>
-                    <Button variant="plain" onClick={handleExitCompare} aria-label="Close panel">
-                      <TimesIcon />
-                    </Button>
-                  </FlexItem>
                 </Flex>
+              </FlexItem>
+              <FlexItem>
+                <Button variant="plain" onClick={handleExitCompare} aria-label="Close panel">
+                  <TimesIcon />
+                </Button>
               </FlexItem>
             </Flex>
             {/* Show thinking animation or metrics */}
@@ -1780,21 +1881,17 @@ print("agent>", response.output_text)`;
                   <FlexItem>
                     {renderCompareModelSelect(2, selectedModel2, isCompareModel2Open, setIsCompareModel2Open, setSelectedModel2)}
                   </FlexItem>
-                </Flex>
-              </FlexItem>
-              <FlexItem>
-                <Flex spaceItems={{ default: 'spaceItemsSm' }}>
                   <FlexItem>
                     <Button variant="plain" onClick={handlePanel2GearClick} aria-label="Settings">
                       <CogIcon />
                     </Button>
                   </FlexItem>
-                  <FlexItem>
-                    <Button variant="plain" onClick={handleExitCompare} aria-label="Close panel">
-                      <TimesIcon />
-                    </Button>
-                  </FlexItem>
                 </Flex>
+              </FlexItem>
+              <FlexItem>
+                <Button variant="plain" onClick={handleExitCompare} aria-label="Close panel">
+                  <TimesIcon />
+                </Button>
               </FlexItem>
             </Flex>
             {/* Show thinking animation or metrics */}
@@ -1940,12 +2037,9 @@ print("agent>", response.output_text)`;
 
   const MainContent = (
     <div style={{ display: 'flex', flexDirection: 'column', height: 'calc(100vh - 200px)', width: '100%', position: 'relative', overflow: 'hidden' }}>
-      {/* Collapsed state toggle button - only show when not in compare mode */}
-      {!isPanelExpanded && !isCompareMode && CollapsedPanelToggle}
-
-      {/* Main Content - Config Panel (overlay) + Chat or Compare Layout */}
+      {/* Main Content - Config Panel (inline for single chat, overlay for compare) + Chat or Compare Layout */}
       <div style={{ flex: 1, overflow: 'hidden', position: 'relative' }}>
-        <Drawer isExpanded={isPanelExpanded} position="left" style={{ height: '100%' }}>
+        <Drawer isExpanded={isPanelExpanded} position="left" isInline={!isCompareMode} style={{ height: '100%' }}>
           <DrawerContent panelContent={BuildPanelContent}>
             <DrawerContentBody style={{ padding: 0, display: 'flex', flexDirection: 'column', height: '100%' }}>
               <div style={{ flex: 1, minWidth: 0, minHeight: 0, width: '100%', height: '100%', overflow: 'hidden' }}>
