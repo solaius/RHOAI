@@ -55,6 +55,9 @@ import {
   TextInput,
   Title,
   Tooltip,
+  Progress,
+  ProgressSize,
+  ExpandableSectionToggle,
 } from '@patternfly/react-core';
 import {
   Table,
@@ -75,7 +78,9 @@ import {
   CubesIcon,
   DownloadIcon,
   EllipsisVIcon,
+  FileIcon,
   FolderIcon,
+  FolderOpenIcon,
   HistoryIcon,
   InfoCircleIcon,
   LightbulbIcon,
@@ -168,6 +173,19 @@ const Playground: React.FunctionComponent = () => {
     { id: '3', name: 'HR benefits Q&A', type: 'External connection', provider: 'PGVector', selected: false, addedToKnowledge: false },
     { id: '4', name: 'Expense tracker', type: 'External connection', provider: 'Milvus', selected: false, addedToKnowledge: false },
   ]);
+
+  // Inline RAG file upload state
+  interface UploadedFile {
+    id: string;
+    name: string;
+    size: number;
+    progress: number;
+    status: 'uploading' | 'complete' | 'error';
+  }
+  const [uploadedFiles, setUploadedFiles] = useState<UploadedFile[]>([]);
+  const [isUploadedFilesExpanded, setIsUploadedFilesExpanded] = useState(true);
+  const [isDragOver, setIsDragOver] = useState(false);
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
   const [mcpServers, setMcpServers] = useState([
     { id: '1', name: 'Github', enabled: false, toolsCount: 0, totalTools: 12, hasAuth: false, connected: false },
     { id: '2', name: 'Kubernetes', enabled: false, toolsCount: 0, totalTools: 21, hasAuth: false, connected: false },
@@ -493,6 +511,97 @@ print("agent>", response.output_text)`;
       ));
     }
     setIsMcpToolsModalOpen(false);
+  };
+
+  // File upload handlers for inline RAG
+  const formatFileSize = (bytes: number): string => {
+    if (bytes < 1024) return `${bytes}B`;
+    if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)}KB`;
+    return `${(bytes / (1024 * 1024)).toFixed(1)}MB`;
+  };
+
+  const simulateFileUpload = (file: File) => {
+    const fileId = `file-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    const newFile: UploadedFile = {
+      id: fileId,
+      name: file.name,
+      size: file.size,
+      progress: 0,
+      status: 'uploading',
+    };
+
+    setUploadedFiles(prev => [...prev, newFile]);
+
+    // Simulate upload progress
+    let progress = 0;
+    const interval = setInterval(() => {
+      progress += Math.random() * 30 + 10;
+      if (progress >= 100) {
+        progress = 100;
+        clearInterval(interval);
+        setUploadedFiles(prev =>
+          prev.map(f => f.id === fileId ? { ...f, progress: 100, status: 'complete' } : f)
+        );
+      } else {
+        setUploadedFiles(prev =>
+          prev.map(f => f.id === fileId ? { ...f, progress: Math.min(progress, 99) } : f)
+        );
+      }
+    }, 300);
+  };
+
+  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = event.target.files;
+    if (files) {
+      const fileArray = Array.from(files).slice(0, 10 - uploadedFiles.length);
+      fileArray.forEach(file => {
+        if (file.type === 'application/pdf' ||
+            file.type === 'text/plain' ||
+            file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' ||
+            file.name.endsWith('.pdf') ||
+            file.name.endsWith('.txt') ||
+            file.name.endsWith('.docx')) {
+          simulateFileUpload(file);
+        }
+      });
+    }
+    // Reset input so the same file can be selected again
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
+  const handleDragOver = (event: React.DragEvent) => {
+    event.preventDefault();
+    setIsDragOver(true);
+  };
+
+  const handleDragLeave = (event: React.DragEvent) => {
+    event.preventDefault();
+    setIsDragOver(false);
+  };
+
+  const handleDrop = (event: React.DragEvent) => {
+    event.preventDefault();
+    setIsDragOver(false);
+    const files = event.dataTransfer.files;
+    if (files) {
+      const fileArray = Array.from(files).slice(0, 10 - uploadedFiles.length);
+      fileArray.forEach(file => {
+        if (file.type === 'application/pdf' ||
+            file.type === 'text/plain' ||
+            file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' ||
+            file.name.endsWith('.pdf') ||
+            file.name.endsWith('.txt') ||
+            file.name.endsWith('.docx')) {
+          simulateFileUpload(file);
+        }
+      });
+    }
+  };
+
+  const handleRemoveFile = (fileId: string) => {
+    setUploadedFiles(prev => prev.filter(f => f.id !== fileId));
   };
 
   // Get filtered and paginated tools
@@ -1033,9 +1142,9 @@ print("agent>", response.output_text)`;
                   </Tbody>
                 </Table>
               ) : (
-                <EmptyState 
-                  headingLevel="h4" 
-                  icon={CubesIcon} 
+                <EmptyState
+                  headingLevel="h4"
+                  icon={CubesIcon}
                   titleText="No vector stores added"
                 >
                   <EmptyStateBody>
@@ -1043,9 +1152,161 @@ print("agent>", response.output_text)`;
                   </EmptyStateBody>
                 </EmptyState>
               )}
+
+              {/* Divider between vector stores and file upload */}
+              <Divider style={{ marginTop: '1.5rem', marginBottom: '1.5rem' }} />
+
+              {/* Inline RAG File Upload Section */}
+              <div>
+                <Title headingLevel="h4" size="md" style={{ marginBottom: '1rem' }}>
+                  Upload documents for inline RAG
+                </Title>
+
+                {/* Hidden file input */}
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  onChange={handleFileSelect}
+                  accept=".pdf,.txt,.docx"
+                  multiple
+                  style={{ display: 'none' }}
+                />
+
+                {/* Drag and drop area */}
+                <div
+                  onDragOver={handleDragOver}
+                  onDragLeave={handleDragLeave}
+                  onDrop={handleDrop}
+                  style={{
+                    border: `2px dashed ${isDragOver ? 'var(--pf-v6-global--primary-color--100)' : 'var(--pf-v6-global--BorderColor--100)'}`,
+                    borderRadius: '8px',
+                    padding: '2rem 1rem',
+                    textAlign: 'center',
+                    backgroundColor: isDragOver ? 'var(--pf-v6-global--BackgroundColor--200)' : '#ffffff',
+                    transition: 'all 0.2s ease',
+                    marginBottom: '1rem'
+                  }}
+                >
+                  <FolderOpenIcon style={{ fontSize: '2rem', color: '#151515', marginBottom: '1rem' }} />
+                  <Title headingLevel="h4" size="md" style={{ marginBottom: '0.5rem' }}>
+                    Drag and drop files here
+                  </Title>
+                  <div style={{ color: 'var(--pf-v6-global--Color--200)', marginBottom: '1rem' }}>
+                    or
+                  </div>
+                  <Button
+                    variant="secondary"
+                    onClick={() => fileInputRef.current?.click()}
+                    isDisabled={uploadedFiles.length >= 10}
+                    style={{ borderRadius: '20px', paddingLeft: '1.5rem', paddingRight: '1.5rem' }}
+                  >
+                    Upload
+                  </Button>
+                  <div style={{ color: 'var(--pf-v6-global--Color--200)', fontSize: '0.875rem', marginTop: '1rem' }}>
+                    Supported formats: PDF, TXT, DOCX
+                  </div>
+                </div>
+
+                {/* Uploaded files list */}
+                {uploadedFiles.length > 0 && (
+                  <div style={{ marginTop: '1rem' }}>
+                    <Button
+                      variant="plain"
+                      onClick={() => setIsUploadedFilesExpanded(!isUploadedFilesExpanded)}
+                      style={{ padding: '0.25rem 0', marginBottom: '0.5rem' }}
+                    >
+                      <AngleRightIcon style={{
+                        transform: isUploadedFilesExpanded ? 'rotate(90deg)' : 'rotate(0deg)',
+                        transition: 'transform 0.2s ease'
+                      }} />
+                    </Button>
+
+                    {isUploadedFilesExpanded && (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                        {uploadedFiles.map((file) => (
+                          <div
+                            key={file.id}
+                            style={{
+                              display: 'flex',
+                              flexDirection: 'column',
+                              gap: '0.5rem',
+                              padding: '0.5rem 0'
+                            }}
+                          >
+                            <Flex alignItems={{ default: 'alignItemsFlexStart' }} justifyContent={{ default: 'justifyContentSpaceBetween' }}>
+                              <FlexItem style={{ display: 'flex', alignItems: 'flex-start', gap: '0.5rem', flex: 1, minWidth: 0 }}>
+                                <FileIcon style={{ color: 'var(--pf-v6-global--Color--200)', flexShrink: 0, marginTop: '2px' }} />
+                                <div style={{ minWidth: 0, flex: 1 }}>
+                                  <div style={{
+                                    fontSize: '0.875rem',
+                                    wordBreak: 'break-word',
+                                    lineHeight: '1.4'
+                                  }}>
+                                    {file.name}
+                                  </div>
+                                  <div style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '0.5rem',
+                                    marginTop: '0.25rem'
+                                  }}>
+                                    <span style={{ fontSize: '0.875rem', color: 'var(--pf-v6-global--Color--200)' }}>
+                                      {formatFileSize(file.size)}
+                                    </span>
+                                    {file.status === 'complete' && (
+                                      <>
+                                        <span style={{ fontSize: '0.875rem', color: 'var(--pf-v6-global--Color--200)' }}>
+                                          100%
+                                        </span>
+                                        <CheckCircleIcon style={{ color: 'var(--pf-v6-global--success-color--100)', fontSize: '0.875rem' }} />
+                                      </>
+                                    )}
+                                    {file.status === 'uploading' && (
+                                      <span style={{ fontSize: '0.875rem', color: 'var(--pf-v6-global--Color--200)' }}>
+                                        {Math.round(file.progress)}%
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                              </FlexItem>
+                              <FlexItem>
+                                <Button
+                                  variant="plain"
+                                  aria-label={`Remove ${file.name}`}
+                                  onClick={() => handleRemoveFile(file.id)}
+                                  style={{ padding: '0' }}
+                                >
+                                  <TimesIcon />
+                                </Button>
+                              </FlexItem>
+                            </Flex>
+                            {file.status !== 'complete' && (
+                              <Progress
+                                value={file.progress}
+                                size={ProgressSize.sm}
+                                aria-label={`Upload progress for ${file.name}`}
+                                style={{ marginTop: '0.25rem' }}
+                              />
+                            )}
+                            {file.status === 'complete' && (
+                              <Progress
+                                value={100}
+                                size={ProgressSize.sm}
+                                aria-label={`Upload complete for ${file.name}`}
+                                variant="success"
+                                style={{ marginTop: '0.25rem' }}
+                              />
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
             </>
           )}
-          
+
           {selectedBuildTab === 'mcp' && (
             <div>
               <Flex alignItems={{ default: 'alignItemsCenter' }} spaceItems={{ default: 'spaceItemsSm' }} style={{ marginBottom: '1rem' }}>
