@@ -127,3 +127,13 @@ body.fidelity-low * {
 .pf-chatbot-white-bg .pf-chatbot__content:hover::-webkit-scrollbar-thumb {
   background: var(--pf-t--global--border--color--default);
 }
+
+/* Vector stores table - use top border instead of bottom border */
+#selected-vector-stores-table tbody tr {
+  border-bottom: none !important;
+}
+
+#selected-vector-stores-table tbody tr td {
+  border-bottom: none !important;
+  border-top: 1px solid var(--pf-t--global--border--color--default) !important;
+}

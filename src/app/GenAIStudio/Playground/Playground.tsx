@@ -680,7 +680,7 @@ print("agent>", response.output_text)`;
 
   // Build Panel using DrawerPanelContent
   const BuildPanelContent = (
-    <DrawerPanelContent isResizable minSize="500px" defaultSize="550px" id="build-panel-drawer">
+    <DrawerPanelContent minSize="500px" defaultSize="500px" id="build-panel-drawer">
       {/* Configure Header */}
       <div
         style={{
@@ -1160,15 +1160,19 @@ print("agent>", response.output_text)`;
                   </Tbody>
                 </Table>
               ) : (
-                <EmptyState
-                  headingLevel="h4"
-                  icon={CubesIcon}
-                  titleText="No vector stores added"
-                >
-                  <EmptyStateBody>
+                <div style={{ textAlign: 'center', padding: '2rem 1rem' }}>
+                  <Flex alignItems={{ default: 'alignItemsCenter' }} justifyContent={{ default: 'justifyContentCenter' }} gap={{ default: 'gapSm' }}>
+                    <FlexItem>
+                      <CubesIcon style={{ fontSize: '1.5rem', color: 'var(--pf-t--global--icon--color--subtle)' }} />
+                    </FlexItem>
+                    <FlexItem>
+                      <Title headingLevel="h4" size="lg">No vector stores added</Title>
+                    </FlexItem>
+                  </Flex>
+                  <p style={{ color: 'var(--pf-t--global--text--color--subtle)', marginTop: '0.5rem' }}>
                     Add vector stores to provide your model with custom knowledge and context. Browse available stores or create a new one to get started.
-                  </EmptyStateBody>
-                </EmptyState>
+                  </p>
+                </div>
               )}
 
               {/* Divider between vector stores and file upload */}
@@ -2934,7 +2938,7 @@ print("agent>", response.output_text)`;
           <p>Are you sure you would like to close?</p>
         </ModalBody>
         <ModalFooter>
-          <Button variant="primary" onClick={handleConfirmExitCompare}>Close</Button>
+          <Button variant="danger" onClick={handleConfirmExitCompare}>Close</Button>
           <Button variant="link" onClick={() => setIsCloseCompareModalOpen(false)}>Cancel</Button>
         </ModalFooter>
       </Modal>
