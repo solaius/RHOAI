@@ -211,13 +211,6 @@ const routes: AppRouteConfig[] = [
             path: '/ai-hub/mcp/deployments',
             title: 'RHOAI 3.1 Console | AI Hub - MCP Deployments',
           },
-          {
-            element: <DeployMCPServerModal />,
-            exact: true,
-            label: 'Deploy',
-            path: '/ai-hub/mcp/deploy',
-            title: 'RHOAI 3.1 Console | AI Hub - Deploy MCP Server',
-          },
         ],
       },
     ],
@@ -626,6 +619,12 @@ const routes: AppRouteConfig[] = [
     exact: true,
     path: '/ai-hub/mcp/catalog/:serverSlug',
     title: 'RHOAI 3.1 Console | MCP Server Details',
+  },
+  {
+    element: <DeployMCPServerModal />,
+    exact: true,
+    path: '/ai-hub/mcp/deploy',
+    title: 'RHOAI 3.1 Console | Deploy MCP Server',
   },
   {
     element: <PromptDetails />,
