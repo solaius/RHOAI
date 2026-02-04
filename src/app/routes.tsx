@@ -24,7 +24,7 @@ import { DeployModelWizard } from '@app/AIAssets/Deployments/DeployModelWizard';
 import { MVPServers } from '@app/AIAssets/MVPServers/MVPServers';
 import { MCPServerDetails } from '@app/AIAssets/MVPServers/MCPServerDetails';
 import { SearchResults } from '@app/AIAssets/MVPServers/SearchResults';
-import { MCPCatalog, MCPCatalogDetails, MCPDeployments } from '@app/AIHub/MCPServers';
+import { MCPCatalog, MCPCatalogDetails, MCPDeployments, DeployMCPServerModal } from '@app/AIHub/MCPServers';
 import { CreateGuardrail } from '@app/AIAssets/Guardrails/CreateGuardrail';
 import { Guardrails } from '@app/AIAssets/Guardrails/Guardrails';
 import AvailableAIAssets from '@app/AIAssets/AvailableAIAssets/AvailableAIAssets';
@@ -210,6 +210,13 @@ const routes: AppRouteConfig[] = [
             label: 'Deployments',
             path: '/ai-hub/mcp/deployments',
             title: 'RHOAI 3.1 Console | AI Hub - MCP Deployments',
+          },
+          {
+            element: <DeployMCPServerModal />,
+            exact: true,
+            label: 'Deploy',
+            path: '/ai-hub/mcp/deploy',
+            title: 'RHOAI 3.1 Console | AI Hub - Deploy MCP Server',
           },
         ],
       },
