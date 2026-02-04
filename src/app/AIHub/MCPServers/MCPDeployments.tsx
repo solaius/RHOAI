@@ -1,14 +1,11 @@
-import * as React from 'react';
+import React from 'react';
 import {
   Badge,
   Button,
-  Dropdown,
-  DropdownItem,
-  DropdownList,
   EmptyState,
+  EmptyStateActions,
   EmptyStateBody,
   EmptyStateFooter,
-  EmptyStateActions,
   InputGroup,
   InputGroupItem,
   Label,
@@ -20,9 +17,10 @@ import {
   ModalVariant,
   PageSection,
   Pagination,
-  Popover,
   SearchInput,
-  TextInput,
+  Select,
+  SelectList,
+  SelectOption,
   Title,
   Toolbar,
   ToolbarContent,
@@ -36,126 +34,194 @@ import {
   Td,
   Th,
   Thead,
-  Tr,
+  Tr
 } from '@patternfly/react-table';
 import {
   CheckCircleIcon,
-  CopyIcon,
-  EllipsisVIcon,
   ExclamationCircleIcon,
-  FilterIcon,
-  OutlinedQuestionCircleIcon,
+  OutlinedFolderIcon,
   SearchIcon,
 } from '@patternfly/react-icons';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useDocumentTitle } from '@app/utils/useDocumentTitle';
-import { mcpDeployments } from './mockData';
-import type { MCPDeployment } from './types';
-import MCPIconRaw from '@app/assets/mcp-servers/MCP.svg';
+import { useFeatureFlags } from '@app/utils/FeatureFlagsContext';
 
-// Convert raw SVG to data URI
-const MCPIcon = `data:image/svg+xml,${encodeURIComponent(MCPIconRaw)}`;
+// Pod status values (stretch goal - matches OpenShift/Kubernetes pod status)
+type PodStatus = 'Pending' | 'Running' | 'Failed' | 'Succeeded' | 'Unknown';
+
+// OpenShift pod status descriptions for tooltips
+const POD_STATUS_DESCRIPTIONS: Record<PodStatus, string> = {
+  Running:
+    'The pod and its containers are healthy and running without issues.',
+  Pending:
+    'The pod has been accepted by the Kubernetes cluster but one or more of its containers have not yet been created or started. This can be due to image pulls, pending persistent volume claims, or scheduling issues.',
+  Succeeded:
+    'All containers in the pod have terminated successfully and will not restart. This is typical for jobs or one-off tasks.',
+  Failed:
+    'All containers in the pod have terminated, but at least one terminated in a failure (non-zero exit code).',
+  Unknown:
+    'The state of the pod could not be determined, often due to a communication error with the host node.',
+};
+
+// Mock data types for deployed MCP servers
+interface MCPDeployment {
+  id: string;
+  userName: string;
+  mcpServerName: string;
+  version: string;
+  created: string; // ISO timestamp
+  status: PodStatus;
+}
+
+// Format ISO timestamp for display
+const formatCreated = (iso: string): string => {
+  try {
+    const d = new Date(iso);
+    return d.toLocaleString(undefined, {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit',
+    });
+  } catch {
+    return iso;
+  }
+};
+
+// Mock data for deployed MCP servers
+const mockMCPDeployments: MCPDeployment[] = [
+  {
+    id: '1',
+    userName: 'Kubernetes Test',
+    mcpServerName: 'Kubernetes',
+    version: '1.0.0',
+    created: '2024-11-15T10:30:00Z',
+    status: 'Running',
+  },
+  {
+    id: '2',
+    userName: 'PostgreSQL Dev',
+    mcpServerName: 'PostgreSQL',
+    version: '2.1.0',
+    created: '2024-11-15T09:00:00Z',
+    status: 'Running',
+  },
+  {
+    id: '3',
+    userName: 'ServiceNow Production',
+    mcpServerName: 'ServiceNow',
+    version: '1.2.0',
+    created: '2024-11-12T14:00:00Z',
+    status: 'Failed',
+  },
+];
 
 const MCPDeployments: React.FunctionComponent = () => {
   useDocumentTitle('MCP Deployments');
+  const location = useLocation();
   const navigate = useNavigate();
 
-  // State
+  const { flags, selectedProject, setSelectedProject } = useFeatureFlags();
+  const [deployments, setDeployments] = React.useState<MCPDeployment[]>(mockMCPDeployments);
+  const [sortBy, setSortBy] = React.useState<string>('created');
+  const [sortDirection, setSortDirection] = React.useState<'asc' | 'desc'>('desc');
   const [filterValue, setFilterValue] = React.useState('');
   const [currentPage, setCurrentPage] = React.useState(1);
   const [perPage, setPerPage] = React.useState(10);
-  const [isFilterOpen, setIsFilterOpen] = React.useState(false);
-  const [copiedItems, setCopiedItems] = React.useState<Set<string>>(new Set());
+  const [isProjectSelectOpen, setIsProjectSelectOpen] = React.useState(false);
   const [isFeatureModalOpen, setIsFeatureModalOpen] = React.useState(false);
-  const [openKebabMenus, setOpenKebabMenus] = React.useState<Set<string>>(new Set());
+  const addedDeploymentIdRef = React.useRef<string | null>(null);
 
-  // Copy handler with feedback
-  const handleCopyWithFeedback = (text: string, itemId: string) => {
-    navigator.clipboard.writeText(text);
-    setCopiedItems((prev) => new Set(Array.from(prev).concat(itemId)));
-    setTimeout(() => {
-      setCopiedItems((prev) => {
-        const newSet = new Set(prev);
-        newSet.delete(itemId);
-        return newSet;
-      });
-    }, 2000);
+  // Add newly deployed server from deploy modal navigation state (once per deployment)
+  React.useEffect(() => {
+    const newDeployment = (location.state as { newDeployment?: MCPDeployment })?.newDeployment;
+    if (!newDeployment || addedDeploymentIdRef.current === newDeployment.id) return;
+    addedDeploymentIdRef.current = newDeployment.id;
+    setDeployments(prev => [newDeployment, ...prev]);
+    navigate('/ai-hub/mcp/deployments', { replace: true, state: {} });
+  }, [location.state, navigate]);
+
+  const getFilteredDeployments = () => {
+    let filtered = [...deployments];
+    if (filterValue) {
+      const v = filterValue.toLowerCase();
+      filtered = filtered.filter(
+        d =>
+          d.userName.toLowerCase().includes(v) ||
+          d.mcpServerName.toLowerCase().includes(v)
+      );
+    }
+    return filtered;
   };
 
-  // Kebab menu handlers
-  const toggleKebabMenu = (deploymentId: string) => {
-    setOpenKebabMenus((prev) => {
-      const newSet = new Set(prev);
-      if (newSet.has(deploymentId)) {
-        newSet.delete(deploymentId);
-      } else {
-        newSet.add(deploymentId);
+  const getSortedDeployments = () => {
+    const filtered = getFilteredDeployments();
+    return filtered.sort((a, b) => {
+      let compareResult = 0;
+      switch (sortBy) {
+        case 'userName':
+          compareResult = a.userName.localeCompare(b.userName);
+          break;
+        case 'mcpServerName':
+          compareResult = a.mcpServerName.localeCompare(b.mcpServerName);
+          break;
+        case 'created':
+          compareResult = new Date(a.created).getTime() - new Date(b.created).getTime();
+          break;
+        case 'status':
+          compareResult = a.status.localeCompare(b.status);
+          break;
+        default:
+          compareResult = 0;
       }
-      return newSet;
+      return sortDirection === 'asc' ? compareResult : -compareResult;
     });
   };
 
-  const handleEditDeployment = () => {
-    setIsFeatureModalOpen(true);
-    setOpenKebabMenus(new Set());
+  const getPaginatedDeployments = () => {
+    const sorted = getSortedDeployments();
+    const startIdx = (currentPage - 1) * perPage;
+    return sorted.slice(startIdx, startIdx + perPage);
   };
 
-  const handleDeleteDeployment = () => {
-    setIsFeatureModalOpen(true);
-    setOpenKebabMenus(new Set());
-  };
-
-  // Filter deployments
-  const getFilteredDeployments = () => {
-    if (!filterValue) {
-      return mcpDeployments;
+  const handleSort = (columnName: string) => {
+    if (sortBy === columnName) {
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortBy(columnName);
+      setSortDirection('asc');
     }
-    return mcpDeployments.filter((d) =>
-      d.name.toLowerCase().includes(filterValue.toLowerCase())
+  };
+
+  const renderStatusBadge = (status: PodStatus) => {
+    const isAvailable = status === 'Running' || status === 'Succeeded';
+    const badge = isAvailable ? (
+      <Label color="green" icon={<CheckCircleIcon />}>available</Label>
+    ) : (
+      <Label color="red" icon={<ExclamationCircleIcon />}>unavailable</Label>
+    );
+    return (
+      <Tooltip content={POD_STATUS_DESCRIPTIONS[status]}>
+        <span>{badge}</span>
+      </Tooltip>
     );
   };
 
-  const filteredDeployments = getFilteredDeployments();
-
-  // Paginate
-  const startIndex = (currentPage - 1) * perPage;
-  const paginatedDeployments = filteredDeployments.slice(startIndex, startIndex + perPage);
-
-  const renderStatusBadge = (status: MCPDeployment['status']) => {
-    switch (status) {
-      case 'Active':
-        return (
-          <Label color="green" icon={<CheckCircleIcon />}>
-            Active
-          </Label>
-        );
-      case 'Failed':
-        return (
-          <Label color="red" icon={<ExclamationCircleIcon />}>
-            Failed
-          </Label>
-        );
-      case 'Stopped':
-        return <Label color="grey">Stopped</Label>;
-      case 'Deploying':
-        return <Label color="blue">Deploying</Label>;
-      default:
-        return <Label color="grey">Unknown</Label>;
-    }
-  };
-
   const renderTable = () => {
-    if (filteredDeployments.length === 0) {
+    const deployments = getSortedDeployments();
+
+    if (deployments.length === 0) {
       return (
         <EmptyState>
           <Title headingLevel="h4" size="lg">
             <SearchIcon className="pf-v5-u-mr-sm" />
-            No MCP deployments found
+            No deployments found
           </Title>
           <EmptyStateBody>
             {filterValue
               ? 'No deployments match your filter criteria.'
-              : 'No MCP deployments are currently available.'}
+              : 'No MCP server deployments are currently available in this project.'}
           </EmptyStateBody>
           {filterValue && (
             <EmptyStateFooter>
@@ -172,201 +238,69 @@ const MCPDeployments: React.FunctionComponent = () => {
 
     return (
       <>
-        <Table aria-label="MCP deployments table" variant="compact">
+        <Table aria-label="MCP server deployments table" variant="compact">
           <Thead>
             <Tr>
-              <Th width={25}>MCP deployment name</Th>
-              <Th width={15}>Project</Th>
-              <Th width={15}>Serving runtime</Th>
-              <Th width={10}>Endpoints</Th>
-              <Th width={10}>API protocol</Th>
-              <Th width={10}>Last deployed</Th>
-              <Th width={10}>Status</Th>
-              <Th></Th>
+              <Th
+                width={30}
+                sort={{
+                  sortBy: { index: 0, direction: sortBy === 'mcpServerName' ? sortDirection : undefined },
+                  onSort: () => handleSort('mcpServerName'),
+                  columnIndex: 0,
+                }}
+              >
+                Server
+              </Th>
+              <Th
+                width={20}
+                sort={{
+                  sortBy: { index: 1, direction: sortBy === 'userName' ? sortDirection : undefined },
+                  onSort: () => handleSort('userName'),
+                  columnIndex: 1,
+                }}
+              >
+                Name
+              </Th>
+              <Th
+                width={25}
+                sort={{
+                  sortBy: { index: 2, direction: sortBy === 'created' ? sortDirection : undefined },
+                  onSort: () => handleSort('created'),
+                  columnIndex: 2,
+                }}
+              >
+                Created
+              </Th>
+              <Th
+                width={15}
+                sort={{
+                  sortBy: { index: 3, direction: sortBy === 'status' ? sortDirection : undefined },
+                  onSort: () => handleSort('status'),
+                  columnIndex: 3,
+                }}
+              >
+                Status
+              </Th>
             </Tr>
           </Thead>
           <Tbody>
-            {paginatedDeployments.map((deployment) => (
-              <Tr key={deployment.id}>
-                <Td dataLabel="MCP deployment name">
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-                    <Button
-                      variant="link"
-                      isInline
-                      onClick={() => setIsFeatureModalOpen(true)}
-                      style={{ padding: 0, fontSize: 'inherit', fontWeight: 'bold', textDecoration: 'none' }}
-                    >
-                      {deployment.name}
-                    </Button>
-                    <Popover
-                      bodyContent={
-                        <div style={{ padding: '0.5rem', maxWidth: '300px' }}>
-                          <div style={{ marginBottom: '1rem' }}>
-                            Resource names and types are used to find your resources in OpenShift.
-                          </div>
-                          <div>
-                            <div style={{ fontWeight: 'bold', fontSize: '0.875rem', marginBottom: '0.5rem' }}>
-                              Resource name
-                            </div>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem' }}>
-                              <TextInput
-                                value={deployment.name.toLowerCase().replace(/[^a-z0-9]/g, '-')}
-                                readOnly
-                                aria-label="Resource name"
-                                style={{ fontSize: '0.75rem', height: '28px' }}
-                              />
-                              <Tooltip
-                                content={
-                                  copiedItems.has(`resource-${deployment.id}`) ? 'Copied' : 'Copy resource name'
-                                }
-                              >
-                                <Button
-                                  variant="plain"
-                                  size="sm"
-                                  aria-label="Copy resource name"
-                                  onClick={() =>
-                                    handleCopyWithFeedback(
-                                      deployment.name.toLowerCase().replace(/[^a-z0-9]/g, '-'),
-                                      `resource-${deployment.id}`
-                                    )
-                                  }
-                                  style={{ padding: '4px' }}
-                                >
-                                  {copiedItems.has(`resource-${deployment.id}`) ? (
-                                    <CheckCircleIcon style={{ fontSize: '12px' }} />
-                                  ) : (
-                                    <CopyIcon style={{ fontSize: '12px' }} />
-                                  )}
-                                </Button>
-                              </Tooltip>
-                            </div>
-                          </div>
-                        </div>
-                      }
-                      position="right"
-                    >
-                      <Button variant="plain" aria-label="Deployment info" style={{ padding: '2px' }}>
-                        <OutlinedQuestionCircleIcon style={{ fontSize: '14px', color: '#6A6E73' }} />
-                      </Button>
-                    </Popover>
-                  </div>
-                </Td>
-                <Td dataLabel="Project">
-                  <div>
-                    <div>{deployment.project}</div>
-                    <Badge isRead>{deployment.projectType}</Badge>
-                  </div>
-                </Td>
-                <Td dataLabel="Serving runtime">{deployment.servingRuntime}</Td>
-                <Td dataLabel="Endpoints">
-                  <Popover
-                    bodyContent={
-                      <div style={{ padding: '0.5rem', width: '350px' }}>
-                        <div>
-                          <div style={{ fontWeight: 'bold', fontSize: '0.875rem', marginBottom: '0.5rem' }}>
-                            Endpoint URL
-                          </div>
-                          {deployment.endpoints.map((endpoint, index) => (
-                            <div
-                              key={index}
-                              style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', marginBottom: '0.25rem' }}
-                            >
-                              <TextInput
-                                value={endpoint}
-                                readOnly
-                                aria-label="Endpoint URL"
-                                style={{ fontSize: '0.75rem', height: '28px', fontFamily: 'monospace' }}
-                              />
-                              <Tooltip
-                                content={
-                                  copiedItems.has(`endpoint-${deployment.id}-${index}`) ? 'Copied' : 'Copy endpoint'
-                                }
-                              >
-                                <Button
-                                  variant="plain"
-                                  size="sm"
-                                  aria-label="Copy endpoint"
-                                  onClick={() =>
-                                    handleCopyWithFeedback(endpoint, `endpoint-${deployment.id}-${index}`)
-                                  }
-                                  style={{ padding: '4px' }}
-                                >
-                                  {copiedItems.has(`endpoint-${deployment.id}-${index}`) ? (
-                                    <CheckCircleIcon style={{ fontSize: '12px' }} />
-                                  ) : (
-                                    <CopyIcon style={{ fontSize: '12px' }} />
-                                  )}
-                                </Button>
-                              </Tooltip>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    }
-                    position="right"
-                  >
-                    <Button variant="link" isInline style={{ padding: 0, textDecoration: 'none' }}>
-                      View
-                    </Button>
-                  </Popover>
-                </Td>
-                <Td dataLabel="API protocol">
-                  <Label color={deployment.apiProtocol === 'SSE' ? 'purple' : 'yellow'}>
-                    {deployment.apiProtocol}
-                  </Label>
-                </Td>
-                <Td dataLabel="Last deployed">{deployment.lastDeployed}</Td>
-                <Td dataLabel="Status">
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                    {renderStatusBadge(deployment.status)}
-                    {deployment.status === 'Active' && (
-                      <Button variant="link" isInline onClick={() => setIsFeatureModalOpen(true)} style={{ padding: 0 }}>
-                        Stop
-                      </Button>
-                    )}
-                  </div>
-                </Td>
-                <Td dataLabel="Actions" style={{ textAlign: 'right', width: '60px' }}>
-                  <Dropdown
-                    isOpen={openKebabMenus.has(deployment.id)}
-                    onOpenChange={(isOpen) => {
-                      if (!isOpen) {
-                        setOpenKebabMenus((prev) => {
-                          const newSet = new Set(prev);
-                          newSet.delete(deployment.id);
-                          return newSet;
-                        });
-                      }
-                    }}
-                    popperProps={{ position: 'right' }}
-                    toggle={(toggleRef) => (
-                      <MenuToggle
-                        ref={toggleRef}
-                        onClick={() => toggleKebabMenu(deployment.id)}
-                        variant="plain"
-                        aria-label={`Actions for ${deployment.name}`}
-                        isExpanded={openKebabMenus.has(deployment.id)}
-                      >
-                        <EllipsisVIcon />
-                      </MenuToggle>
-                    )}
-                  >
-                    <DropdownList>
-                      <DropdownItem key="edit" onClick={handleEditDeployment}>
-                        Edit
-                      </DropdownItem>
-                      <DropdownItem key="delete" onClick={handleDeleteDeployment}>
-                        Delete
-                      </DropdownItem>
-                    </DropdownList>
-                  </Dropdown>
-                </Td>
-              </Tr>
-            ))}
+            {getPaginatedDeployments().map((deployment) => {
+              const serverNameWithVersion = `${deployment.mcpServerName.replace(/\s+/g, '-')}-${deployment.version}`;
+              return (
+                <Tr key={deployment.id}>
+                  <Td dataLabel="Server">
+                    <span style={{ fontWeight: 'bold' }}>{serverNameWithVersion}</span>
+                  </Td>
+                  <Td dataLabel="Name">{deployment.userName}</Td>
+                  <Td dataLabel="Created">{formatCreated(deployment.created)}</Td>
+                  <Td dataLabel="Status">{renderStatusBadge(deployment.status)}</Td>
+                </Tr>
+              );
+            })}
           </Tbody>
         </Table>
         <Pagination
-          itemCount={filteredDeployments.length}
+          itemCount={deployments.length}
           perPage={perPage}
           page={currentPage}
           onSetPage={(_event, pageNumber) => setCurrentPage(pageNumber)}
@@ -379,6 +313,7 @@ const MCPDeployments: React.FunctionComponent = () => {
             { title: '5', value: 5 },
             { title: '10', value: 10 },
             { title: '20', value: 20 },
+            { title: '50', value: 50 },
           ]}
         />
       </>
@@ -388,61 +323,70 @@ const MCPDeployments: React.FunctionComponent = () => {
   return (
     <>
       <PageSection>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-          <div
-            style={{
-              background: 'var(--ai-model-server--BackgroundColor, #E7F1FA)',
-              borderRadius: '20px',
-              padding: '8px',
-              width: '48px',
-              height: '48px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-          >
-            <img src={MCPIcon} alt="MCP icon" style={{ width: '32px', height: '32px' }} />
-          </div>
-          <div>
-            <Title headingLevel="h1" size="2xl">
-              MCP Deployments
-            </Title>
-            <div style={{ color: 'var(--pf-v5-global--Color--200)', marginTop: '0.25rem' }}>
-              Manage and monitor your deployed MCP servers
-            </div>
-          </div>
+        <Title headingLevel="h1" size="2xl">
+          MCP server deployments
+        </Title>
+        <div style={{ color: 'var(--pf-v5-global--Color--200)', marginTop: '0.5rem' }}>
+          Manage and view the health and performance of your deployed MCP servers.
         </div>
       </PageSection>
+
+      {flags.showProjectWorkspaceDropdowns && (
+        <PageSection style={{ paddingTop: '0.5rem', paddingBottom: '0.25rem' }}>
+          <Toolbar>
+            <ToolbarContent>
+              <ToolbarGroup>
+                <ToolbarItem>
+                  <InputGroup>
+                    <InputGroupItem>
+                      <div className="pf-v6-c-input-group__text">
+                        <OutlinedFolderIcon /> Project
+                      </div>
+                    </InputGroupItem>
+                    <InputGroupItem>
+                      <Select
+                        isOpen={isProjectSelectOpen}
+                        selected={selectedProject}
+                        onSelect={(_event, value) => {
+                          setSelectedProject(value as string);
+                          setIsProjectSelectOpen(false);
+                        }}
+                        onOpenChange={(isOpen) => setIsProjectSelectOpen(isOpen)}
+                        toggle={(toggleRef) => (
+                          <MenuToggle
+                            ref={toggleRef}
+                            onClick={() => setIsProjectSelectOpen(!isProjectSelectOpen)}
+                            isExpanded={isProjectSelectOpen}
+                            style={{ width: '200px' }}
+                          >
+                            {selectedProject}
+                          </MenuToggle>
+                        )}
+                        shouldFocusToggleOnSelect
+                      >
+                        <SelectList>
+                          <SelectOption value="Project X">Project X</SelectOption>
+                          <SelectOption value="Project Y">Project Y</SelectOption>
+                        </SelectList>
+                      </Select>
+                    </InputGroupItem>
+                  </InputGroup>
+                </ToolbarItem>
+              </ToolbarGroup>
+            </ToolbarContent>
+          </Toolbar>
+        </PageSection>
+      )}
 
       <PageSection style={{ paddingTop: '0.5rem' }}>
         <Toolbar id="mcp-deployments-toolbar">
           <ToolbarContent>
             <ToolbarGroup variant="filter-group">
               <ToolbarItem>
-                <Dropdown
-                  isOpen={isFilterOpen}
-                  onOpenChange={setIsFilterOpen}
-                  toggle={(toggleRef) => (
-                    <MenuToggle
-                      ref={toggleRef}
-                      onClick={() => setIsFilterOpen(!isFilterOpen)}
-                      isExpanded={isFilterOpen}
-                      icon={<FilterIcon />}
-                    >
-                      Name
-                    </MenuToggle>
-                  )}
-                >
-                  <DropdownList>
-                    <DropdownItem key="name">Name</DropdownItem>
-                  </DropdownList>
-                </Dropdown>
-              </ToolbarItem>
-              <ToolbarItem>
                 <InputGroup>
                   <InputGroupItem isFill>
                     <SearchInput
-                      placeholder="Filter by name"
+                      placeholder="Filter by name or server name"
                       value={filterValue}
                       onChange={(_event, value) => setFilterValue(value)}
                       onClear={() => setFilterValue('')}
@@ -455,7 +399,7 @@ const MCPDeployments: React.FunctionComponent = () => {
             <ToolbarGroup align={{ default: 'alignEnd' }}>
               <ToolbarItem variant="pagination">
                 <Pagination
-                  itemCount={filteredDeployments.length}
+                  itemCount={getSortedDeployments().length}
                   perPage={perPage}
                   page={currentPage}
                   onSetPage={(_event, pageNumber) => setCurrentPage(pageNumber)}
@@ -469,6 +413,7 @@ const MCPDeployments: React.FunctionComponent = () => {
                     { title: '5', value: 5 },
                     { title: '10', value: 10 },
                     { title: '20', value: 20 },
+                    { title: '50', value: 50 },
                   ]}
                 />
               </ToolbarItem>
@@ -479,8 +424,13 @@ const MCPDeployments: React.FunctionComponent = () => {
         {renderTable()}
       </PageSection>
 
-      {/* Feature Not Available Modal */}
-      <Modal variant={ModalVariant.small} isOpen={isFeatureModalOpen} onClose={() => setIsFeatureModalOpen(false)}>
+      {/* Not shown / out-of-scope modal */}
+      <Modal
+        id="mcp-deployments-not-shown-modal"
+        variant={ModalVariant.small}
+        isOpen={isFeatureModalOpen}
+        onClose={() => setIsFeatureModalOpen(false)}
+      >
         <ModalHeader title="Not shown" />
         <ModalBody>
           <p>This interaction is out of scope for this prototype.</p>

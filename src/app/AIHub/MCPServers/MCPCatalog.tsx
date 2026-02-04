@@ -1,5 +1,8 @@
 import * as React from 'react';
 import {
+  Badge,
+  Breadcrumb,
+  BreadcrumbItem,
   Button,
   Card,
   CardBody,
@@ -7,418 +10,2073 @@ import {
   CardHeader,
   CardTitle,
   Checkbox,
+  Divider,
   Dropdown,
   DropdownItem,
   DropdownList,
-  Gallery,
-  GalleryItem,
-  InputGroup,
-  InputGroupItem,
+  Flex,
+  FlexItem,
+  Form,
+  FormGroup,
+  FormHelperText,
+  Grid,
+  GridItem,
+  HelperText,
+  HelperTextItem,
   Label,
+  LabelGroup,
   MenuToggle,
+  Modal,
+  ModalBody,
+  ModalFooter,
+  ModalHeader,
+  ModalVariant,
   PageSection,
   Pagination,
   SearchInput,
+  Select,
+  SelectList,
+  SelectOption,
+  Sidebar,
+  SidebarContent,
+  SidebarPanel,
+  TextArea,
+  TextInput,
   Title,
   ToggleGroup,
   ToggleGroupItem,
   Toolbar,
   ToolbarContent,
   ToolbarGroup,
-  ToolbarItem,
+  ToolbarItem
 } from '@patternfly/react-core';
 import {
-  ArrowRightIcon,
   CheckCircleIcon,
-  FilterIcon,
-  ListIcon,
-  SecurityIcon,
+  CogIcon,
+  CubeIcon,
+  LockIcon,
+  OutlinedFolderIcon,
+  PlayIcon,
   ServerIcon,
-  ThIcon,
-  WrenchIcon,
+  ShieldAltIcon,
+  ToolsIcon
 } from '@patternfly/react-icons';
-import { Table, Tbody, Td, Th, Thead, Tr } from '@patternfly/react-table';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useDocumentTitle } from '@app/utils/useDocumentTitle';
-import { mcpServers, mcpCatalogLogos } from './mockData';
-import MCPIconRaw from '@app/assets/mcp-servers/MCP.svg';
+import { useFeatureFlags } from '@app/utils/FeatureFlagsContext';
+import { useUserProfile } from '@app/utils/UserProfileContext';
+import { mcpServerLogos } from './mcpServerLogos';
 
-// Convert raw SVG to data URI
-const MCPIcon = `data:image/svg+xml,${encodeURIComponent(MCPIconRaw)}`;
-
-// Label icons mapping
-const labelIcons: Record<string, React.ReactNode> = {
-  'Verified source': <SecurityIcon style={{ color: '#f0ab00' }} />,
-  'Red Hat partner': <CheckCircleIcon style={{ color: '#3e8635' }} />,
-  'SAST': <CheckCircleIcon style={{ color: '#3e8635' }} />,
-  'Local to cluster': <ServerIcon style={{ color: '#6a6e73' }} />,
-  'Read only tools': <WrenchIcon style={{ color: '#6a6e73' }} />,
+// Brand colors for generic circular icons
+const brandColors: Record<string, string> = {
+  'kubernetes': '#336ce6',
+  'github': '#181717',
+  'postgres': '#336791',
+  'salesforce': '#00A1E0',
+  'slack': '#4A154B',
+  'zapier': '#FF4A00'
 };
 
-const MCPCatalog: React.FunctionComponent = () => {
-  useDocumentTitle('MCP catalog');
-  const navigate = useNavigate();
-
-  // State
-  const [searchValue, setSearchValue] = React.useState('');
-  const [isFilterOpen, setIsFilterOpen] = React.useState(false);
-  const [filterRemote, setFilterRemote] = React.useState(false);
-  const [filterLocal, setFilterLocal] = React.useState(false);
-  const [viewMode, setViewMode] = React.useState<'grid' | 'list'>('grid');
-  const [currentPage, setCurrentPage] = React.useState(1);
-  const [perPage, setPerPage] = React.useState(9);
-
-  // Filter servers based on search and deployment mode
-  const getFilteredServers = () => {
-    let filtered = [...mcpServers];
-
-    // Filter by search
-    if (searchValue) {
-      const searchLower = searchValue.toLowerCase();
-      filtered = filtered.filter(
-        (server) =>
-          server.name.toLowerCase().includes(searchLower) ||
-          server.description.toLowerCase().includes(searchLower) ||
-          server.provider.toLowerCase().includes(searchLower)
-      );
-    }
-
-    // Filter by deployment mode
-    if (filterRemote && !filterLocal) {
-      filtered = filtered.filter((server) => server.deploymentMode === 'Remote');
-    } else if (filterLocal && !filterRemote) {
-      filtered = filtered.filter((server) => server.deploymentMode === 'Local');
-    }
-
-    return filtered;
-  };
-
-  const filteredServers = getFilteredServers();
-  const totalServers = mcpServers.length;
-
-  // Pagination
-  const startIndex = (currentPage - 1) * perPage;
-  const paginatedServers = filteredServers.slice(startIndex, startIndex + perPage);
-
-  const handleServerClick = (slug: string) => {
-    navigate(`/ai-hub/mcp/catalog/${slug}`);
-  };
-
-  const renderDeploymentBadge = (mode: 'Remote' | 'Local') => {
+// Logo component to handle SVG content, file paths, or special icon identifiers
+const Logo: React.FunctionComponent<{ 
+  svgContent: string; 
+  alt: string; 
+  style?: React.CSSProperties 
+}> = ({ svgContent, alt, style }) => {
+  // Handle special icon identifiers
+  if (svgContent === 'cube-icon') {
     return (
-      <Label color={mode === 'Remote' ? 'blue' : 'green'} isCompact>
-        {mode}
-      </Label>
+      <CubeIcon 
+        style={{
+          ...style,
+          color: '#6A6E73',
+          fontSize: '16px',
+          width: '16px',
+          height: '16px'
+        }}
+        aria-label={alt}
+      />
     );
-  };
-
-  // Render labels with icons in a 2-column grid
-  const renderLabelsWithIcons = (labels: string[]) => {
+  }
+  
+  // Handle generic circular icon identifiers (format: 'generic-icon-{brand}' or 'generic-icon-{brand}:{color}')
+  if (svgContent.startsWith('generic-icon-')) {
+    const parts = svgContent.replace('generic-icon-', '').split(':');
+    const brand = parts[0];
+    const color = parts[1] || brandColors[brand] || '#6A6E73';
+    const size = style?.width || style?.height || '32px';
+    const sizeValue = typeof size === 'string' ? size : `${size}px`;
+    
     return (
       <div
         style={{
-          display: 'grid',
-          gridTemplateColumns: '1fr 1fr',
-          gap: '0.5rem 1rem',
-          marginTop: '0.75rem',
+          ...style,
+          width: sizeValue,
+          height: sizeValue,
+          borderRadius: '50%',
+          backgroundColor: color,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          flexShrink: 0
         }}
-      >
-        {labels.map((label, index) => (
-          <div
-            key={index}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.375rem',
-              fontSize: '0.8125rem',
-              color: '#151515',
-            }}
-          >
-            {labelIcons[label] || <CheckCircleIcon style={{ color: '#6a6e73' }} />}
-            <span>{label}</span>
-          </div>
-        ))}
-      </div>
+        aria-label={alt}
+        role="img"
+      />
     );
+  }
+  
+  // Check if content is inline SVG (raw-loader returns SVG as string, includes <svg or <?xml)
+  const isInlineSVG = svgContent.includes('<svg') || svgContent.includes('<?xml');
+  
+  // Handle inline SVG content (from raw-loader)
+  if (isInlineSVG) {
+    const dataUri = `data:image/svg+xml,${encodeURIComponent(svgContent)}`;
+    return (
+      <img 
+        src={dataUri} 
+        alt={alt}
+        style={style}
+      />
+    );
+  }
+  
+  // Handle imported SVG files as URLs (if webpack config changes)
+  return (
+    <img 
+      src={svgContent} 
+      alt={alt}
+      style={style}
+    />
+  );
+};
+
+const MCPCatalog: React.FunctionComponent = () => {
+  useDocumentTitle("MCP Servers");
+
+  const { flags } = useFeatureFlags();
+  const { userProfile } = useUserProfile();
+  const navigate = useNavigate();
+
+  const [isProjectSelectOpen, setIsProjectSelectOpen] = React.useState(false);
+  const [selectedProject, setSelectedProject] = React.useState('Project X');
+  const [activeCategoryTab, setActiveCategoryTab] = React.useState<number>(0); // 0: All, 1: Certified Partners, 2: Community
+  const [sortBy, setSortBy] = React.useState<string>('name');
+  const [sortDirection, setSortDirection] = React.useState<'asc' | 'desc'>('asc');
+  const [isRequestAccessModalOpen, setIsRequestAccessModalOpen] = React.useState(false);
+  const [isFeatureModalOpen, setIsFeatureModalOpen] = React.useState(false);
+  
+  // Pagination state
+  const [currentPage, setCurrentPage] = React.useState(1);
+  const [perPage, setPerPage] = React.useState(10);
+  
+  // Filter state
+  const [filters, setFilters] = React.useState<{
+    labels: string[];
+    deploymentMode: string[];
+    status: string[];
+    license: string[];
+    version: string[];
+    tags: string[];
+    transports: string[];
+    verifiedSource: boolean | null;
+    secureEndpoint: boolean | null;
+    sast: boolean | null;
+    readOnlyTools: boolean | null;
+  }>({
+    labels: [],
+    deploymentMode: [],
+    status: [],
+    license: [],
+    version: [],
+    tags: [],
+    transports: [],
+    verifiedSource: null,
+    secureEndpoint: null,
+    sast: null,
+    readOnlyTools: null
+  });
+  const [integratedSearchText, setIntegratedSearchText] = React.useState<string>('');
+  const [addServerModalOpen, setAddServerModalOpen] = React.useState<boolean>(false);
+  const [transportSelectOpen, setTransportSelectOpen] = React.useState<boolean>(false);
+  const [deploymentSelectOpen, setDeploymentSelectOpen] = React.useState<boolean>(false);
+  const [redHatPartnerSelectOpen, setRedHatPartnerSelectOpen] = React.useState<boolean>(false);
+  const [labelSearch, setLabelSearch] = React.useState<string>('');
+  const [showAllLabels, setShowAllLabels] = React.useState<boolean>(false);
+  const [newServerForm, setNewServerForm] = React.useState({
+    name: '',
+    description: '',
+    tags: '',
+    provider: '',
+    version: '',
+    license: '',
+    transportType: '',
+    deploymentMode: '',
+    location: '',
+    sourceUrl: '',
+    homepage: '',
+    iconColor: '',
+    iconPath: '',
+    redHatPartner: false,
+    toolsBlacklist: ''
+  });
+  const [animationState, setAnimationState] = React.useState({
+    header: false,
+    mainContent: false,
+    filters: false,
+    viewToggle: false,
+    serverContent: false,
+    serverItems: [] as number[]
+  });
+
+  // Animation effect on component mount
+  React.useEffect(() => {
+    const timeouts: NodeJS.Timeout[] = [];
+    
+    timeouts.push(setTimeout(() => setAnimationState(prev => ({ ...prev, header: true })), 50));
+    timeouts.push(setTimeout(() => setAnimationState(prev => ({ ...prev, mainContent: true })), 150));
+    timeouts.push(setTimeout(() => setAnimationState(prev => ({ ...prev, filters: true })), 250));
+    timeouts.push(setTimeout(() => setAnimationState(prev => ({ ...prev, viewToggle: true })), 350));
+    timeouts.push(setTimeout(() => setAnimationState(prev => ({ ...prev, serverContent: true })), 450));
+
+    // Animate individual server items after content section appears
+    // Use paginated indices (0-based within the current page)
+    // Set all visible indices at once after a delay to avoid conflicts with the page change effect
+    timeouts.push(setTimeout(() => {
+      const paginatedServers = getPaginatedServers();
+      if (paginatedServers.length > 0) {
+        const visibleIndices = Array.from({ length: paginatedServers.length }, (_, i) => i);
+        setAnimationState(prev => ({
+          ...prev,
+          serverItems: visibleIndices
+        }));
+      }
+    }, 500));
+
+    return () => {
+      timeouts.forEach(timeout => clearTimeout(timeout));
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+
+  const getAnimationStyle = (isVisible: boolean) => ({
+    opacity: isVisible ? 1 : 0,
+    transform: isVisible ? 'translateY(0)' : 'translateY(20px)',
+    transition: 'opacity 0.3s ease-out, transform 0.3s ease-out'
+  });
+
+  const getServerItemAnimationStyle = (index: number) => ({
+    opacity: animationState.serverItems.includes(index) ? 1 : 0,
+    transform: animationState.serverItems.includes(index) ? 'translateY(0)' : 'translateY(20px)',
+    transition: 'opacity 0.25s ease-out, transform 0.25s ease-out'
+  });
+
+  const handlePlaygroundAction = (serverName: string, event: React.MouseEvent) => {
+    event.stopPropagation(); // Prevent card click navigation
+    // Navigate to playground with the server parameter
+    navigate(`/gen-ai-studio/playground?addServer=${encodeURIComponent(serverName)}`);
   };
 
-  const renderCardGrid = () => (
-    <Gallery hasGutter minWidths={{ default: '320px' }}>
-      {paginatedServers.map((server) => (
-        <GalleryItem key={server.id}>
-          <Card
-            isFullHeight
-            isClickable
-            onClick={() => handleServerClick(server.slug)}
-            style={{
-              cursor: 'pointer',
-              border: '1px solid #d2d2d2',
-              borderRadius: '8px',
-              boxShadow: '0 1px 2px rgba(0, 0, 0, 0.05)',
+  const handleServerClick = (serverSlug: string) => {
+    navigate(`/ai-hub/mcp/catalog/${serverSlug}`);
+  };
+
+  const handleSort = (column: string) => {
+    if (sortBy === column) {
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortBy(column);
+      setSortDirection('asc');
+    }
+  };
+
+  // Filter helper functions
+  const addFilter = (filterType: string, value: string) => {
+    setFilters(prev => {
+      const currentValue = prev[filterType as keyof typeof prev];
+      if (Array.isArray(currentValue)) {
+        return {
+          ...prev,
+          [filterType]: [...(currentValue as string[]), value]
+        };
+      }
+      return prev;
+    });
+    setCurrentPage(1);
+  };
+
+  const removeFilter = (filterType: string, value: string) => {
+    setFilters(prev => {
+      const currentValue = prev[filterType as keyof typeof prev];
+      if (Array.isArray(currentValue)) {
+        return {
+          ...prev,
+          [filterType]: currentValue.filter(item => item !== value)
+        };
+      }
+      return prev;
+    });
+    setCurrentPage(1);
+  };
+
+  const clearAllFilters = () => {
+    setFilters({
+      labels: [], deploymentMode: [], status: [],
+      license: [], version: [], tags: [], transports: [],
+      verifiedSource: null, secureEndpoint: null, sast: null, readOnlyTools: null
+    });
+    setIntegratedSearchText('');
+    setCurrentPage(1);
+  };
+
+  const toggleDeploymentModeFilter = (mode: string) => {
+    setFilters(prev => {
+      const deploymentMode = prev.deploymentMode.includes(mode)
+        ? prev.deploymentMode.filter(m => m !== mode)
+        : [...prev.deploymentMode, mode];
+      return { ...prev, deploymentMode };
+    });
+    setCurrentPage(1);
+  };
+
+  const toggleStatusFilter = (status: string) => {
+    setFilters(prev => {
+      const statusFilters = prev.status.includes(status)
+        ? prev.status.filter(s => s !== status)
+        : [...prev.status, status];
+      return { ...prev, status: statusFilters };
+    });
+    setCurrentPage(1);
+  };
+
+  const toggleLicenseFilter = (license: string) => {
+    setFilters(prev => {
+      const licenseFilters = prev.license.includes(license)
+        ? prev.license.filter(l => l !== license)
+        : [...prev.license, license];
+      return { ...prev, license: licenseFilters };
+    });
+    setCurrentPage(1);
+  };
+
+  const toggleVersionFilter = (version: string) => {
+    setFilters(prev => {
+      const versionFilters = prev.version.includes(version)
+        ? prev.version.filter(v => v !== version)
+        : [...prev.version, version];
+      return { ...prev, version: versionFilters };
+    });
+    setCurrentPage(1);
+  };
+
+  const toggleTagFilter = (tag: string) => {
+    setFilters(prev => {
+      const tagFilters = prev.tags.includes(tag)
+        ? prev.tags.filter(t => t !== tag)
+        : [...prev.tags, tag];
+      return { ...prev, tags: tagFilters };
+    });
+    setCurrentPage(1);
+  };
+
+  const toggleTransportFilter = (transport: string) => {
+    setFilters(prev => {
+      const transportFilters = prev.transports.includes(transport)
+        ? prev.transports.filter(t => t !== transport)
+        : [...prev.transports, transport];
+      return { ...prev, transports: transportFilters };
+    });
+    setCurrentPage(1);
+  };
+
+  const toggleBooleanFilter = (filterName: 'verifiedSource' | 'secureEndpoint' | 'sast' | 'readOnlyTools', value: boolean | null) => {
+    setFilters(prev => ({
+      ...prev,
+      [filterName]: prev[filterName] === value ? null : value
+    }));
+    setCurrentPage(1);
+  };
+
+  // Apply filters to servers
+  const getFilteredServers = () => {
+    const searchLower = integratedSearchText.trim().toLowerCase();
+    return servers.filter(server => {
+      const matchesIntegratedSearch = searchLower === '' ||
+        server.name.toLowerCase().includes(searchLower) ||
+        server.description.toLowerCase().includes(searchLower) ||
+        (server.tags && server.tags.some(tag => tag.toLowerCase().includes(searchLower)));
+
+      const matchesLabelsFilters = filters.labels.length === 0 ||
+        filters.labels.some(filter =>
+          server.tags && server.tags.some(tag =>
+            tag.toLowerCase().includes(filter.toLowerCase())
+          )
+        );
+
+      const matchesDeploymentModeFilters = filters.deploymentMode.length === 0 ||
+        filters.deploymentMode.some(mode => {
+          if (mode === 'remote') {
+            return server.slug === 'github-mcp-server' ||
+                   server.slug === 'slack-mcp-server' ||
+                   server.slug === 'zapier-mcp-server' ||
+                   server.slug === 'splunk-mcp-server';
+          } else if (mode === 'local') {
+            return server.slug !== 'github-mcp-server' &&
+                   server.slug !== 'slack-mcp-server' &&
+                   server.slug !== 'zapier-mcp-server' &&
+                   server.slug !== 'splunk-mcp-server';
+          }
+          return false;
+        });
+
+      const matchesStatusFilters = filters.status.length === 0 ||
+        filters.status.some(statusFilter => {
+          if (statusFilter === 'available') {
+            return server.status === 'available';
+          } else if (statusFilter === 'unavailable') {
+            return server.status === 'unavailable';
+          }
+          return false;
+        });
+
+      const matchesLicenseFilters = filters.license.length === 0 ||
+        filters.license.some(licenseFilter =>
+          server.license && server.license.toLowerCase() === licenseFilter.toLowerCase()
+        );
+
+      const matchesVersionFilters = filters.version.length === 0 ||
+        filters.version.some(versionFilter =>
+          server.version.toLowerCase().includes(versionFilter.toLowerCase())
+        );
+
+      const matchesTagFilters = filters.tags.length === 0 ||
+        filters.tags.some(tagFilter =>
+          server.tags && server.tags.some(tag => tag.toLowerCase().includes(tagFilter.toLowerCase()))
+        );
+
+      const matchesTransportFilters = filters.transports.length === 0 ||
+        filters.transports.some(transportFilter => {
+          const serverTransports = (server as any).transports || [];
+          const filterLower = transportFilter.toLowerCase();
+
+          // Check if any of the server's supported transports match the filter
+          return serverTransports.some((transport: string) =>
+            transport.toLowerCase() === filterLower
+          );
+        });
+
+      const matchesVerifiedSourceFilter = filters.verifiedSource === null ||
+        (filters.verifiedSource === true && 
+         server.slug !== 'splunk-mcp-server' && 
+         server.slug !== 'github-mcp-server' && 
+         server.slug !== 'slack-mcp-server' && 
+         server.slug !== 'zapier-mcp-server');
+
+      const matchesSecureEndpointFilter = filters.secureEndpoint === null ||
+        (filters.secureEndpoint === true && (server as any).secureEndpoint === true);
+
+      const matchesSastFilter = filters.sast === null ||
+        (filters.sast === true && 
+         server.slug !== 'splunk-mcp-server' && 
+         server.slug !== 'github-mcp-server' && 
+         server.slug !== 'slack-mcp-server' && 
+         server.slug !== 'zapier-mcp-server');
+
+      const matchesReadOnlyToolsFilter = filters.readOnlyTools === null ||
+        (filters.readOnlyTools === true && 
+         !server.hasWriteCapabilities && 
+         !server.hasDestructiveCapabilities && 
+         server.slug !== 'dynatrace-mcp-server' && 
+         server.slug !== 'postgres-mcp-server');
+
+      return matchesIntegratedSearch && matchesLabelsFilters &&
+             matchesDeploymentModeFilters && matchesStatusFilters &&
+             matchesLicenseFilters && matchesVersionFilters && matchesTagFilters &&
+             matchesTransportFilters && matchesVerifiedSourceFilter && matchesSecureEndpointFilter &&
+             matchesSastFilter && matchesReadOnlyToolsFilter;
+    });
+  };
+
+  const getSortedServers = () => {
+    const filteredServers = getFilteredServers();
+    
+    // Always prioritize ServiceNow and Splunk in the top row
+    const priorityServers = filteredServers.filter(server => 
+      server.slug === 'servicenow-mcp-server' || server.slug === 'splunk-mcp-server'
+    );
+    const otherServers = filteredServers.filter(server => 
+      server.slug !== 'servicenow-mcp-server' && server.slug !== 'splunk-mcp-server'
+    );
+    
+    // Sort priority servers: ServiceNow first, then Splunk
+    const sortedPriorityServers = priorityServers.sort((a, b) => {
+      if (a.slug === 'servicenow-mcp-server') return -1;
+      if (b.slug === 'servicenow-mcp-server') return 1;
+      if (a.slug === 'splunk-mcp-server') return -1;
+      if (b.slug === 'splunk-mcp-server') return 1;
+      return 0;
+    });
+    
+    // Sort other servers normally
+    const sortedOtherServers = [...otherServers].sort((a, b) => {
+      let aValue: string | number;
+      let bValue: string | number;
+
+      switch (sortBy) {
+        case 'name':
+          aValue = a.name.toLowerCase();
+          bValue = b.name.toLowerCase();
+          break;
+        case 'status':
+          aValue = a.status.toLowerCase();
+          bValue = b.status.toLowerCase();
+          break;
+        case 'version':
+          aValue = a.version;
+          bValue = b.version;
+          break;
+        case 'description':
+          aValue = a.description.toLowerCase();
+          bValue = b.description.toLowerCase();
+          break;
+        case 'license':
+          aValue = (a.license || '').toLowerCase();
+          bValue = (b.license || '').toLowerCase();
+          break;
+        case 'deployment':
+          aValue = isRemote(a) ? 'remote' : 'local';
+          bValue = isRemote(b) ? 'remote' : 'local';
+          break;
+        case 'verified':
+          aValue = hasVerifiedSource(a) ? 'yes' : 'no';
+          bValue = hasVerifiedSource(b) ? 'yes' : 'no';
+          break;
+        case 'sast':
+          aValue = hasSast(a) ? 'yes' : 'no';
+          bValue = hasSast(b) ? 'yes' : 'no';
+          break;
+        case 'readOnlyTools':
+          aValue = hasReadOnlyTools(a) ? 'yes' : 'no';
+          bValue = hasReadOnlyTools(b) ? 'yes' : 'no';
+          break;
+        case 'partner':
+          aValue = isRedHatPartner(a) ? 'yes' : 'no';
+          bValue = isRedHatPartner(b) ? 'yes' : 'no';
+          break;
+        default:
+          aValue = a.name.toLowerCase();
+          bValue = b.name.toLowerCase();
+      }
+
+      if (aValue < bValue) {
+        return sortDirection === 'asc' ? -1 : 1;
+      }
+      if (aValue > bValue) {
+        return sortDirection === 'asc' ? 1 : -1;
+      }
+      return 0;
+    });
+
+    return [...sortedPriorityServers, ...sortedOtherServers];
+  };
+
+  const getPaginatedServers = () => {
+    const sortedServers = getSortedServers();
+    const start = (currentPage - 1) * perPage;
+    const end = start + perPage;
+    return sortedServers.slice(start, end);
+  };
+
+  const getRedHatCertifiedPartners = () => {
+    return getFilteredServers()
+      .filter(server =>
+        server.slug === 'servicenow-mcp-server' ||
+        server.slug === 'splunk-mcp-server' ||
+        server.slug === 'dynatrace-mcp-server'
+      )
+      .sort((a, b) => a.name.localeCompare(b.name));
+  };
+
+  const getRedHatCommunityServers = () => {
+    return getFilteredServers()
+      .filter(server =>
+        server.slug !== 'servicenow-mcp-server' &&
+        server.slug !== 'splunk-mcp-server' &&
+        server.slug !== 'dynatrace-mcp-server'
+      )
+      .sort((a, b) => a.name.localeCompare(b.name));
+  };
+
+  // Render server card
+  const renderServerCard = (server: typeof servers[0], index: number) => (
+    <GridItem key={server.id} lg={4} md={6} sm={12} style={getServerItemAnimationStyle(index)}>
+      <Card 
+        isFullHeight
+        onClick={() => handleServerClick(server.slug)}
+        style={{ 
+          cursor: 'pointer'
+        }}
+      >
+        <CardHeader style={{ paddingBottom: '1rem' }}>
+          <Flex justifyContent={{ default: 'justifyContentSpaceBetween' }} alignItems={{ default: 'alignItemsCenter' }}>
+            <FlexItem>
+              <Logo 
+                svgContent={server.logo} 
+                alt={`${server.name} logo`}
+                style={{ 
+                  width: '32px', 
+                  height: '32px', 
+                  borderRadius: '4px'
+                }}
+              />
+            </FlexItem>
+            {(server.slug === 'github-mcp-server' || 
+              server.slug === 'slack-mcp-server' || server.slug === 'zapier-mcp-server' || 
+              server.slug === 'splunk-mcp-server') && (
+              <FlexItem>
+                <Badge 
+                  style={{ 
+                    fontSize: '0.75rem',
+                    padding: '0.125rem 0.5rem',
+                    backgroundColor: '#f5f5f5',
+                    color: '#333',
+                    borderRadius: '1rem'
+                  }}
+                >
+                  Remote
+                </Badge>
+              </FlexItem>
+            )}
+          </Flex>
+        </CardHeader>
+        <CardBody style={{ paddingTop: 0, paddingBottom: '0.5rem', flexGrow: 1 }}>
+          <Link
+            to={`/ai-hub/mcp/catalog/${server.slug}`}
+            onClick={(e) => e.stopPropagation()}
+            style={{ 
+              fontSize: '0.875rem', 
+              fontWeight: 'bold',
+              marginBottom: '0.5rem',
+              padding: '0.25rem 0',
+              textAlign: 'left',
+              height: 'auto',
+              lineHeight: '1.2',
+              textDecoration: 'underline',
+              display: 'block'
             }}
           >
-            <CardHeader
-              actions={{
-                actions: (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                    <Label color="grey" isCompact>v{server.version}</Label>
-                    {renderDeploymentBadge(server.deploymentMode)}
-                  </div>
-                ),
-                hasNoOffset: true,
-              }}
-            >
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                <img
-                  src={mcpCatalogLogos[server.slug]}
-                  alt={`${server.name} logo`}
-                  style={{ width: '40px', height: '40px', objectFit: 'contain', flexShrink: 0 }}
-                />
-                <CardTitle>
-                  <Title headingLevel="h3" size="lg">
-                    {server.name.replace(' MCP Server', '')}
-                  </Title>
-                </CardTitle>
-              </div>
-            </CardHeader>
-            <CardBody>
-              <p style={{ fontSize: '0.875rem', color: '#6a6e73', marginBottom: '0' }}>
-                {server.description}
-              </p>
-              {renderLabelsWithIcons(server.labels)}
-            </CardBody>
-            <CardFooter>
-              <Button
-                variant="secondary"
-                isBlock
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleServerClick(server.slug);
-                }}
-              >
-                Details
-              </Button>
-            </CardFooter>
-          </Card>
-        </GalleryItem>
-      ))}
-    </Gallery>
+            {server.name}
+          </Link>
+          <div style={{ marginBottom: '1rem' }}>
+            <p style={{ 
+              fontSize: '0.875rem', 
+              color: 'var(--pf-v5-global--Color--200)',
+              display: '-webkit-box',
+              WebkitLineClamp: 3,
+              WebkitBoxOrient: 'vertical',
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              lineHeight: '1.4'
+            }}>
+              {server.description}
+            </p>
+          </div>
+          
+          <div style={{ marginTop: '1rem', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+            {server.slug !== 'splunk-mcp-server' && server.slug !== 'github-mcp-server' && 
+             server.slug !== 'slack-mcp-server' && server.slug !== 'zapier-mcp-server' && (
+              <>
+                <Flex alignItems={{ default: 'alignItemsCenter' }} spaceItems={{ default: 'spaceItemsXs' }}>
+                  <FlexItem>
+                    <ShieldAltIcon style={{ color: '#3E8635', fontSize: '14px' }} />
+                  </FlexItem>
+                  <FlexItem>
+                    <span style={{ fontSize: '0.75rem', color: 'var(--pf-v5-global--Color--200)' }}>
+                      Verified source
+                    </span>
+                  </FlexItem>
+                </Flex>
+                <Flex alignItems={{ default: 'alignItemsCenter' }} spaceItems={{ default: 'spaceItemsXs' }}>
+                  <FlexItem>
+                    <CheckCircleIcon style={{ color: '#3E8635', fontSize: '14px' }} />
+                  </FlexItem>
+                  <FlexItem>
+                    <span style={{ fontSize: '0.75rem', color: 'var(--pf-v5-global--Color--200)' }}>
+                      SAST
+                    </span>
+                  </FlexItem>
+                </Flex>
+              </>
+            )}
+            {!server.hasWriteCapabilities && !server.hasDestructiveCapabilities && server.slug !== 'dynatrace-mcp-server' && server.slug !== 'postgres-mcp-server' && (
+              <Flex alignItems={{ default: 'alignItemsCenter' }} spaceItems={{ default: 'spaceItemsXs' }}>
+                <FlexItem>
+                  <ToolsIcon style={{ color: '#3E8635', fontSize: '14px' }} />
+                </FlexItem>
+                <FlexItem>
+                  <span style={{ fontSize: '0.75rem', color: 'var(--pf-v5-global--Color--200)' }}>
+                    Read only tools
+                  </span>
+                </FlexItem>
+              </Flex>
+            )}
+            {(server.slug === 'servicenow-mcp-server' || server.slug === 'splunk-mcp-server' || server.slug === 'dynatrace-mcp-server') && (
+              <Flex alignItems={{ default: 'alignItemsCenter' }} spaceItems={{ default: 'spaceItemsXs' }}>
+                <FlexItem>
+                  <CheckCircleIcon style={{ color: '#3E8635', fontSize: '14px' }} />
+                </FlexItem>
+                <FlexItem>
+                  <span style={{ fontSize: '0.75rem', color: 'var(--pf-v5-global--Color--200)' }}>
+                    Red Hat partner
+                  </span>
+                </FlexItem>
+              </Flex>
+            )}
+            {(server.slug === 'servicenow-mcp-server' || 
+              server.slug === 'dynatrace-mcp-server' || server.slug === 'mcp-kubernetes-server' || 
+              server.slug === 'postgres-mcp-server' || server.slug === 'salesforce-mcp-server') && (
+              <Flex alignItems={{ default: 'alignItemsCenter' }} spaceItems={{ default: 'spaceItemsXs' }}>
+                <FlexItem>
+                  <ServerIcon style={{ color: '#3E8635', fontSize: '14px' }} />
+                </FlexItem>
+                <FlexItem>
+                  <span style={{ fontSize: '0.75rem', color: 'var(--pf-v5-global--Color--200)' }}>
+                    Local to cluster
+                  </span>
+                </FlexItem>
+              </Flex>
+            )}
+          </div>
+
+        </CardBody>
+
+        <CardFooter>
+          <Flex spaceItems={{ default: 'spaceItemsSm' }}>
+            {server.requiresAccess && userProfile === 'AI Engineer' && 
+             server.slug !== 'postgres-mcp-server' && server.slug !== 'zapier-mcp-server' &&
+             server.slug !== 'splunk-mcp-server' && server.slug !== 'dynatrace-mcp-server' && (
+              <FlexItem flex={{ default: 'flex_1' }}>
+                <Button 
+                  variant="secondary"
+                  isBlock
+                  icon={<LockIcon />}
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    setIsRequestAccessModalOpen(true);
+                  }}
+                >
+                  Request access
+                </Button>
+              </FlexItem>
+            )}
+          </Flex>
+        </CardFooter>
+      </Card>
+    </GridItem>
   );
 
-  const renderTableView = () => (
-    <Table aria-label="MCP Servers table" variant="compact">
-      <Thead>
-        <Tr>
-          <Th width={15}>Name</Th>
-          <Th width={10}>Version</Th>
-          <Th width={10}>Mode</Th>
-          <Th width={45}>Description</Th>
-          <Th width={20}>Labels</Th>
-        </Tr>
-      </Thead>
-      <Tbody>
-        {paginatedServers.map((server) => (
-          <Tr
-            key={server.id}
-            onClick={() => handleServerClick(server.slug)}
-            style={{ cursor: 'pointer' }}
-          >
-            <Td dataLabel="Name">
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                <img
-                  src={mcpCatalogLogos[server.slug]}
-                  alt={`${server.name} logo`}
-                  style={{ width: '32px', height: '32px', objectFit: 'contain', flexShrink: 0 }}
-                />
-                <div
-                  style={{
-                    fontWeight: 600,
-                    overflow: 'hidden',
-                    textOverflow: 'ellipsis',
-                    whiteSpace: 'nowrap',
-                    maxWidth: '120px',
-                  }}
-                  title={server.name.replace(' MCP Server', '')}
-                >
-                  {server.name.replace(' MCP Server', '')}
-                </div>
-              </div>
-            </Td>
-            <Td dataLabel="Version">
-              <Label color="grey" isCompact>v{server.version}</Label>
-            </Td>
-            <Td dataLabel="Mode">{renderDeploymentBadge(server.deploymentMode)}</Td>
-            <Td dataLabel="Description">
-              <span style={{ fontSize: '0.875rem', color: '#6a6e73' }}>
-                {server.description}
-              </span>
-            </Td>
-            <Td dataLabel="Labels">
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.25rem' }}>
-                {server.labels.slice(0, 2).map((label, idx) => (
-                  <div key={idx} style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', fontSize: '0.75rem' }}>
-                    {labelIcons[label]}
-                    <span>{label}</span>
-                  </div>
-                ))}
-              </div>
-            </Td>
-          </Tr>
-        ))}
-      </Tbody>
-    </Table>
-  );
+  // Helper functions to determine metadata values
+  const isRemote = (server: typeof servers[0]) => {
+    return server.slug === 'github-mcp-server' || 
+           server.slug === 'slack-mcp-server' || 
+           server.slug === 'zapier-mcp-server' || 
+           server.slug === 'splunk-mcp-server';
+  };
+
+  const hasVerifiedSource = (server: typeof servers[0]) => {
+    return server.slug !== 'splunk-mcp-server' && 
+           server.slug !== 'github-mcp-server' && 
+           server.slug !== 'slack-mcp-server' && 
+           server.slug !== 'zapier-mcp-server';
+  };
+
+  const hasSast = (server: typeof servers[0]) => {
+    return hasVerifiedSource(server);
+  };
+
+  const hasReadOnlyTools = (server: typeof servers[0]) => {
+    return !server.hasWriteCapabilities && 
+           !server.hasDestructiveCapabilities && 
+           server.slug !== 'dynatrace-mcp-server' && 
+           server.slug !== 'postgres-mcp-server';
+  };
+
+  const isRedHatPartner = (server: typeof servers[0]) => {
+    return server.slug === 'servicenow-mcp-server' || 
+           server.slug === 'splunk-mcp-server' || 
+           server.slug === 'dynatrace-mcp-server';
+  };
+
+
+
+
+  // Determine if servers should require access based on user profile
+  const isAdminUser = userProfile === 'AI Admin';
+
+  // Mock data for MCP servers
+  const [baseServers, setBaseServers] = React.useState([
+    {
+      id: 3,
+      slug: "servicenow-mcp-server",
+      name: "ServiceNow",
+      provider: "echelon-ai-labs",
+      type: "AVAILABLE",
+      logo: mcpServerLogos['servicenow-mcp-server'],
+      description: "Automate incident management by creating, updating, and querying ServiceNow tickets and change requests.",
+      status: "available",
+      statusColor: "#3E8635",
+      models: "Universal",
+      deployment: "Community",
+      providerType: "Community",
+      version: "2.1.0",
+      lastUsed: "1/15/2025",
+      agentCount: 6,
+      tags: ["servicenow", "itsm", "tickets", "incident-management"],
+      isAdded: true,
+      hasWriteCapabilities: true,
+      hasDestructiveCapabilities: false,
+      license: "MIT",
+      transports: ["stdio", "SSE"]
+    },
+    {
+      id: 5,
+      slug: "splunk-mcp-server",
+      name: "Splunk",
+      provider: "livehybrid",
+      type: "AVAILABLE",
+      logo: mcpServerLogos['splunk-mcp-server'],
+      description: "Query logs and metrics with SPL to analyze incidents, explain anomalies, and draft post-mortems.",
+      status: "available",
+      statusColor: "#3E8635",
+      models: "Universal",
+      deployment: "Community",
+      providerType: "Community",
+      version: "1.3.1",
+      lastUsed: "1/14/2025",
+      agentCount: 5,
+      tags: ["splunk", "observability", "logs", "security"],
+      isAdded: true,
+      hasWriteCapabilities: false,
+      hasDestructiveCapabilities: false,
+      license: "MIT",
+      transports: ["stdio"]
+    },
+    {
+      id: 1,
+      slug: "mcp-kubernetes-server",
+      name: "Kubernetes",
+      provider: "feiskyer",
+      type: "AVAILABLE",
+      logo: mcpServerLogos['mcp-kubernetes-server'],
+      description: "Control and inspect Kubernetes clusters using natural language queries for health, resources, and deployments.",
+      status: "available",
+      statusColor: "#3E8635",
+      models: "Universal",
+      deployment: "Community",
+      providerType: "Community",
+      version: "0.1.11",
+      lastUsed: "1/15/2025",
+      agentCount: 8,
+      tags: ["kubernetes", "infrastructure", "kubectl", "cluster-management"],
+      isAdded: true,
+      hasWriteCapabilities: true,
+      hasDestructiveCapabilities: true,
+      license: "MIT",
+      transports: ["stdio", "SSE"]
+    },
+    {
+      id: 2,
+      slug: "slack-mcp-server",
+      name: "Slack",
+      provider: "korotovsky",
+      type: "AVAILABLE",
+      logo: mcpServerLogos['slack-mcp-server'],
+      description: "Post messages, read threads, and trigger workflows to automate DevOps team communications in Slack.",
+      status: "available",
+      statusColor: "#3E8635",
+      models: "Universal",
+      deployment: "Community",
+      providerType: "Community",
+      version: "1.4.2",
+      lastUsed: "1/15/2025",
+      agentCount: 12,
+      tags: ["slack", "collaboration", "chatops", "workflows"],
+      isAdded: false,
+      hasWriteCapabilities: false,
+      hasDestructiveCapabilities: false,
+      license: "MIT",
+      transports: ["stdio", "http-streaming"]
+    },
+    {
+      id: 4,
+      slug: "salesforce-mcp-server",
+      name: "Salesforce",
+      provider: "tsmztech",
+      type: "AVAILABLE",
+      logo: mcpServerLogos['salesforce-mcp-server'],
+      description: "Access CRM data with SOQL queries to retrieve accounts, cases, and opportunities for AI.",
+      status: "available",
+      statusColor: "#3E8635",
+      models: "Universal",
+      deployment: "Community",
+      providerType: "Community",
+      version: "1.8.3",
+      lastUsed: "1/14/2025",
+      agentCount: 9,
+      tags: ["salesforce", "crm", "soql", "customer-support"],
+      isAdded: false,
+      hasWriteCapabilities: true,
+      hasDestructiveCapabilities: false,
+      license: "MIT",
+      transports: ["stdio", "SSE"]
+    },
+    {
+      id: 6,
+      slug: "dynatrace-mcp-server",
+      name: "Dynatrace",
+      provider: "dynatrace-oss",
+      type: "AVAILABLE",
+      logo: mcpServerLogos['dynatrace-mcp-server'],
+      description: "Monitor service health in real-time with DQL queries and vulnerability feeds for proactive recommendations.",
+      status: "available",
+      statusColor: "#3E8635",
+      models: "Universal",
+      deployment: "Community",
+      providerType: "Community",
+      version: "2.0.4",
+      lastUsed: "1/14/2025",
+      agentCount: 4,
+      tags: ["dynatrace", "monitoring", "apm", "vulnerability"],
+      isAdded: false,
+      hasWriteCapabilities: false,
+      hasDestructiveCapabilities: false,
+      license: "MIT",
+      transports: ["stdio", "SSE"]
+    },
+    {
+      id: 7,
+      slug: "github-mcp-server",
+      name: "GitHub",
+      provider: "github",
+      type: "AVAILABLE",
+      logo: mcpServerLogos['github-mcp-server'],
+      description: "Manage repositories, issues, and pull requests while automating code reviews, releases, and developer workflows.",
+      status: "available",
+      statusColor: "#3E8635",
+      models: "Universal",
+      deployment: "Official",
+      providerType: "Official",
+      version: "1.2.5",
+      lastUsed: "1/15/2025",
+      agentCount: 15,
+      tags: ["github", "git", "repositories", "development"],
+      isAdded: true,
+      hasWriteCapabilities: true,
+      hasDestructiveCapabilities: true,
+      license: "Apache-2.0",
+      transports: ["stdio", "SSE", "http-streaming"]
+    },
+    {
+      id: 8,
+      slug: "postgres-mcp-server",
+      name: "PostgreSQL",
+      provider: "modelcontextprotocol",
+      type: "ACCESS REQUIRED",
+      logo: mcpServerLogos['postgres-mcp-server'],
+      description: "Execute read-only SQL queries with audit trails for secure access to healthcare and financial databases.",
+      status: "unavailable",
+      statusColor: "#F0AB00",
+      models: "Universal",
+      deployment: "Official",
+      providerType: "Official",
+      version: "1.0.8",
+      lastUsed: "1/15/2025",
+      agentCount: 7,
+      tags: ["postgresql", "database", "sql", "healthcare"],
+      isAdded: false,
+      requiresAccess: true,
+      hasWriteCapabilities: false,
+      hasDestructiveCapabilities: false,
+      license: "MIT",
+      transports: ["stdio"]
+    },
+    {
+      id: 9,
+      slug: "zapier-mcp-server",
+      name: "Zapier",
+      provider: "zapier",
+      type: "ACCESS REQUIRED",
+      logo: mcpServerLogos['zapier-mcp-server'],
+      description: "Connect to 7,000+ SaaS applications instantly without code for calendars, tickets, and enterprise workflows.",
+      status: "unavailable",
+      statusColor: "#F0AB00",
+      models: "Universal",
+      deployment: "Hosted",
+      providerType: "Commercial",
+      version: "3.2.1",
+      lastUsed: "1/15/2025",
+      agentCount: 11,
+      tags: ["zapier", "automation", "integration", "saas"],
+      isAdded: true,
+      requiresAccess: true,
+      hasWriteCapabilities: true,
+      hasDestructiveCapabilities: false,
+      license: "MIT",
+      transports: ["http-streaming"]
+    }
+  ]);
+
+  // Dynamically adjust server access based on user profile and selected project
+  // Update animation state when page changes to ensure all visible items are animated
+  React.useEffect(() => {
+    // Use setTimeout to ensure this runs after state updates
+    const timeout = setTimeout(() => {
+      const paginatedServers = getPaginatedServers();
+      if (paginatedServers.length > 0) {
+        const visibleIndices = Array.from({ length: paginatedServers.length }, (_, i) => i);
+        // Always ensure all visible paginated indices are in the animation state
+        setAnimationState(prev => ({
+          ...prev,
+          serverItems: visibleIndices
+        }));
+      }
+    }, 10);
+    
+    return () => clearTimeout(timeout);
+  }, [currentPage, perPage, baseServers, sortBy, sortDirection, selectedProject, filters, integratedSearchText, isAdminUser]);
+
+  const servers = React.useMemo(() => {
+    return baseServers.map(server => {
+      // For Splunk and Dynatrace servers, require access when Project Y is selected
+      if ((server.slug === 'splunk-mcp-server' || server.slug === 'dynatrace-mcp-server') && selectedProject === 'Project Y') {
+        return {
+          ...server,
+          type: "ACCESS REQUIRED",
+          status: "unavailable",
+          statusColor: "#F0AB00",
+          requiresAccess: true
+        };
+      }
+      
+      // For PostgreSQL and Zapier servers, adjust access based on user role
+      if ((server.slug === 'postgres-mcp-server' || server.slug === 'zapier-mcp-server') && !isAdminUser) {
+        // AI Engineer - requires access
+        return {
+          ...server,
+          type: "ACCESS REQUIRED",
+          status: "unavailable",
+          statusColor: "#F0AB00",
+          requiresAccess: true
+        };
+      } else if ((server.slug === 'postgres-mcp-server' || server.slug === 'zapier-mcp-server') && isAdminUser) {
+        // AI Admin - has access
+        return {
+          ...server,
+          type: "AVAILABLE",
+          status: "available",
+          statusColor: "#3E8635",
+          requiresAccess: false
+        };
+      }
+      return server;
+    });
+  }, [baseServers, isAdminUser, selectedProject]);
+
+  // Get all unique tags/labels from servers
+  const allLabels = React.useMemo(() => {
+    const labelSet = new Set<string>();
+    servers.forEach(server => {
+      if (server.tags && Array.isArray(server.tags)) {
+        server.tags.forEach(tag => labelSet.add(tag));
+      }
+    });
+    return Array.from(labelSet).sort();
+  }, [servers]);
+
+  // Filter labels based on search
+  const getFilteredLabels = React.useCallback(() => {
+    if (!labelSearch.trim()) {
+      return allLabels;
+    }
+    const searchLower = labelSearch.toLowerCase();
+    return allLabels.filter(label => label.toLowerCase().includes(searchLower));
+  }, [allLabels, labelSearch]);
+
+  const filteredLabels = getFilteredLabels();
+  const displayedLabels = showAllLabels ? filteredLabels : filteredLabels.slice(0, 5);
 
   return (
     <>
-      <PageSection>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-          <div
-            style={{
-              background: 'var(--ai-model-server--BackgroundColor, #E7F1FA)',
-              borderRadius: '20px',
-              padding: '8px',
-              width: '48px',
-              height: '48px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
+      <PageSection isFilled style={{ padding: 0 }}>
+        {/* Header */}
+        <div style={{ padding: '1rem', paddingBottom: '0' }}>
+          <Title headingLevel="h1" size="2xl" style={getAnimationStyle(animationState.mainContent)}>
+            MCP catalog
+          </Title>
+          <p style={{ color: '#6A6E73', fontSize: '0.875rem', marginBottom: '1.5rem' }}>
+            Discover MCP servers provided by Red Hat certified partners and other providers that are available for your organization.
+          </p>
+        </div>
+
+        <Sidebar>
+          <SidebarPanel 
+            width={{ default: 'width_25' }}
+            style={{ 
+              borderRight: '1px solid #d2d2d2',
+              flex: '0 0 240px',
+              maxWidth: '240px'
             }}
           >
-            <img src={MCPIcon} alt="MCP icon" style={{ width: '32px', height: '32px' }} />
-          </div>
-          <div>
-            <Title headingLevel="h1" size="2xl">
-              MCP catalog
-            </Title>
-            <div style={{ color: '#6a6e73', marginTop: '0.25rem' }}>
-              Browse <strong>{filteredServers.length}</strong> of <strong>{totalServers}</strong> MCP servers
-            </div>
-          </div>
-        </div>
-      </PageSection>
+            {/* Filter Sidebar */}
+            <div style={{ padding: '0 1rem 1rem 1rem' }}>
+              {/* Deployment Mode Filter */}
+              <div style={{ marginBottom: '1.5rem' }}>
+                <Title headingLevel="h4" size="md" style={{ marginBottom: '0.5rem', fontWeight: '500', fontSize: '0.875rem' }}>
+                  Deployment mode
+                </Title>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                  <Checkbox
+                    id="sidebar-filter-remote"
+                    label="Remote"
+                    isChecked={filters.deploymentMode.includes('remote')}
+                    onChange={() => toggleDeploymentModeFilter('remote')}
+                  />
+                  <Checkbox
+                    id="sidebar-filter-local"
+                    label="Local"
+                    isChecked={filters.deploymentMode.includes('local')}
+                    onChange={() => toggleDeploymentModeFilter('local')}
+                  />
+                </div>
+              </div>
 
-      <PageSection style={{ paddingTop: '0.5rem' }}>
-        <Toolbar id="mcp-catalog-toolbar">
-          <ToolbarContent>
-            <ToolbarGroup variant="filter-group">
-              <ToolbarItem>
-                <Dropdown
-                  isOpen={isFilterOpen}
-                  onOpenChange={setIsFilterOpen}
-                  toggle={(toggleRef) => (
-                    <MenuToggle
-                      ref={toggleRef}
-                      onClick={() => setIsFilterOpen(!isFilterOpen)}
-                      isExpanded={isFilterOpen}
-                      icon={<FilterIcon />}
-                    >
-                      Name
-                    </MenuToggle>
-                  )}
-                >
-                  <DropdownList>
-                    <DropdownItem key="name">Name</DropdownItem>
-                  </DropdownList>
-                </Dropdown>
-              </ToolbarItem>
-              <ToolbarItem>
-                <InputGroup>
-                  <InputGroupItem isFill>
-                    <SearchInput
-                      placeholder="Filter by name..."
-                      value={searchValue}
-                      onChange={(_event, value) => setSearchValue(value)}
-                      onClear={() => setSearchValue('')}
-                      aria-label="Filter MCP servers"
+              <Divider style={{ marginBottom: '1rem' }} />
+
+              {/* Transports Filter */}
+              <div style={{ marginBottom: '1.5rem' }}>
+                <Title headingLevel="h4" size="md" style={{ marginBottom: '0.5rem', fontWeight: '500', fontSize: '0.875rem' }}>
+                  Supported transports
+                </Title>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                  {['SSE', 'http-streaming'].map(transport => (
+                    <Checkbox
+                      key={transport}
+                      id={`transport-${transport}`}
+                      label={transport}
+                      isChecked={filters.transports.includes(transport)}
+                      onChange={() => toggleTransportFilter(transport)}
                     />
-                  </InputGroupItem>
-                  <InputGroupItem>
-                    <Button variant="control" aria-label="Search">
-                      <ArrowRightIcon />
-                    </Button>
-                  </InputGroupItem>
-                </InputGroup>
-              </ToolbarItem>
-              <ToolbarItem>
-                <Checkbox
-                  label="Remote"
-                  isChecked={filterRemote}
-                  onChange={(_event, checked) => setFilterRemote(checked)}
-                  id="filter-remote"
-                />
-              </ToolbarItem>
-              <ToolbarItem>
-                <Checkbox
-                  label="Local to cluster"
-                  isChecked={filterLocal}
-                  onChange={(_event, checked) => setFilterLocal(checked)}
-                  id="filter-local"
-                />
-              </ToolbarItem>
-            </ToolbarGroup>
+                  ))}
+                </div>
+              </div>
 
-            <ToolbarGroup align={{ default: 'alignEnd' }}>
+              <Divider style={{ marginBottom: '1rem' }} />
+
+              {/* License Filter */}
+              <div style={{ marginBottom: '1.5rem' }}>
+                <Title headingLevel="h4" size="md" style={{ marginBottom: '0.5rem', fontWeight: '500', fontSize: '0.875rem' }}>
+                  License
+                </Title>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                  {['MIT', 'Apache-2.0'].map(license => (
+                    <Checkbox
+                      key={license}
+                      id={`license-${license}`}
+                      label={license}
+                      isChecked={filters.license.includes(license)}
+                      onChange={() => toggleLicenseFilter(license)}
+                    />
+                  ))}
+                </div>
+              </div>
+
+              <Divider style={{ marginBottom: '1rem' }} />
+
+              {/* Labels Filter */}
+              <div style={{ marginBottom: '1.5rem' }}>
+                <Title headingLevel="h4" size="md" style={{ marginBottom: '0.5rem', fontWeight: '500', fontSize: '0.875rem' }}>
+                  Labels
+                </Title>
+                <SearchInput
+                  placeholder="Search for labels"
+                  value={labelSearch}
+                  onChange={(_event, value) => setLabelSearch(value)}
+                  onClear={() => setLabelSearch('')}
+                  style={{ marginBottom: '0.75rem', fontSize: '0.875rem' }}
+                />
+                {displayedLabels.map(label => (
+                  <div key={label} style={{ marginBottom: '0.5rem' }}>
+                    <Checkbox
+                      id={`label-${label}`}
+                      label={label}
+                      isChecked={filters.tags.includes(label)}
+                      onChange={() => toggleTagFilter(label)}
+                    />
+                  </div>
+                ))}
+                {filteredLabels.length > 5 && (
+                  <Button 
+                    variant="link" 
+                    isInline 
+                    style={{ fontSize: '0.875rem', padding: 0 }}
+                    onClick={() => setShowAllLabels(!showAllLabels)}
+                  >
+                    {showAllLabels ? 'Show less' : 'Show more'}
+                  </Button>
+                )}
+              </div>
+
+              <Divider style={{ marginBottom: '1rem' }} />
+
+              {/* Boolean Filters */}
+              <div style={{ marginBottom: '1.5rem' }}>
+                <Title headingLevel="h4" size="md" style={{ marginBottom: '0.5rem', fontWeight: '500', fontSize: '0.875rem' }}>
+                  Security & Verification
+                </Title>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                  <Checkbox
+                    id="filter-verified-source"
+                    label="Verified source"
+                    isChecked={filters.verifiedSource === true}
+                    onChange={() => toggleBooleanFilter('verifiedSource', filters.verifiedSource === true ? null : true)}
+                  />
+                  <Checkbox
+                    id="filter-secure-endpoint"
+                    label="Secure endpoint"
+                    isChecked={filters.secureEndpoint === true}
+                    onChange={() => toggleBooleanFilter('secureEndpoint', filters.secureEndpoint === true ? null : true)}
+                  />
+                  <Checkbox
+                    id="filter-sast"
+                    label="SAST"
+                    isChecked={filters.sast === true}
+                    onChange={() => toggleBooleanFilter('sast', filters.sast === true ? null : true)}
+                  />
+                  <Checkbox
+                    id="filter-read-only-tools"
+                    label="Read only tools"
+                    isChecked={filters.readOnlyTools === true}
+                    onChange={() => toggleBooleanFilter('readOnlyTools', filters.readOnlyTools === true ? null : true)}
+                  />
+                </div>
+              </div>
+            </div>
+          </SidebarPanel>
+
+          <SidebarContent style={{ overflow: 'hidden', width: '100%', minWidth: 0 }}>
+            {/* Filters and Controls */}
+            <div style={{ padding: '1.5rem', paddingTop: '0.5rem' }}>
+              <div style={getAnimationStyle(animationState.filters)}>
+        <Toolbar>
+          <ToolbarContent>
+            <ToolbarGroup>
               <ToolbarItem>
-                <ToggleGroup aria-label="View mode toggle">
-                  <ToggleGroupItem
-                    icon={<ThIcon />}
-                    aria-label="Grid view"
-                    isSelected={viewMode === 'grid'}
-                    onChange={() => setViewMode('grid')}
-                  />
-                  <ToggleGroupItem
-                    icon={<ListIcon />}
-                    aria-label="List view"
-                    isSelected={viewMode === 'list'}
-                    onChange={() => setViewMode('list')}
-                  />
-                </ToggleGroup>
-              </ToolbarItem>
-              <ToolbarItem variant="pagination">
-                <Pagination
-                  itemCount={filteredServers.length}
-                  perPage={perPage}
-                  page={currentPage}
-                  onSetPage={(_event, pageNumber) => setCurrentPage(pageNumber)}
-                  onPerPageSelect={(_event, newPerPage) => {
-                    setPerPage(newPerPage);
+                <SearchInput
+                  id="mcp-catalog-integrated-search"
+                  placeholder="Search by name, keyword, or description..."
+                  value={integratedSearchText}
+                  onChange={(_event, value) => {
+                    setIntegratedSearchText(value);
                     setCurrentPage(1);
                   }}
-                  variant="top"
-                  isCompact
-                  perPageOptions={[
-                    { title: '9', value: 9 },
-                    { title: '18', value: 18 },
-                    { title: '27', value: 27 },
-                  ]}
+                  onClear={() => setIntegratedSearchText('')}
+                  style={{ minWidth: '300px' }}
                 />
               </ToolbarItem>
             </ToolbarGroup>
           </ToolbarContent>
         </Toolbar>
 
-        {viewMode === 'grid' ? renderCardGrid() : renderTableView()}
+            {/* Active Filters - below the filter bar */}
+            {(integratedSearchText.trim() !== '' || filters.labels.length > 0 ||
+              filters.deploymentMode.length > 0 || filters.status.length > 0 ||
+              filters.license.length > 0 || filters.version.length > 0 ||
+              filters.tags.length > 0 || filters.transports.length > 0 ||
+              filters.verifiedSource !== null || filters.secureEndpoint !== null || filters.sast !== null || filters.readOnlyTools !== null) && (
+              <div style={{ marginTop: '0.25rem', display: 'flex', flexDirection: 'column', gap: '0.25rem', alignItems: 'flex-start' }}>
+                <div style={{ width: 'fit-content' }}>
+                <LabelGroup
+                  categoryName="Active filters"
+                  isClosable={false}
+                  numLabels={
+                    (integratedSearchText.trim() !== '' ? 1 : 0) + filters.labels.length +
+                    filters.deploymentMode.length + filters.status.length +
+                    filters.license.length + filters.version.length +
+                    filters.tags.length + filters.transports.length +
+                    (filters.verifiedSource !== null ? 1 : 0) + (filters.secureEndpoint !== null ? 1 : 0) +
+                    (filters.sast !== null ? 1 : 0) + (filters.readOnlyTools !== null ? 1 : 0)
+                  }
+                >
+                  {integratedSearchText.trim() !== '' && (
+                    <Label
+                      key="integrated-search"
+                      variant="outline"
+                      onClose={() => setIntegratedSearchText('')}
+                    >
+                      Search: {integratedSearchText.trim()}
+                    </Label>
+                  )}
+                  {filters.labels.map(filter => (
+                    <Label
+                      key={`labels-${filter}`}
+                      variant="outline"
+                      onClose={() => removeFilter('labels', filter)}
+                    >
+                      {filter}
+                    </Label>
+                  ))}
+                  {filters.deploymentMode.map(filter => (
+                    <Label
+                      key={`deploymentMode-${filter}`}
+                      variant="outline"
+                      onClose={() => removeFilter('deploymentMode', filter)}
+                    >
+                      {filter}
+                    </Label>
+                  ))}
+                  {filters.status.map(filter => (
+                    <Label
+                      key={`status-${filter}`}
+                      variant="outline"
+                      onClose={() => removeFilter('status', filter)}
+                    >
+                      {filter}
+                    </Label>
+                  ))}
+                  {filters.license.map(filter => (
+                    <Label
+                      key={`license-${filter}`}
+                      variant="outline"
+                      onClose={() => removeFilter('license', filter)}
+                    >
+                      License: {filter}
+                    </Label>
+                  ))}
+                  {filters.version.map(filter => (
+                    <Label
+                      key={`version-${filter}`}
+                      variant="outline"
+                      onClose={() => removeFilter('version', filter)}
+                    >
+                      Version: {filter}
+                    </Label>
+                  ))}
+                  {filters.tags.map(filter => (
+                    <Label
+                      key={`tags-${filter}`}
+                      variant="outline"
+                      onClose={() => removeFilter('tags', filter)}
+                    >
+                      Tag: {filter}
+                    </Label>
+                  ))}
+                  {filters.transports.map(filter => (
+                    <Label
+                      key={`transports-${filter}`}
+                      variant="outline"
+                      onClose={() => removeFilter('transports', filter)}
+                    >
+                      Transport: {filter}
+                    </Label>
+                  ))}
+                  {filters.verifiedSource !== null && (
+                    <Label
+                      variant="outline"
+                      onClose={() => toggleBooleanFilter('verifiedSource', null)}
+                    >
+                      Verified source
+                    </Label>
+                  )}
+                  {filters.secureEndpoint !== null && (
+                    <Label
+                      variant="outline"
+                      onClose={() => toggleBooleanFilter('secureEndpoint', null)}
+                    >
+                      Secure endpoint
+                    </Label>
+                  )}
+                  {filters.sast !== null && (
+                    <Label
+                      variant="outline"
+                      onClose={() => toggleBooleanFilter('sast', null)}
+                    >
+                      SAST
+                    </Label>
+                  )}
+                  {filters.readOnlyTools !== null && (
+                    <Label
+                      variant="outline"
+                      onClose={() => toggleBooleanFilter('readOnlyTools', null)}
+                    >
+                      Read only tools
+                    </Label>
+                  )}
+                </LabelGroup>
+                </div>
+                <Button variant="link" onClick={clearAllFilters}>
+                  Reset all filters
+                </Button>
+              </div>
+            )}
+              </div>
 
-        <Pagination
-          itemCount={filteredServers.length}
-          perPage={perPage}
-          page={currentPage}
-          onSetPage={(_event, pageNumber) => setCurrentPage(pageNumber)}
-          onPerPageSelect={(_event, newPerPage) => {
-            setPerPage(newPerPage);
-            setCurrentPage(1);
-          }}
-          variant="bottom"
-          perPageOptions={[
-            { title: '9', value: 9 },
-            { title: '18', value: 18 },
-            { title: '27', value: 27 },
-          ]}
-        />
+              {/* Category Switcher */}
+              {!integratedSearchText.trim() && (
+                <ToggleGroup
+                  style={{
+                    marginBottom: '1.5rem',
+                    marginTop: '1rem'
+                  }}
+                  aria-label="Server category filter"
+                >
+                  <ToggleGroupItem
+                    buttonId="all-servers"
+                    isSelected={activeCategoryTab === 0}
+                    text="All servers"
+                    onClick={() => setActiveCategoryTab(0)}
+                  />
+                  <ToggleGroupItem
+                    buttonId="certified-partners"
+                    isSelected={activeCategoryTab === 1}
+                    text="Red Hat Certified Partners"
+                    onClick={() => setActiveCategoryTab(1)}
+                  />
+                  <ToggleGroupItem
+                    buttonId="community-servers"
+                    isSelected={activeCategoryTab === 2}
+                    text="Other MCP servers"
+                    onClick={() => setActiveCategoryTab(2)}
+                  />
+                </ToggleGroup>
+              )}
+
+              {/* MCP Servers Content */}
+              <div style={{ ...getAnimationStyle(animationState.serverContent), minWidth: 0, width: '100%', overflow: 'hidden' }}>
+        {/* Grid View - categories when not searching, flat list for search results */}
+        {integratedSearchText.trim() !== '' ? (
+          <div style={{ marginTop: '2rem', marginBottom: '2rem' }}>
+            <Grid hasGutter>
+              {getPaginatedServers().map((server, index) => renderServerCard(server, index))}
+            </Grid>
+          </div>
+        ) : (
+          <>
+            {(activeCategoryTab === 0 || activeCategoryTab === 1) && getRedHatCertifiedPartners().length > 0 && (
+              <div style={{ marginTop: '2rem', marginBottom: '2rem' }}>
+                <Title headingLevel="h2" size="lg" style={{ marginBottom: '0.5rem' }}>
+                  Red Hat Certified Partners
+                </Title>
+                <p style={{ color: '#6A6E73', fontSize: '0.875rem', marginBottom: '1rem' }}>
+                  MCP servers from Red Hat certified partners with verified integration and support.
+                </p>
+                <Grid hasGutter>
+                  {getRedHatCertifiedPartners().map((server, index) => renderServerCard(server, index))}
+                </Grid>
+              </div>
+            )}
+            {(activeCategoryTab === 0 || activeCategoryTab === 2) && getRedHatCommunityServers().length > 0 && (
+              <div style={{ marginTop: '2rem', marginBottom: '2rem' }}>
+                <Title headingLevel="h2" size="lg" style={{ marginBottom: '0.5rem' }}>
+                  Other MCP servers
+                </Title>
+                <p style={{ color: '#6A6E73', fontSize: '0.875rem', marginBottom: '1rem' }}>
+                  A broad collection of community and third-party MCP servers available for integration.
+                </p>
+                <Grid hasGutter>
+                  {getRedHatCommunityServers().map((server, index) => renderServerCard(server, index))}
+                </Grid>
+              </div>
+            )}
+          </>
+        )}
+              </div>
+            </div>
+          </SidebarContent>
+        </Sidebar>
       </PageSection>
+      
+      {/* Request Access Modal */}
+      <Modal
+        isOpen={isRequestAccessModalOpen}
+        onClose={() => setIsRequestAccessModalOpen(false)}
+        aria-labelledby="request-access-modal-title"
+        variant="small"
+      >
+        <ModalHeader
+          title="Request Access"
+          labelId="request-access-modal-title"
+        />
+        <ModalBody>
+          Coming soon
+        </ModalBody>
+      </Modal>
+
+      {/* Add MCP Server Modal */}
+      <Modal
+        isOpen={addServerModalOpen}
+        onClose={() => {
+          setAddServerModalOpen(false);
+          setNewServerForm({
+            name: '',
+            description: '',
+            tags: '',
+            provider: '',
+            version: '',
+            license: '',
+            transportType: '',
+            deploymentMode: '',
+            location: '',
+            sourceUrl: '',
+            homepage: '',
+            iconColor: '',
+            iconPath: '',
+            redHatPartner: false,
+            toolsBlacklist: ''
+          });
+        }}
+        aria-labelledby="add-server-modal-title"
+        variant="large"
+      >
+        <ModalHeader
+          title="Add MCP server to catalog"
+          labelId="add-server-modal-title"
+        />
+        <ModalBody>
+          <Grid hasGutter>
+            {/* Name */}
+            <GridItem span={12}>
+              <Grid hasGutter>
+                <GridItem span={4}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', height: '100%' }}>
+                    <code style={{ fontSize: '0.875rem', color: '#6b7280' }}>mcp_server_name</code>
+                  </div>
+                </GridItem>
+                <GridItem span={8}>
+                  <TextInput
+                    isRequired
+                    id="server-name"
+                    value={newServerForm.name}
+                    onChange={(_event, value) => setNewServerForm({ ...newServerForm, name: value })}
+                    placeholder="Enter server name"
+                  />
+                </GridItem>
+              </Grid>
+            </GridItem>
+
+            {/* Description */}
+            <GridItem span={12}>
+              <Grid hasGutter>
+                <GridItem span={4}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', height: '100%' }}>
+                    <code style={{ fontSize: '0.875rem', color: '#6b7280' }}>mcp_server_description</code>
+                  </div>
+                </GridItem>
+                <GridItem span={8}>
+                  <TextArea
+                    isRequired
+                    id="server-description"
+                    value={newServerForm.description}
+                    onChange={(_event, value) => setNewServerForm({ ...newServerForm, description: value })}
+                    placeholder="Enter server description"
+                    rows={3}
+                  />
+                </GridItem>
+              </Grid>
+            </GridItem>
+
+            {/* Tags */}
+            <GridItem span={12}>
+              <Grid hasGutter>
+                <GridItem span={4}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', height: '100%' }}>
+                    <code style={{ fontSize: '0.875rem', color: '#6b7280' }}>mcp_server_tags</code>
+                  </div>
+                </GridItem>
+                <GridItem span={8}>
+                  <TextInput
+                    id="server-tags"
+                    value={newServerForm.tags}
+                    onChange={(_event, value) => setNewServerForm({ ...newServerForm, tags: value })}
+                    placeholder="Enter tags separated by commas (e.g., kubernetes, infrastructure)"
+                  />
+                </GridItem>
+              </Grid>
+            </GridItem>
+
+            {/* Provider */}
+            <GridItem span={12}>
+              <Grid hasGutter>
+                <GridItem span={4}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', height: '100%' }}>
+                    <code style={{ fontSize: '0.875rem', color: '#6b7280' }}>mcp_server_provider</code>
+                  </div>
+                </GridItem>
+                <GridItem span={8}>
+                  <TextInput
+                    id="server-provider"
+                    value={newServerForm.provider}
+                    onChange={(_event, value) => setNewServerForm({ ...newServerForm, provider: value })}
+                    placeholder="Enter provider name"
+                  />
+                </GridItem>
+              </Grid>
+            </GridItem>
+
+            {/* Version */}
+            <GridItem span={12}>
+              <Grid hasGutter>
+                <GridItem span={4}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', height: '100%' }}>
+                    <code style={{ fontSize: '0.875rem', color: '#6b7280' }}>mcp_server_version</code>
+                  </div>
+                </GridItem>
+                <GridItem span={8}>
+                  <TextInput
+                    id="server-version"
+                    value={newServerForm.version}
+                    onChange={(_event, value) => setNewServerForm({ ...newServerForm, version: value })}
+                    placeholder="e.g., 1.0.0"
+                  />
+                </GridItem>
+              </Grid>
+            </GridItem>
+
+            {/* License */}
+            <GridItem span={12}>
+              <Grid hasGutter>
+                <GridItem span={4}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', height: '100%' }}>
+                    <code style={{ fontSize: '0.875rem', color: '#6b7280' }}>mcp_server_license</code>
+                  </div>
+                </GridItem>
+                <GridItem span={8}>
+                  <TextInput
+                    id="server-license"
+                    value={newServerForm.license}
+                    onChange={(_event, value) => setNewServerForm({ ...newServerForm, license: value })}
+                    placeholder="e.g., MIT, Apache-2.0"
+                  />
+                </GridItem>
+              </Grid>
+            </GridItem>
+
+            {/* Transport type */}
+            <GridItem span={12}>
+              <Grid hasGutter>
+                <GridItem span={4}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', height: '100%' }}>
+                    <code style={{ fontSize: '0.875rem', color: '#6b7280' }}>mcp_server_transport_type</code>
+                  </div>
+                </GridItem>
+                <GridItem span={8}>
+                  <Select
+                    id="server-transport"
+                    isOpen={transportSelectOpen}
+                    selected={newServerForm.transportType}
+                    onSelect={(_event, value) => {
+                      setNewServerForm({ ...newServerForm, transportType: value as string });
+                      setTransportSelectOpen(false);
+                    }}
+                    onOpenChange={(isOpen) => setTransportSelectOpen(isOpen)}
+                    toggle={(toggleRef) => (
+                      <MenuToggle
+                        ref={toggleRef}
+                        onClick={() => setTransportSelectOpen(!transportSelectOpen)}
+                        isExpanded={transportSelectOpen}
+                      >
+                        {newServerForm.transportType || 'Select transport type'}
+                      </MenuToggle>
+                    )}
+                  >
+                    <SelectList>
+                      <SelectOption value="stdio">stdio</SelectOption>
+                      <SelectOption value="SSE">SSE</SelectOption>
+                      <SelectOption value="HTTP">HTTP</SelectOption>
+                      <SelectOption value="streaming">streaming</SelectOption>
+                    </SelectList>
+                  </Select>
+                </GridItem>
+              </Grid>
+            </GridItem>
+
+            {/* Deployment mode */}
+            <GridItem span={12}>
+              <Grid hasGutter>
+                <GridItem span={4}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', height: '100%' }}>
+                    <code style={{ fontSize: '0.875rem', color: '#6b7280' }}>mcp_server_deployment_mode</code>
+                  </div>
+                </GridItem>
+                <GridItem span={8}>
+                  <Select
+                    id="server-deployment"
+                    isOpen={deploymentSelectOpen}
+                    selected={newServerForm.deploymentMode}
+                    onSelect={(_event, value) => {
+                      setNewServerForm({ ...newServerForm, deploymentMode: value as string });
+                      setDeploymentSelectOpen(false);
+                    }}
+                    onOpenChange={(isOpen) => setDeploymentSelectOpen(isOpen)}
+                    toggle={(toggleRef) => (
+                      <MenuToggle
+                        ref={toggleRef}
+                        onClick={() => setDeploymentSelectOpen(!deploymentSelectOpen)}
+                        isExpanded={deploymentSelectOpen}
+                      >
+                        {newServerForm.deploymentMode || 'Select deployment mode'}
+                      </MenuToggle>
+                    )}
+                  >
+                    <SelectList>
+                      <SelectOption value="Remote">Remote</SelectOption>
+                      <SelectOption value="Local to cluster">Local to cluster</SelectOption>
+                    </SelectList>
+                  </Select>
+                </GridItem>
+              </Grid>
+            </GridItem>
+
+            {/* Location */}
+            <GridItem span={12}>
+              <Grid hasGutter>
+                <GridItem span={4}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', height: '100%' }}>
+                    <code style={{ fontSize: '0.875rem', color: '#6b7280' }}>mcp_server_location</code>
+                  </div>
+                </GridItem>
+                <GridItem span={8}>
+                  <TextInput
+                    id="server-location"
+                    value={newServerForm.location}
+                    onChange={(_event, value) => setNewServerForm({ ...newServerForm, location: value })}
+                    placeholder="OCI image or remote URL (e.g., quay.io/user/image:tag or https://example.com)"
+                  />
+                </GridItem>
+              </Grid>
+            </GridItem>
+
+            {/* Source URL */}
+            <GridItem span={12}>
+              <Grid hasGutter>
+                <GridItem span={4}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', height: '100%' }}>
+                    <code style={{ fontSize: '0.875rem', color: '#6b7280' }}>mcp_server_source_url</code>
+                  </div>
+                </GridItem>
+                <GridItem span={8}>
+                  <TextInput
+                    id="server-source-url"
+                    value={newServerForm.sourceUrl}
+                    onChange={(_event, value) => setNewServerForm({ ...newServerForm, sourceUrl: value })}
+                    placeholder="https://github.com/user/repo"
+                  />
+                </GridItem>
+              </Grid>
+            </GridItem>
+
+            {/* Homepage */}
+            <GridItem span={12}>
+              <Grid hasGutter>
+                <GridItem span={4}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', height: '100%' }}>
+                    <code style={{ fontSize: '0.875rem', color: '#6b7280' }}>mcp_server_homepage</code>
+                  </div>
+                </GridItem>
+                <GridItem span={8}>
+                  <TextInput
+                    id="server-homepage"
+                    value={newServerForm.homepage}
+                    onChange={(_event, value) => setNewServerForm({ ...newServerForm, homepage: value })}
+                    placeholder="https://example.com"
+                  />
+                </GridItem>
+              </Grid>
+            </GridItem>
+
+            {/* Icon Color */}
+            <GridItem span={12}>
+              <Grid hasGutter>
+                <GridItem span={4}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', height: '100%' }}>
+                    <code style={{ fontSize: '0.875rem', color: '#6b7280' }}>icon_color</code>
+                  </div>
+                </GridItem>
+                <GridItem span={8}>
+                  <TextInput
+                    id="server-icon-color"
+                    value={newServerForm.iconColor}
+                    onChange={(_event, value) => setNewServerForm({ ...newServerForm, iconColor: value })}
+                    placeholder="e.g., #336ce6"
+                  />
+                </GridItem>
+              </Grid>
+            </GridItem>
+
+            {/* Icon Path */}
+            <GridItem span={12}>
+              <Grid hasGutter>
+                <GridItem span={4}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', height: '100%' }}>
+                    <code style={{ fontSize: '0.875rem', color: '#6b7280' }}>icon_path</code>
+                  </div>
+                </GridItem>
+                <GridItem span={8}>
+                  <TextInput
+                    id="server-icon-path"
+                    value={newServerForm.iconPath}
+                    onChange={(_event, value) => setNewServerForm({ ...newServerForm, iconPath: value })}
+                    placeholder="Enter icon path or URL"
+                  />
+                </GridItem>
+              </Grid>
+            </GridItem>
+
+            {/* Red Hat Partner */}
+            <GridItem span={12}>
+              <Grid hasGutter>
+                <GridItem span={4}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', height: '100%' }}>
+                    <code style={{ fontSize: '0.875rem', color: '#6b7280' }}>red_hat_partner</code>
+                  </div>
+                </GridItem>
+                <GridItem span={8}>
+                  <Select
+                    id="server-red-hat-partner"
+                    isOpen={redHatPartnerSelectOpen}
+                    selected={newServerForm.redHatPartner ? 'true' : 'false'}
+                    onSelect={(_event, value) => {
+                      setNewServerForm({ ...newServerForm, redHatPartner: value === 'true' });
+                      setRedHatPartnerSelectOpen(false);
+                    }}
+                    onOpenChange={(isOpen) => setRedHatPartnerSelectOpen(isOpen)}
+                    toggle={(toggleRef) => (
+                      <MenuToggle
+                        ref={toggleRef}
+                        onClick={() => setRedHatPartnerSelectOpen(!redHatPartnerSelectOpen)}
+                        isExpanded={redHatPartnerSelectOpen}
+                      >
+                        {newServerForm.redHatPartner ? 'true' : 'false'}
+                      </MenuToggle>
+                    )}
+                  >
+                    <SelectList>
+                      <SelectOption value="false">false</SelectOption>
+                      <SelectOption value="true">true</SelectOption>
+                    </SelectList>
+                  </Select>
+                </GridItem>
+              </Grid>
+            </GridItem>
+
+            {/* Tools Blacklist */}
+            <GridItem span={12}>
+              <Grid hasGutter>
+                <GridItem span={4}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', height: '100%' }}>
+                    <code style={{ fontSize: '0.875rem', color: '#6b7280' }}>tools_blacklist</code>
+                  </div>
+                </GridItem>
+                <GridItem span={8}>
+                  <TextInput
+                    id="server-tools-blacklist"
+                    value={newServerForm.toolsBlacklist}
+                    onChange={(_event, value) => setNewServerForm({ ...newServerForm, toolsBlacklist: value })}
+                    placeholder="Enter tool names separated by commas (e.g., tool1, tool2, tool3)"
+                  />
+                </GridItem>
+              </Grid>
+            </GridItem>
+          </Grid>
+        </ModalBody>
+        <ModalFooter>
+          <Button
+            key="cancel"
+            variant="link"
+            onClick={() => {
+              setAddServerModalOpen(false);
+              setNewServerForm({
+                name: '',
+                description: '',
+                tags: '',
+                provider: '',
+                version: '',
+                license: '',
+                transportType: '',
+                deploymentMode: '',
+                location: '',
+                sourceUrl: '',
+                homepage: '',
+                iconColor: '',
+                iconPath: '',
+                redHatPartner: false,
+                toolsBlacklist: ''
+              });
+            }}
+          >
+            Cancel
+          </Button>
+          <Button
+            key="submit"
+            variant="primary"
+            onClick={() => {
+              // Generate slug from name
+              const slug = newServerForm.name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '') + '-mcp-server';
+              
+              // Generate unique ID (use timestamp to ensure uniqueness)
+              const newId = Math.max(...baseServers.map(s => s.id), 0) + 1;
+              
+              // Parse tags from comma-separated string
+              const tags = newServerForm.tags
+                ? newServerForm.tags.split(',').map(tag => tag.trim()).filter(tag => tag.length > 0)
+                : [];
+              
+              // Determine logo
+              let logo: string;
+              if (newServerForm.iconPath) {
+                logo = newServerForm.iconPath;
+              } else if (newServerForm.iconColor) {
+                // Create a generic icon identifier based on the first part of the name
+                // Store the color in a custom format that can be parsed
+                const brandKey = newServerForm.name.toLowerCase().replace(/\s+/g, '-').split('-')[0];
+                logo = `generic-icon-${brandKey}:${newServerForm.iconColor}`;
+              } else {
+                logo = 'cube-icon';
+              }
+              
+              // Determine isLocal from deploymentMode
+              const isLocal = newServerForm.deploymentMode === 'Local to cluster';
+              
+              // Create new server object
+              const newServer = {
+                id: newId,
+                slug: slug,
+                name: newServerForm.name,
+                provider: newServerForm.provider || 'Unknown',
+                type: "AVAILABLE" as const,
+                logo: logo,
+                description: newServerForm.description,
+                status: "available" as const,
+                statusColor: "#3E8635",
+                models: "Universal" as const,
+                deployment: newServerForm.deploymentMode || "Community",
+                providerType: newServerForm.redHatPartner ? "Red Hat Partner" : "Community",
+                version: newServerForm.version || "1.0.0",
+                lastUsed: new Date().toLocaleDateString('en-US', { month: 'numeric', day: 'numeric', year: 'numeric' }),
+                agentCount: 0,
+                tags: tags,
+                isAdded: false,
+                hasWriteCapabilities: false,
+                hasDestructiveCapabilities: false,
+                isLocal: isLocal,
+                deploymentMode: newServerForm.deploymentMode || 'Remote',
+                transports: [newServerForm.transportType || 'stdio'],
+                location: newServerForm.location || '',
+                sourceUrl: newServerForm.sourceUrl || '',
+                homepage: newServerForm.homepage || '',
+                license: newServerForm.license || ''
+              };
+              
+              // Add the new server to the list and calculate which page it will appear on
+              setBaseServers(prev => {
+                const updatedServers = [...prev, newServer];
+                
+                // Calculate which page the new server will appear on after sorting
+                // Use the same sorting logic as getSortedServers
+                const priorityServers = updatedServers.filter(s => 
+                  s.slug === 'servicenow-mcp-server' || s.slug === 'splunk-mcp-server'
+                );
+                const otherServers = updatedServers.filter(s => 
+                  s.slug !== 'servicenow-mcp-server' && s.slug !== 'splunk-mcp-server'
+                );
+                
+                const sortedPriorityServers = priorityServers.sort((a, b) => {
+                  if (a.slug === 'servicenow-mcp-server') return -1;
+                  if (b.slug === 'servicenow-mcp-server') return 1;
+                  if (a.slug === 'splunk-mcp-server') return -1;
+                  if (b.slug === 'splunk-mcp-server') return 1;
+                  return 0;
+                });
+                
+                const sortedOtherServers = [...otherServers].sort((a, b) => {
+                  const aValue = a.name.toLowerCase();
+                  const bValue = b.name.toLowerCase();
+                  if (aValue < bValue) return sortDirection === 'asc' ? -1 : 1;
+                  if (aValue > bValue) return sortDirection === 'asc' ? 1 : -1;
+                  return 0;
+                });
+                
+                const sortedServers = [...sortedPriorityServers, ...sortedOtherServers];
+                const newServerIndex = sortedServers.findIndex(s => s.id === newId);
+                
+                // Calculate which page it will be on (1-indexed)
+                if (newServerIndex >= 0) {
+                  const targetPage = Math.floor(newServerIndex / perPage) + 1;
+                  // Use setTimeout to ensure this runs after the state update
+                  setTimeout(() => {
+                    setCurrentPage(targetPage);
+                    // Also explicitly update animation state for the new page
+                    setTimeout(() => {
+                      const start = (targetPage - 1) * perPage;
+                      const end = Math.min(start + perPage, sortedServers.length);
+                      const numItemsOnPage = end - start;
+                      const visibleIndices = Array.from({ length: numItemsOnPage }, (_, i) => i);
+                      setAnimationState(prev => ({
+                        ...prev,
+                        serverItems: visibleIndices
+                      }));
+                    }, 50);
+                  }, 0);
+                }
+                
+                return updatedServers;
+              });
+              
+              // Close modal and reset form
+              setAddServerModalOpen(false);
+              setNewServerForm({
+                name: '',
+                description: '',
+                tags: '',
+                provider: '',
+                version: '',
+                license: '',
+                transportType: '',
+                deploymentMode: '',
+                location: '',
+                sourceUrl: '',
+                homepage: '',
+                iconColor: '',
+                iconPath: '',
+                redHatPartner: false,
+                toolsBlacklist: ''
+              });
+            }}
+            isDisabled={!newServerForm.name || !newServerForm.description}
+          >
+            Add server
+          </Button>
+        </ModalFooter>
+      </Modal>
+
+      {/* Feature Not Available Modal */}
+      <Modal
+        variant={ModalVariant.small}
+        isOpen={isFeatureModalOpen}
+        onClose={() => setIsFeatureModalOpen(false)}
+      >
+        <ModalHeader title="Coming soon" />
+        <ModalBody>
+          <p>This interaction is out of scope for this prototype.</p>
+        </ModalBody>
+        <ModalFooter>
+          <Button variant="primary" onClick={() => setIsFeatureModalOpen(false)}>
+            Close
+          </Button>
+        </ModalFooter>
+      </Modal>
     </>
   );
 };
 
-export { MCPCatalog };
+export { MCPCatalog }; 
