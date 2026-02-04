@@ -88,6 +88,9 @@ import { Tiers } from '@app/Settings/Tiers/Tiers';
 import { TierDetails } from '@app/Settings/Tiers/TierDetails';
 import { CreateTier } from '@app/Settings/Tiers/CreateTier';
 import { EditTier } from '@app/Settings/Tiers/EditTier';
+import { MCPResources } from '@app/Settings/MCPResources/MCPResources';
+import { AddMCPSource } from '@app/Settings/MCPResources/AddMCPSource';
+import { ManageMCPSource } from '@app/Settings/MCPResources/ManageMCPSource';
 
 // Icons
 import {
@@ -575,6 +578,18 @@ const routes: AppRouteConfig[] = [
         ],
       },
       {
+        label: 'MCP resources',
+        routes: [
+          {
+            element: <MCPResources />,
+            exact: true,
+            label: 'MCP catalog settings',
+            path: '/settings/mcp-resources/settings',
+            title: 'RHOAI 3.1 Console | MCP Resources - Settings',
+          },
+        ],
+      },
+      {
         element: <UserManagement />,
         exact: true,
         label: 'User management',
@@ -625,6 +640,18 @@ const routes: AppRouteConfig[] = [
     exact: true,
     path: '/ai-hub/mcp/deploy',
     title: 'RHOAI 3.1 Console | Deploy MCP Server',
+  },
+  {
+    element: <AddMCPSource />,
+    exact: true,
+    path: '/settings/mcp-resources/add-source',
+    title: 'RHOAI 3.1 Console | Add MCP Source',
+  },
+  {
+    element: <ManageMCPSource />,
+    exact: true,
+    path: '/settings/mcp-resources/manage/:sourceId',
+    title: 'RHOAI 3.1 Console | Manage MCP Source',
   },
   {
     element: <PromptDetails />,

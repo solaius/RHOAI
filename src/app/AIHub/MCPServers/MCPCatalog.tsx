@@ -65,6 +65,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useDocumentTitle } from '@app/utils/useDocumentTitle';
 import { useFeatureFlags } from '@app/utils/FeatureFlagsContext';
 import { useUserProfile } from '@app/utils/UserProfileContext';
+import { useMCPCatalog } from '@app/utils/MCPCatalogContext';
 import { mcpServerLogos } from './mcpServerLogos';
 
 // Brand colors for generic circular icons
@@ -156,6 +157,7 @@ const MCPCatalog: React.FunctionComponent = () => {
 
   const { flags } = useFeatureFlags();
   const { userProfile } = useUserProfile();
+  const { isServerEnabled } = useMCPCatalog();
   const navigate = useNavigate();
 
   const [isProjectSelectOpen, setIsProjectSelectOpen] = React.useState(false);
@@ -402,6 +404,12 @@ const MCPCatalog: React.FunctionComponent = () => {
   const getFilteredServers = () => {
     const searchLower = integratedSearchText.trim().toLowerCase();
     return servers.filter(server => {
+      // First check if server is enabled in MCP Catalog Settings
+      const isEnabledInSettings = isServerEnabled(server.slug);
+      if (!isEnabledInSettings) {
+        return false;
+      }
+
       const matchesIntegratedSearch = searchLower === '' ||
         server.name.toLowerCase().includes(searchLower) ||
         server.description.toLowerCase().includes(searchLower) ||
